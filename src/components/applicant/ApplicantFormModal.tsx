@@ -29,6 +29,7 @@ export default function ApplicantFormModal({ open, onClose, editData }: Props) {
     major: editData?.major || '',
     career: editData?.career || '',
     memo: editData?.memo || '',
+    applicationDate: editData?.applicationDate || new Date().toISOString().slice(0, 10),
   });
 
   const handleChange = (field: string, value: string) => {
