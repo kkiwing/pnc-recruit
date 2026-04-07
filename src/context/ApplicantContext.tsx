@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { Applicant, createDefaultRecruitmentStatus } from '@/types/applicant';
+import { dummyApplicants } from '@/data/dummyApplicants';
 
 interface ApplicantContextType {
   applicants: Applicant[];
@@ -12,12 +13,19 @@ interface ApplicantContextType {
 const ApplicantContext = createContext<ApplicantContextType | null>(null);
 
 const STORAGE_KEY = 'pnc-applicants';
+const DUMMY_LOADED_KEY = 'pnc-dummy-loaded';
 
 export function ApplicantProvider({ children }: { children: React.ReactNode }) {
   const [applicants, setApplicants] = useState<Applicant[]>(() => {
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
-      return stored ? JSON.parse(stored) : [];
+      if (stored) return JSON.parse(stored);
+      // Load dummy data on first visit
+      if (!localStorage.getItem(DUMMY_LOADED_KEY)) {
+        localStorage.setItem(DUMMY_LOADED_KEY, 'true');
+        return dummyApplicants;
+      }
+      return [];
     } catch { return []; }
   });
 

@@ -62,6 +62,13 @@ export default function ApplicantFormModal({ open, onClose, editData }: Props) {
             <Input value={form.name} onChange={e => handleChange('name', e.target.value)} placeholder="이름" />
           </div>
           <div>
+            <Label>지원일</Label>
+            <Input type="date" value={form.applicationDate} onChange={e => handleChange('applicationDate', e.target.value)} />
+          </div>
+            <Label>이름 *</Label>
+            <Input value={form.name} onChange={e => handleChange('name', e.target.value)} placeholder="이름" />
+          </div>
+          <div>
             <Label>지원플랫폼</Label>
             <select
               className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
