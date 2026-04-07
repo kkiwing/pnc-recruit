@@ -64,7 +64,7 @@ export default function ApplicantFormModal({ open, onClose, editData }: Props) {
           <div>
             <Label>지원일</Label>
             <Input type="date" value={form.applicationDate} onChange={e => handleChange('applicationDate', e.target.value)} />
-          <div>
+          </div>
           <div>
             <Label>지원플랫폼</Label>
             <select
