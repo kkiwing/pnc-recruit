@@ -3,7 +3,12 @@ import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import Index from "./pages/Index.tsx";
+import { ApplicantProvider } from "@/context/ApplicantContext";
+import AdminLayout from "@/components/layout/AdminLayout";
+import Dashboard from "@/pages/Dashboard";
+import ApplicantList from "@/pages/ApplicantList";
+import SeparateManagement from "@/pages/SeparateManagement";
+import InterviewSchedule from "@/pages/InterviewSchedule";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
@@ -13,13 +18,19 @@ const App = () => (
     <TooltipProvider>
       <Toaster />
       <Sonner />
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Index />} />
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </BrowserRouter>
+      <ApplicantProvider>
+        <BrowserRouter>
+          <AdminLayout>
+            <Routes>
+              <Route path="/" element={<Dashboard />} />
+              <Route path="/applicants" element={<ApplicantList />} />
+              <Route path="/separate" element={<SeparateManagement />} />
+              <Route path="/interviews" element={<InterviewSchedule />} />
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </AdminLayout>
+        </BrowserRouter>
+      </ApplicantProvider>
     </TooltipProvider>
   </QueryClientProvider>
 );
