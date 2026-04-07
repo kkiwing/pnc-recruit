@@ -1,5 +1,5 @@
-import React, { useState, useRef } from 'react';
-import { Applicant, RecruitmentStatus, StepDetail, STEP_LABELS, REGION_INTERVIEW_FEE, SEPARATE_REASONS, SeparateManagementReason } from '@/types/applicant';
+import React, { useState } from 'react';
+import { Applicant, RecruitmentStatus, StepDetail, STEP_LABELS, REGION_INTERVIEW_FEE, SEPARATE_REASONS, SeparateManagementReason, StepStatus } from '@/types/applicant';
 import { useApplicants } from '@/context/ApplicantContext';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Button } from '@/components/ui/button';
@@ -29,39 +29,51 @@ const STEP_KEYS: StepKey[] = [
 const STEPS_NEEDING_DATE: StepKey[] = ['personalityTestNotice', 'companyFormNotice', 'interviewNotice'];
 const RESULT_STEPS: StepKey[] = ['personalityTestResult', 'interviewResult'];
 
-function StatusBadge({ detail, stepKey, onClick }: { detail: StepDetail; stepKey: StepKey; onClick: () => void }) {
+const NORMAL_OPTIONS: { value: StepStatus; label: string }[] = [
+  { value: 'pending', label: '대기' },
+  { value: 'need', label: '필요' },
+  { value: 'done', label: '완료' },
+];
+
+const RESULT_OPTIONS: { value: StepStatus; label: string }[] = [
+  { value: 'pending', label: '대기' },
+  { value: 'pass', label: '합격' },
+  { value: 'fail', label: '불합격' },
+];
+
+function getSelectClass(status: StepStatus) {
+  switch (status) {
+    case 'pending': return 'bg-muted text-muted-foreground';
+    case 'need': return 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300';
+    case 'done': return 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300';
+    case 'pass': return 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300';
+    case 'fail': return 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300';
+    default: return 'bg-muted text-muted-foreground';
+  }
+}
+
+function StatusSelect({ detail, stepKey, onChange }: { detail: StepDetail; stepKey: StepKey; onChange: (status: StepStatus) => void }) {
   const isResult = RESULT_STEPS.includes(stepKey);
-
-  const getLabel = () => {
-    if (detail.status === 'pending') return '-';
-    if (detail.status === 'need') return '필요';
-    if (detail.status === 'done') return '완료';
-    if (detail.status === 'pass') return '합격';
-    if (detail.status === 'fail') return '불합격';
-    return '-';
-  };
-
-  const getClass = () => {
-    if (detail.status === 'pending') return 'status-badge status-pending';
-    if (detail.status === 'need') return 'status-badge status-need';
-    if (detail.status === 'done') return 'status-badge status-done';
-    if (detail.status === 'pass') return 'status-badge status-pass';
-    if (detail.status === 'fail') return 'status-badge status-fail';
-    return 'status-badge status-pending';
-  };
-
+  const options = isResult ? RESULT_OPTIONS : NORMAL_OPTIONS;
   const hasDateInfo = detail.startDate || detail.endDate || detail.interviewer;
 
-  const badge = (
-    <span className={getClass()} onClick={onClick}>
-      {getLabel()}
-    </span>
+  const select = (
+    <select
+      className={`text-xs rounded px-1.5 py-1 border-0 cursor-pointer font-medium text-center appearance-none ${getSelectClass(detail.status)}`}
+      value={detail.status}
+      onChange={e => onChange(e.target.value as StepStatus)}
+      style={{ minWidth: '52px' }}
+    >
+      {options.map(opt => (
+        <option key={opt.value} value={opt.value}>{opt.label}</option>
+      ))}
+    </select>
   );
 
   if (hasDateInfo) {
     return (
       <Tooltip>
-        <TooltipTrigger asChild>{badge}</TooltipTrigger>
+        <TooltipTrigger asChild>{select}</TooltipTrigger>
         <TooltipContent side="top" className="text-xs space-y-1 max-w-xs">
           {detail.startDate && detail.endDate && (
             <p>기간: {detail.startDate} ~ {detail.endDate}</p>
@@ -73,7 +85,7 @@ function StatusBadge({ detail, stepKey, onClick }: { detail: StepDetail; stepKey
     );
   }
 
-  return badge;
+  return select;
 }
 
 export default function ApplicantTable({ applicants, showSeparateActions }: Props) {
@@ -82,44 +94,33 @@ export default function ApplicantTable({ applicants, showSeparateActions }: Prop
   const [detailModal, setDetailModal] = useState<Applicant | null>(null);
   const [editModal, setEditModal] = useState<Applicant | null>(null);
 
-  const handleStatusClick = (applicant: Applicant, stepKey: StepKey) => {
+  const handleStatusChange = (applicant: Applicant, stepKey: StepKey, newStatus: StepStatus) => {
     const detail = applicant.recruitmentStatus[stepKey];
-    const isResult = RESULT_STEPS.includes(stepKey);
     const needsDate = STEPS_NEEDING_DATE.includes(stepKey);
 
-    if (isResult) {
-      // Toggle between pending -> pass -> fail
-      const nextStatus = detail.status === 'pending' ? 'pass' : detail.status === 'pass' ? 'fail' : 'pending';
-      updateApplicant(applicant.id, {
-        recruitmentStatus: {
-          ...applicant.recruitmentStatus,
-          [stepKey]: { ...detail, status: nextStatus },
-        },
-      });
-    } else if (needsDate) {
-      // need -> done (with date modal)
-      if (detail.status === 'pending') {
-        updateApplicant(applicant.id, {
-          recruitmentStatus: {
-            ...applicant.recruitmentStatus,
-            [stepKey]: { ...detail, status: 'need' },
-          },
-        });
-      } else if (detail.status === 'need') {
-        setCompletionModal({ applicantId: applicant.id, stepKey });
-      } else if (detail.status === 'done') {
-        setCompletionModal({ applicantId: applicant.id, stepKey, isEdit: true });
-      }
-    } else {
-      // Simple toggle: pending -> need -> done
-      const nextStatus = detail.status === 'pending' ? 'need' : detail.status === 'need' ? 'done' : 'pending';
-      updateApplicant(applicant.id, {
-        recruitmentStatus: {
-          ...applicant.recruitmentStatus,
-          [stepKey]: { ...detail, status: nextStatus },
-        },
-      });
+    if (needsDate && newStatus === 'done') {
+      // Open date modal when changing to 'done' for date-required steps
+      setCompletionModal({ applicantId: applicant.id, stepKey });
+      return;
     }
+
+    if (needsDate && detail.status === 'done' && newStatus !== 'done') {
+      // Clear date info when moving away from done
+      updateApplicant(applicant.id, {
+        recruitmentStatus: {
+          ...applicant.recruitmentStatus,
+          [stepKey]: { status: newStatus },
+        },
+      });
+      return;
+    }
+
+    updateApplicant(applicant.id, {
+      recruitmentStatus: {
+        ...applicant.recruitmentStatus,
+        [stepKey]: { ...detail, status: newStatus },
+      },
+    });
   };
 
   const handleCompletionSubmit = (data: { startDate: string; endDate: string; time?: string; interviewer?: string }) => {
@@ -160,14 +161,16 @@ export default function ApplicantTable({ applicants, showSeparateActions }: Prop
   return (
     <>
       <div className="overflow-x-auto">
-        <table className="admin-table w-full min-w-[1400px]">
+        <table className="admin-table w-full min-w-[1600px]">
           <thead>
             <tr>
               <th className="w-12">No</th>
               <th className="w-16">팀</th>
               <th className="w-20">이름</th>
+              <th className="w-24">지원일</th>
               <th className="w-20">플랫폼</th>
               <th className="w-16">출생</th>
+              <th className="w-32">휴대전화</th>
               <th className="w-24">지역</th>
               <th className="w-20">학교</th>
               <th className="w-16">경력</th>
@@ -182,7 +185,7 @@ export default function ApplicantTable({ applicants, showSeparateActions }: Prop
           <tbody>
             {applicants.length === 0 && (
               <tr>
-                <td colSpan={STEP_KEYS.length + (showSeparateActions ? 10 : 9)} className="text-center py-8 text-muted-foreground">
+                <td colSpan={STEP_KEYS.length + (showSeparateActions ? 12 : 11)} className="text-center py-8 text-muted-foreground">
                   등록된 지원자가 없습니다.
                 </td>
               </tr>
@@ -199,8 +202,10 @@ export default function ApplicantTable({ applicants, showSeparateActions }: Prop
                     {applicant.name}
                   </button>
                 </td>
+                <td className="text-xs">{applicant.applicationDate}</td>
                 <td className="text-xs">{applicant.platform}</td>
                 <td className="text-xs">{applicant.birthYear}</td>
+                <td className="text-xs">{applicant.phone}</td>
                 <td>
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -218,10 +223,10 @@ export default function ApplicantTable({ applicants, showSeparateActions }: Prop
                 <td className="text-xs">{applicant.career}</td>
                 {STEP_KEYS.map(key => (
                   <td key={key} className="text-center">
-                    <StatusBadge
+                    <StatusSelect
                       detail={applicant.recruitmentStatus[key]}
                       stepKey={key}
-                      onClick={() => handleStatusClick(applicant, key)}
+                      onChange={(status) => handleStatusChange(applicant, key, status)}
                     />
                   </td>
                 ))}

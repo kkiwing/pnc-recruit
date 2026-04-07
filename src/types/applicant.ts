@@ -43,6 +43,7 @@ export interface Applicant {
   major: string;
   career: string;
   memo: string;
+  applicationDate: string;
   recruitmentStatus: RecruitmentStatus;
   isSeparateManagement: boolean;
   separateReason?: SeparateManagementReason;
