@@ -29,6 +29,7 @@ export default function ApplicantFormModal({ open, onClose, editData }: Props) {
     major: editData?.major || '',
     career: editData?.career || '',
     memo: editData?.memo || '',
+    applicationDate: editData?.applicationDate || new Date().toISOString().slice(0, 10),
   });
 
   const handleChange = (field: string, value: string) => {
@@ -59,6 +60,10 @@ export default function ApplicantFormModal({ open, onClose, editData }: Props) {
           <div>
             <Label>이름 *</Label>
             <Input value={form.name} onChange={e => handleChange('name', e.target.value)} placeholder="이름" />
+          </div>
+          <div>
+            <Label>지원일</Label>
+            <Input type="date" value={form.applicationDate} onChange={e => handleChange('applicationDate', e.target.value)} />
           </div>
           <div>
             <Label>지원플랫폼</Label>
