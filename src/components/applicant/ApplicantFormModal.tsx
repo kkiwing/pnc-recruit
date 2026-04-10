@@ -5,18 +5,22 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useApplicants } from '@/context/ApplicantContext';
+import { useJobPostings } from '@/context/JobPostingContext';
 
 interface Props {
   open: boolean;
   onClose: () => void;
   editData?: any;
+  defaultJobPostingId?: string;
 }
 
 const PLATFORMS = ['사람인', '잡코리아', '워크넷', '인크루트', '링크드인', '직접지원', '기타'];
 
-export default function ApplicantFormModal({ open, onClose, editData }: Props) {
+export default function ApplicantFormModal({ open, onClose, editData, defaultJobPostingId }: Props) {
   const { addApplicant, updateApplicant } = useApplicants();
+  const { jobPostings } = useJobPostings();
   const [form, setForm] = useState({
+    jobPostingId: editData?.jobPostingId || defaultJobPostingId || '',
     team: editData?.team || '',
     name: editData?.name || '',
     platform: editData?.platform || '',
@@ -37,7 +41,7 @@ export default function ApplicantFormModal({ open, onClose, editData }: Props) {
   };
 
   const handleSubmit = () => {
-    if (!form.name.trim()) return;
+    if (!form.name.trim() || !form.jobPostingId) return;
     if (editData?.id) {
       updateApplicant(editData.id, form);
     } else {
@@ -53,6 +57,17 @@ export default function ApplicantFormModal({ open, onClose, editData }: Props) {
           <DialogTitle>{editData ? '지원자 정보 수정' : '지원자 등록'}</DialogTitle>
         </DialogHeader>
         <div className="grid grid-cols-2 gap-4 py-4">
+          <div className="col-span-2">
+            <Label>채용 공고 *</Label>
+            <select
+              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+              value={form.jobPostingId}
+              onChange={e => handleChange('jobPostingId', e.target.value)}
+            >
+              <option value="">공고 선택</option>
+              {jobPostings.map(j => <option key={j.id} value={j.id}>{j.title}</option>)}
+            </select>
+          </div>
           <div>
             <Label>팀</Label>
             <Input value={form.team} onChange={e => handleChange('team', e.target.value)} placeholder="팀명" />
