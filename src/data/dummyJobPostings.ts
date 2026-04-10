@@ -1,0 +1,48 @@
+import { JobPosting } from '@/types/jobPosting';
+
+export const dummyJobPostings: JobPosting[] = [
+  {
+    id: 'job-01',
+    title: '2026년 상반기 개발팀 신입/경력 채용',
+    department: '개발',
+    status: 'open',
+    startDate: '2026-03-01',
+    endDate: '2026-04-30',
+    description: '프론트엔드/백엔드 개발자 채용',
+    createdAt: '2026-02-20T09:00:00Z',
+    updatedAt: '2026-03-01T09:00:00Z',
+  },
+  {
+    id: 'job-02',
+    title: '2026년 상반기 마케팅팀 채용',
+    department: '마케팅',
+    status: 'open',
+    startDate: '2026-03-10',
+    endDate: '2026-05-10',
+    description: '디지털 마케팅 및 콘텐츠 기획',
+    createdAt: '2026-03-01T09:00:00Z',
+    updatedAt: '2026-03-10T09:00:00Z',
+  },
+  {
+    id: 'job-03',
+    title: '2026년 디자인팀 경력 채용',
+    department: '디자인',
+    status: 'open',
+    startDate: '2026-03-15',
+    endDate: '2026-04-30',
+    description: 'UX/UI 디자이너 및 영상 디자이너',
+    createdAt: '2026-03-05T09:00:00Z',
+    updatedAt: '2026-03-15T09:00:00Z',
+  },
+  {
+    id: 'job-04',
+    title: '2026년 기획/인사팀 수시 채용',
+    department: '기획/인사',
+    status: 'open',
+    startDate: '2026-03-20',
+    endDate: '2026-05-31',
+    description: '서비스 기획 및 인사 담당자',
+    createdAt: '2026-03-10T09:00:00Z',
+    updatedAt: '2026-03-20T09:00:00Z',
+  },
+];

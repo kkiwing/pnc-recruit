@@ -31,6 +31,7 @@ export interface RecruitmentStatus {
 export interface Applicant {
   id: string;
   no: number;
+  jobPostingId: string;
   team: string;
   name: string;
   platform: string;

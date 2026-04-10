@@ -4,10 +4,11 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ApplicantProvider } from "@/context/ApplicantContext";
+import { JobPostingProvider } from "@/context/JobPostingContext";
 import AdminLayout from "@/components/layout/AdminLayout";
 import Dashboard from "@/pages/Dashboard";
-import ApplicantList from "@/pages/ApplicantList";
-import SeparateManagement from "@/pages/SeparateManagement";
+import JobPostingList from "@/pages/JobPostingList";
+import JobPostingDetail from "@/pages/JobPostingDetail";
 import InterviewSchedule from "@/pages/InterviewSchedule";
 import NotFound from "./pages/NotFound.tsx";
 
@@ -18,19 +19,21 @@ const App = () => (
     <TooltipProvider>
       <Toaster />
       <Sonner />
-      <ApplicantProvider>
-        <BrowserRouter>
-          <AdminLayout>
-            <Routes>
-              <Route path="/" element={<Dashboard />} />
-              <Route path="/applicants" element={<ApplicantList />} />
-              <Route path="/separate" element={<SeparateManagement />} />
-              <Route path="/interviews" element={<InterviewSchedule />} />
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </AdminLayout>
-        </BrowserRouter>
-      </ApplicantProvider>
+      <JobPostingProvider>
+        <ApplicantProvider>
+          <BrowserRouter>
+            <AdminLayout>
+              <Routes>
+                <Route path="/" element={<Dashboard />} />
+                <Route path="/postings" element={<JobPostingList />} />
+                <Route path="/postings/:id" element={<JobPostingDetail />} />
+                <Route path="/interviews" element={<InterviewSchedule />} />
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </AdminLayout>
+          </BrowserRouter>
+        </ApplicantProvider>
+      </JobPostingProvider>
     </TooltipProvider>
   </QueryClientProvider>
 );

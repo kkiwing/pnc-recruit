@@ -1,11 +1,10 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Users, Calendar, UserX } from 'lucide-react';
+import { LayoutDashboard, Briefcase, Calendar } from 'lucide-react';
 
 const NAV_ITEMS = [
   { to: '/', icon: LayoutDashboard, label: '대시보드' },
-  { to: '/applicants', icon: Users, label: '지원자 목록' },
-  { to: '/separate', icon: UserX, label: '별도 관리' },
+  { to: '/postings', icon: Briefcase, label: '공고 관리' },
   { to: '/interviews', icon: Calendar, label: '면접 일정' },
 ];
 
@@ -21,7 +20,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         </div>
         <nav className="flex-1 py-3 px-3 space-y-0.5">
           {NAV_ITEMS.map(item => {
-            const active = location.pathname === item.to;
+            const active = item.to === '/'
+              ? location.pathname === '/'
+              : location.pathname.startsWith(item.to);
             return (
               <Link
                 key={item.to}
