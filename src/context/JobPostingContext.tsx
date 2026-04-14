@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { JobPosting } from '@/types/jobPosting';
-import { dummyJobPostings } from '@/data/dummyJobPostings';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 
 interface JobPostingContextType {
   jobPostings: JobPosting[];
@@ -8,49 +9,91 @@ interface JobPostingContextType {
   updateJobPosting: (id: string, data: Partial<JobPosting>) => void;
   deleteJobPosting: (id: string) => void;
   getJobPosting: (id: string) => JobPosting | undefined;
+  loading: boolean;
 }
 
 const JobPostingContext = createContext<JobPostingContextType | null>(null);
 
-const STORAGE_KEY = 'pnc-job-postings';
-const DUMMY_LOADED_KEY = 'pnc-job-postings-dummy-loaded';
+function mapRow(row: any): JobPosting {
+  return {
+    id: row.id,
+    title: row.title,
+    department: row.department,
+    status: row.status as JobPosting['status'],
+    startDate: row.start_date,
+    endDate: row.end_date,
+    description: row.description,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
 
 export function JobPostingProvider({ children }: { children: React.ReactNode }) {
-  const [jobPostings, setJobPostings] = useState<JobPosting[]>(() => {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored) return JSON.parse(stored);
-      if (!localStorage.getItem(DUMMY_LOADED_KEY)) {
-        localStorage.setItem(DUMMY_LOADED_KEY, 'true');
-        return dummyJobPostings;
-      }
-      return [];
-    } catch { return []; }
-  });
+  const [jobPostings, setJobPostings] = useState<JobPosting[]>([]);
+  const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
 
+  const fetchAll = useCallback(async () => {
+    const { data, error } = await supabase
+      .from('job_postings')
+      .select('*')
+      .order('created_at', { ascending: true });
+    if (error) {
+      toast({ title: '오류', description: '공고 목록을 불러오지 못했습니다.', variant: 'destructive' });
+      return;
+    }
+    setJobPostings((data || []).map(mapRow));
+    setLoading(false);
+  }, [toast]);
+
+  useEffect(() => { fetchAll(); }, [fetchAll]);
+
+  // Realtime subscription
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(jobPostings));
-  }, [jobPostings]);
+    const channel = supabase
+      .channel('job_postings_changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'job_postings' }, () => {
+        fetchAll();
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [fetchAll]);
 
-  const addJobPosting = useCallback((data: Omit<JobPosting, 'id' | 'createdAt' | 'updatedAt'>) => {
-    const now = new Date().toISOString();
-    setJobPostings(prev => [...prev, { ...data, id: crypto.randomUUID(), createdAt: now, updatedAt: now }]);
-  }, []);
+  const addJobPosting = useCallback(async (data: Omit<JobPosting, 'id' | 'createdAt' | 'updatedAt'>) => {
+    const { error } = await supabase.from('job_postings').insert({
+      title: data.title,
+      department: data.department,
+      status: data.status,
+      start_date: data.startDate,
+      end_date: data.endDate,
+      description: data.description,
+    });
+    if (error) toast({ title: '오류', description: '공고 등록 실패', variant: 'destructive' });
+  }, [toast]);
 
-  const updateJobPosting = useCallback((id: string, data: Partial<JobPosting>) => {
-    setJobPostings(prev => prev.map(j => j.id === id ? { ...j, ...data, updatedAt: new Date().toISOString() } : j));
-  }, []);
+  const updateJobPosting = useCallback(async (id: string, data: Partial<JobPosting>) => {
+    const updates: any = {};
+    if (data.title !== undefined) updates.title = data.title;
+    if (data.department !== undefined) updates.department = data.department;
+    if (data.status !== undefined) updates.status = data.status;
+    if (data.startDate !== undefined) updates.start_date = data.startDate;
+    if (data.endDate !== undefined) updates.end_date = data.endDate;
+    if (data.description !== undefined) updates.description = data.description;
+    const { error } = await supabase.from('job_postings').update(updates).eq('id', id);
+    if (error) toast({ title: '오류', description: '공고 수정 실패', variant: 'destructive' });
+  }, [toast]);
 
-  const deleteJobPosting = useCallback((id: string) => {
-    setJobPostings(prev => prev.filter(j => j.id !== id));
-  }, []);
+  const deleteJobPosting = useCallback(async (id: string) => {
+    const { error } = await supabase.from('job_postings').delete().eq('id', id);
+    if (error) toast({ title: '오류', description: '공고 삭제 실패', variant: 'destructive' });
+  }, [toast]);
 
   const getJobPosting = useCallback((id: string) => {
     return jobPostings.find(j => j.id === id);
   }, [jobPostings]);
 
   return (
-    <JobPostingContext.Provider value={{ jobPostings, addJobPosting, updateJobPosting, deleteJobPosting, getJobPosting }}>
+    <JobPostingContext.Provider value={{ jobPostings, addJobPosting, updateJobPosting, deleteJobPosting, getJobPosting, loading }}>
       {children}
     </JobPostingContext.Provider>
   );
