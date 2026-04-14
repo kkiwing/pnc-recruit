@@ -14,7 +14,122 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      applicants: {
+        Row: {
+          application_date: string
+          birth_year: string
+          career: string
+          created_at: string
+          email: string
+          id: string
+          is_separate_management: boolean
+          job_posting_id: string
+          major: string
+          memo: string
+          name: string
+          no: number
+          phone: string
+          platform: string
+          recruitment_status: Json
+          region: string
+          region_detail: string
+          school: string
+          separate_reason: string | null
+          team: string
+          updated_at: string
+        }
+        Insert: {
+          application_date?: string
+          birth_year?: string
+          career?: string
+          created_at?: string
+          email?: string
+          id?: string
+          is_separate_management?: boolean
+          job_posting_id: string
+          major?: string
+          memo?: string
+          name: string
+          no: number
+          phone?: string
+          platform?: string
+          recruitment_status?: Json
+          region?: string
+          region_detail?: string
+          school?: string
+          separate_reason?: string | null
+          team?: string
+          updated_at?: string
+        }
+        Update: {
+          application_date?: string
+          birth_year?: string
+          career?: string
+          created_at?: string
+          email?: string
+          id?: string
+          is_separate_management?: boolean
+          job_posting_id?: string
+          major?: string
+          memo?: string
+          name?: string
+          no?: number
+          phone?: string
+          platform?: string
+          recruitment_status?: Json
+          region?: string
+          region_detail?: string
+          school?: string
+          separate_reason?: string | null
+          team?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "applicants_job_posting_id_fkey"
+            columns: ["job_posting_id"]
+            isOneToOne: false
+            referencedRelation: "job_postings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      job_postings: {
+        Row: {
+          created_at: string
+          department: string
+          description: string
+          end_date: string
+          id: string
+          start_date: string
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          department?: string
+          description?: string
+          end_date?: string
+          id?: string
+          start_date?: string
+          status?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          department?: string
+          description?: string
+          end_date?: string
+          id?: string
+          start_date?: string
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
