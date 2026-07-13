@@ -6,7 +6,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { Calendar as CalendarIcon, Clock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getInterviewStage, getFinalStage } from '@/types/jobPosting';
-import { isStageCompleted, getStageRecordStatus } from '@/types/applicant';
+import { isStageCompleted, isStageDone, isStagePassed } from '@/types/applicant';
 
 export default function InterviewSchedulePage() {
   const { applicants } = useApplicants();
@@ -25,10 +25,9 @@ export default function InterviewSchedulePage() {
         if (!interviewStage || !isStageCompleted(a.stageRecords, interviewStage)) return null;
         const meta = a.stageRecords.find(r => r.stageId === interviewStage.id)?.meta;
         const finalStage = getFinalStage(job.stages);
-        const finalStatus = finalStage && getStageRecordStatus(a.stageRecords, finalStage);
-        const result: 'pending' | 'pass' | 'fail' = !finalStatus || finalStatus.isDefault
+        const result: 'pending' | 'pass' | 'fail' = !finalStage || !isStageDone(a.stageRecords, finalStage)
           ? 'pending'
-          : finalStatus.name === '합격' ? 'pass' : 'fail';
+          : isStagePassed(a.stageRecords, finalStage) ? 'pass' : 'fail';
         return {
           id: a.id,
           name: a.name,

@@ -9,11 +9,25 @@ export interface CoverLetterQuestion {
 
 export type CompletionFormType = 'none' | 'period' | 'interview';
 
+/**
+ * 단계의 성격. 'result'는 "합불을 판정하는 단계"(예: 인성검사 결과, 면접 결과)를
+ * 명시적으로 나타낸다 — 순서상 마지막 단계라는 암묵적 가정 대신, 합불 집계
+ * (getFinalStage 등)가 이 값을 근거로 판단한다.
+ */
+export type StageType = 'normal' | 'result';
+
 export interface StageStatus {
   id: string;
   name: string;
   color: string;
+  /** 아직 처리되지 않은 시작 상태 (예: 대기) */
   isDefault?: boolean;
+  /** normal 단계에서 "처리 완료" 의미의 상태 (예: 완료) — 완료 입력폼(모달) 트리거 기준 */
+  isCompletion?: boolean;
+  /** result 단계에서 "합격" 의미의 상태 */
+  isPass?: boolean;
+  /** result 단계에서 "불합격" 의미의 상태 */
+  isFail?: boolean;
 }
 
 export interface AutoSendConfig {
@@ -27,6 +41,7 @@ export interface Stage {
   id: string;
   name: string;
   order: number;
+  stageType: StageType;
   completionForm: CompletionFormType;
   statuses: StageStatus[];
   autoSend?: AutoSendConfig;
@@ -75,12 +90,50 @@ export function getStageColorClass(colorId: string): string {
   return STAGE_COLOR_PALETTE.find(c => c.id === colorId)?.className ?? STAGE_COLOR_PALETTE[0].className;
 }
 
+/** stageType이 'result'인 단계들을 순서대로 반환 (합불을 판정하는 단계들) */
+export function getResultStages(stages: Stage[]): Stage[] {
+  return stages.filter(s => s.stageType === 'result').sort((a, b) => a.order - b.order);
+}
+
+/**
+ * 최종 합불 판정 단계. stageType === 'result'인 단계 중 순서상 가장 마지막 단계를
+ * 반환한다 — "파이프라인의 마지막 단계"가 아니라 "합불을 판정하는 단계"를 명시적으로
+ * 찾는다. 예를 들어 면접 결과 뒤에 처우 협의 단계가 추가되어도 면접 결과가 계속
+ * 최종 판정 단계로 인식된다. result 타입 단계가 하나도 없으면(레거시 데이터 등)
+ * 순서상 마지막 단계로 폴백한다.
+ */
 export function getFinalStage(stages: Stage[]): Stage | undefined {
+  const resultStages = getResultStages(stages);
+  if (resultStages.length > 0) return resultStages[resultStages.length - 1];
   return [...stages].sort((a, b) => b.order - a.order)[0];
 }
 
 export function getInterviewStage(stages: Stage[]): Stage | undefined {
   return stages.find(s => s.completionForm === 'interview');
+}
+
+/** normal 단계에서 "처리 완료"를 의미하는 상태. isCompletion이 명시되지 않은
+ * 레거시 단계는 목록의 마지막 상태로 폴백한다. */
+export function getCompletionStatus(stage: Stage): StageStatus | undefined {
+  const explicit = stage.statuses.find(s => s.isCompletion);
+  if (explicit) return explicit;
+  return stage.statuses[stage.statuses.length - 1];
+}
+
+/** result 단계에서 "합격"을 의미하는 상태. isPass가 명시되지 않은 레거시 단계는
+ * 이름이 "합격"인 상태로 폴백한다. */
+export function getPassStatus(stage: Stage): StageStatus | undefined {
+  const explicit = stage.statuses.find(s => s.isPass);
+  if (explicit) return explicit;
+  return stage.statuses.find(s => s.name === '합격');
+}
+
+/** result 단계에서 "불합격"을 의미하는 상태. isFail이 명시되지 않은 레거시 단계는
+ * 이름이 "불합격"인 상태로 폴백한다. */
+export function getFailStatus(stage: Stage): StageStatus | undefined {
+  const explicit = stage.statuses.find(s => s.isFail);
+  if (explicit) return explicit;
+  return stage.statuses.find(s => s.name === '불합격');
 }
 
 export type JobPostingStatus = '진행중' | '종료';
@@ -114,15 +167,15 @@ function progressStatuses(): StageStatus[] {
   return [
     { id: crypto.randomUUID(), name: '대기', color: 'gray', isDefault: true },
     { id: crypto.randomUUID(), name: '필요', color: 'orange' },
-    { id: crypto.randomUUID(), name: '완료', color: 'green' },
+    { id: crypto.randomUUID(), name: '완료', color: 'green', isCompletion: true },
   ];
 }
 
 function resultStatuses(): StageStatus[] {
   return [
     { id: crypto.randomUUID(), name: '대기', color: 'gray', isDefault: true },
-    { id: crypto.randomUUID(), name: '합격', color: 'blue' },
-    { id: crypto.randomUUID(), name: '불합격', color: 'red' },
+    { id: crypto.randomUUID(), name: '합격', color: 'blue', isPass: true },
+    { id: crypto.randomUUID(), name: '불합격', color: 'red', isFail: true },
   ];
 }
 
@@ -150,6 +203,7 @@ export function createDefaultStages(): Stage[] {
     id: crypto.randomUUID(),
     name: d.name,
     order: i + 1,
+    stageType: d.result ? 'result' : 'normal',
     completionForm: d.completionForm,
     statuses: d.result ? resultStatuses() : progressStatuses(),
   }));

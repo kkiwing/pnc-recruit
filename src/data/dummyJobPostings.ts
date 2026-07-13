@@ -11,15 +11,15 @@ function progressStatusesFor(prefix: string) {
   return [
     { id: `${prefix}-s1`, name: '대기', color: 'gray', isDefault: true },
     { id: `${prefix}-s2`, name: '필요', color: 'orange' },
-    { id: `${prefix}-s3`, name: '완료', color: 'green' },
+    { id: `${prefix}-s3`, name: '완료', color: 'green', isCompletion: true },
   ];
 }
 
 function resultStatusesFor(prefix: string) {
   return [
     { id: `${prefix}-s1`, name: '대기', color: 'gray', isDefault: true },
-    { id: `${prefix}-s2`, name: '합격', color: 'blue' },
-    { id: `${prefix}-s3`, name: '불합격', color: 'red' },
+    { id: `${prefix}-s2`, name: '합격', color: 'blue', isPass: true },
+    { id: `${prefix}-s3`, name: '불합격', color: 'red', isFail: true },
   ];
 }
 
@@ -30,6 +30,7 @@ function buildStages(postingId: string, defs: { name: string; completionForm: St
       id: prefix,
       name: d.name,
       order: i + 1,
+      stageType: d.result ? 'result' as const : 'normal' as const,
       completionForm: d.completionForm,
       statuses: d.result ? resultStatusesFor(prefix) : progressStatusesFor(prefix),
     };

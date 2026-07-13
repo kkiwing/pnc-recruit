@@ -1,4 +1,4 @@
-import { Stage } from '@/types/jobPosting';
+import { Stage, getCompletionStatus, getPassStatus } from '@/types/jobPosting';
 
 export type SeparateManagementReason =
   | '지원 포기'
@@ -195,15 +195,16 @@ export function isStageDone(stageRecords: StageRecord[], stage: Stage): boolean 
   return !!status && !status.isDefault;
 }
 
-/** 해당 단계가 마지막(완료/결과) 상태까지 도달했는지 여부 — '필요'처럼 중간 상태는 제외 */
+/** 해당 단계가 "처리 완료"(isCompletion) 상태까지 도달했는지 여부 — '필요'처럼 중간 상태는 제외 */
 export function isStageCompleted(stageRecords: StageRecord[], stage: Stage): boolean {
-  const lastStatus = stage.statuses[stage.statuses.length - 1];
+  const completionStatus = getCompletionStatus(stage);
   const status = getStageRecordStatus(stageRecords, stage);
-  return !!lastStatus && status?.id === lastStatus.id;
+  return !!completionStatus && status?.id === completionStatus.id;
 }
 
-/** 해당 단계의 현재 상태 이름이 "합격"인지 여부 */
+/** 해당 단계의 현재 상태가 "합격"(isPass)인지 여부 */
 export function isStagePassed(stageRecords: StageRecord[], stage: Stage): boolean {
+  const passStatus = getPassStatus(stage);
   const status = getStageRecordStatus(stageRecords, stage);
-  return status?.name === '합격';
+  return !!passStatus && status?.id === passStatus.id;
 }

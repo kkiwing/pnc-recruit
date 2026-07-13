@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Applicant, REGION_INTERVIEW_FEE, SEPARATE_REASONS, SeparateManagementReason, StageRecord, getCurrentStage, getStageRecordStatus } from '@/types/applicant';
 import { useApplicants } from '@/context/ApplicantContext';
 import { useJobPostings } from '@/context/JobPostingContext';
-import { JobPosting, Stage, getStageColorClass } from '@/types/jobPosting';
+import { JobPosting, Stage, getStageColorClass, getCompletionStatus } from '@/types/jobPosting';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Button } from '@/components/ui/button';
 import { Pencil, Trash2, MoreHorizontal, MessageSquare, Clock } from 'lucide-react';
@@ -104,8 +104,9 @@ export default function ApplicantTable({ applicants, showSeparateActions, jobPos
   };
 
   const handleStatusChange = (applicant: Applicant, stage: Stage, statusId: string) => {
-    const isFinal = stage.statuses[stage.statuses.length - 1]?.id === statusId;
-    if (stage.completionForm !== 'none' && isFinal) {
+    const completionStatus = getCompletionStatus(stage);
+    const isCompletionTransition = stage.completionForm !== 'none' && completionStatus?.id === statusId;
+    if (isCompletionTransition) {
       setCompletionModal({ applicantId: applicant.id, stage, statusId });
       return;
     }
