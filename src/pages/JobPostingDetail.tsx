@@ -106,13 +106,13 @@ export default function JobPostingDetailPage() {
 
         <TabsContent value="applicants">
           <div className="bg-card rounded-lg border shadow-sm">
-            <ApplicantTable applicants={filteredActive} />
+            <ApplicantTable applicants={filteredActive} jobPosting={jobPosting} />
           </div>
         </TabsContent>
 
         <TabsContent value="separate">
           <div className="bg-card rounded-lg border shadow-sm">
-            <ApplicantTable applicants={filteredSeparate} showSeparateActions />
+            <ApplicantTable applicants={filteredSeparate} showSeparateActions jobPosting={jobPosting} />
           </div>
         </TabsContent>
       </Tabs>

@@ -5,7 +5,7 @@ import { useJobPostings } from '@/context/JobPostingContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Briefcase, Users, UserCheck, Calendar, ChevronRight } from 'lucide-react';
 import { getJobPostingStatus, JOB_POSTING_STATUS_COLORS, getInterviewStage, getFinalStage } from '@/types/jobPosting';
-import { isStageDone, isStagePassed } from '@/types/applicant';
+import { isStageDone, isStageCompleted, isStagePassed } from '@/types/applicant';
 
 export default function DashboardPage() {
   const { applicants } = useApplicants();
@@ -27,7 +27,7 @@ export default function DashboardPage() {
     if (!posting) return false;
     const interviewStage = getInterviewStage(posting.stages);
     const finalStage = getFinalStage(posting.stages);
-    return !!interviewStage && !!finalStage && isStageDone(a.stageRecords, interviewStage) && !isStageDone(a.stageRecords, finalStage);
+    return !!interviewStage && !!finalStage && isStageCompleted(a.stageRecords, interviewStage) && !isStageDone(a.stageRecords, finalStage);
   }).length;
   const openPostings = jobPostings.filter(j => getJobPostingStatus(j) === '진행중').length;
 
@@ -87,7 +87,7 @@ export default function DashboardPage() {
                 const finalStage = getFinalStage(job.stages);
                 const interviewPending = jobApplicants.filter(a =>
                   !a.isSeparateManagement && interviewStage && finalStage &&
-                  isStageDone(a.stageRecords, interviewStage) && !isStageDone(a.stageRecords, finalStage)
+                  isStageCompleted(a.stageRecords, interviewStage) && !isStageDone(a.stageRecords, finalStage)
                 ).length;
                 const passed = jobApplicants.filter(a =>
                   !a.isSeparateManagement && !!finalStage && isStagePassed(a.stageRecords, finalStage)

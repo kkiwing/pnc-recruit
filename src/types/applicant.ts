@@ -174,11 +174,18 @@ export function getCurrentStage(stageRecords: StageRecord[], stages: Stage[]): S
   return current;
 }
 
-/** 해당 단계가 기본(대기) 상태를 벗어나 처리되었는지 여부 */
+/** 해당 단계가 기본(대기) 상태를 벗어나 처리되었는지 여부 (중간 상태 포함) */
 export function isStageDone(stageRecords: StageRecord[], stage: Stage): boolean {
   const record = stageRecords.find(r => r.stageId === stage.id);
   const status = record && findStageStatus(stage, record.statusId);
   return !!status && !status.isDefault;
+}
+
+/** 해당 단계가 마지막(완료/결과) 상태까지 도달했는지 여부 — '필요'처럼 중간 상태는 제외 */
+export function isStageCompleted(stageRecords: StageRecord[], stage: Stage): boolean {
+  const lastStatus = stage.statuses[stage.statuses.length - 1];
+  const record = stageRecords.find(r => r.stageId === stage.id);
+  return !!lastStatus && record?.statusId === lastStatus.id;
 }
 
 /** 해당 단계의 현재 상태 이름이 "합격"인지 여부 */
