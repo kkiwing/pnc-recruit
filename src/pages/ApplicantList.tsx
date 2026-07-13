@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useApplicants } from '@/context/ApplicantContext';
-import ApplicantTable from '@/components/applicant/ApplicantTable';
+import ApplicantOverviewTable from '@/components/applicant/ApplicantOverviewTable';
 import ApplicantFormModal from '@/components/applicant/ApplicantFormModal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,7 +13,11 @@ export default function ApplicantListPage() {
 
   const activeApplicants = applicants.filter(a => !a.isSeparateManagement);
   const filtered = activeApplicants.filter(a =>
-    !search || a.name.includes(search) || a.team.includes(search) || a.email.includes(search)
+    !search
+    || a.name.includes(search)
+    || a.email.includes(search)
+    || a.phone.includes(search)
+    || a.memo.includes(search)
   );
 
   return (
@@ -28,7 +32,7 @@ export default function ApplicantListPage() {
             <Search className="absolute left-2.5 top-2.5 w-4 h-4 text-muted-foreground" />
             <Input
               className="pl-9 w-60"
-              placeholder="이름, 팀, 이메일 검색"
+              placeholder="이름, 이메일, 연락처, 메모 검색"
               value={search}
               onChange={e => setSearch(e.target.value)}
             />
@@ -40,7 +44,7 @@ export default function ApplicantListPage() {
       </div>
 
       <div className="bg-card rounded-lg border shadow-sm">
-        <ApplicantTable applicants={filtered} />
+        <ApplicantOverviewTable applicants={filtered} />
       </div>
 
       {showForm && (

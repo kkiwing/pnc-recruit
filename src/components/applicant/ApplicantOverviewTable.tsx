@@ -1,0 +1,249 @@
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Applicant, SEPARATE_REASONS, StageRecord, getCurrentStage, getStageRecordStatus } from '@/types/applicant';
+import { useApplicants } from '@/context/ApplicantContext';
+import { useJobPostings } from '@/context/JobPostingContext';
+import { Stage, getStageColorClass, getCompletionStatus } from '@/types/jobPosting';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { Button } from '@/components/ui/button';
+import { Trash2, MoreHorizontal, MessageSquare, Clock, Eye } from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent } from '@/components/ui/dropdown-menu';
+import CompletionDateModal from './CompletionDateModal';
+
+interface Props {
+  applicants: Applicant[];
+}
+
+function StatusSelect({ stage, stageRecords, onChange, onEditMeta }: {
+  stage: Stage;
+  stageRecords: StageRecord[];
+  onChange: (statusId: string) => void;
+  onEditMeta: () => void;
+}) {
+  const status = getStageRecordStatus(stageRecords, stage);
+  const record = stageRecords.find(r => r.stageId === stage.id);
+  const meta = record?.meta;
+  const hasMetaInfo = meta && (meta.startDate || meta.interviewer);
+
+  return (
+    <div className="inline-flex items-center gap-1">
+      <select
+        className={`text-xs rounded px-1.5 py-1 border-0 cursor-pointer font-medium text-center appearance-none ${getStageColorClass(status?.color ?? 'gray')}`}
+        value={status?.id ?? ''}
+        onChange={e => onChange(e.target.value)}
+        style={{ minWidth: '72px' }}
+      >
+        {stage.statuses.map(s => (
+          <option key={s.id} value={s.id}>{s.name}</option>
+        ))}
+      </select>
+      {hasMetaInfo && (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button type="button" className="text-muted-foreground hover:text-foreground" onClick={onEditMeta}>
+              <Clock className="w-3 h-3" />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="top" className="text-xs space-y-1 max-w-xs">
+            {meta.startDate && meta.endDate && <p>기간: {meta.startDate} ~ {meta.endDate}</p>}
+            {meta.time && <p>시간: {meta.time}</p>}
+            {meta.interviewer && <p>담당자: {meta.interviewer}</p>}
+            <p className="text-muted-foreground">클릭해서 일정 수정</p>
+          </TooltipContent>
+        </Tooltip>
+      )}
+    </div>
+  );
+}
+
+export default function ApplicantOverviewTable({ applicants }: Props) {
+  const { updateApplicant, deleteApplicant } = useApplicants();
+  const { jobPostings } = useJobPostings();
+  const navigate = useNavigate();
+  const [activeStageByApplicant, setActiveStageByApplicant] = useState<Record<string, string>>({});
+  const [completionModal, setCompletionModal] = useState<{ applicantId: string; stage: Stage; statusId: string; initialData?: StageRecord['meta'] } | null>(null);
+
+  const postingsById = new Map(jobPostings.map(j => [j.id, j]));
+
+  const getActiveStage = (applicant: Applicant, sortedStages: Stage[]): Stage | undefined => {
+    const chosenId = activeStageByApplicant[applicant.id];
+    const chosen = chosenId && sortedStages.find(s => s.id === chosenId);
+    if (chosen) return chosen;
+    return getCurrentStage(applicant.stageRecords, sortedStages) ?? sortedStages[0];
+  };
+
+  const handleSeparateManagement = (applicant: Applicant, reason: typeof SEPARATE_REASONS[number]) => {
+    updateApplicant(applicant.id, {
+      isSeparateManagement: true,
+      separateReason: reason,
+    });
+  };
+
+  const setStageRecord = (applicant: Applicant, stage: Stage, statusId: string, meta?: StageRecord['meta']) => {
+    const now = new Date().toISOString();
+    const exists = applicant.stageRecords.some(r => r.stageId === stage.id);
+    const nextRecords = exists
+      ? applicant.stageRecords.map(r => r.stageId === stage.id ? { stageId: stage.id, statusId, meta, updatedAt: now } : r)
+      : [...applicant.stageRecords, { stageId: stage.id, statusId, meta, updatedAt: now }];
+    updateApplicant(applicant.id, { stageRecords: nextRecords });
+  };
+
+  const handleStatusChange = (applicant: Applicant, stage: Stage, statusId: string) => {
+    const completionStatus = getCompletionStatus(stage);
+    const isCompletionTransition = stage.completionForm !== 'none' && completionStatus?.id === statusId;
+    if (isCompletionTransition) {
+      setCompletionModal({ applicantId: applicant.id, stage, statusId });
+      return;
+    }
+    setStageRecord(applicant, stage, statusId);
+  };
+
+  const handleEditMeta = (applicant: Applicant, stage: Stage) => {
+    const status = getStageRecordStatus(applicant.stageRecords, stage);
+    const record = applicant.stageRecords.find(r => r.stageId === stage.id);
+    if (!status) return;
+    setCompletionModal({ applicantId: applicant.id, stage, statusId: status.id, initialData: record?.meta });
+  };
+
+  const handleCompletionSubmit = (data: { startDate: string; endDate: string; time?: string; interviewer?: string }) => {
+    if (!completionModal) return;
+    const applicant = applicants.find(a => a.id === completionModal.applicantId);
+    if (!applicant) return;
+    setStageRecord(applicant, completionModal.stage, completionModal.statusId, {
+      startDate: data.startDate,
+      endDate: data.endDate,
+      time: data.time,
+      interviewer: data.interviewer,
+    });
+  };
+
+  return (
+    <>
+      <div className="overflow-x-auto">
+        <table className="admin-table w-full">
+          <thead>
+            <tr>
+              <th>지원자</th>
+              <th>공고</th>
+              <th className="w-40">전형</th>
+              <th className="w-32">상태</th>
+              <th className="w-24">지원일</th>
+              <th className="w-12">메모</th>
+              <th className="w-16">관리</th>
+            </tr>
+          </thead>
+          <tbody>
+            {applicants.length === 0 && (
+              <tr>
+                <td colSpan={7} className="text-center py-8 text-muted-foreground">
+                  등록된 지원자가 없습니다.
+                </td>
+              </tr>
+            )}
+            {applicants.map(applicant => {
+              const posting = postingsById.get(applicant.jobPostingId);
+              const sortedStages = posting ? [...posting.stages].sort((a, b) => a.order - b.order) : [];
+              const activeStage = posting ? getActiveStage(applicant, sortedStages) : undefined;
+
+              return (
+                <tr key={applicant.id}>
+                  <td>
+                    <div className="flex flex-col">
+                      <button
+                        className="text-primary hover:underline font-medium text-left"
+                        onClick={() => navigate(`/applicants/${applicant.id}`)}
+                      >
+                        {applicant.name}
+                      </button>
+                      <span className="text-xs text-muted-foreground">{applicant.email}</span>
+                    </div>
+                  </td>
+                  <td>
+                    <div className="flex flex-col">
+                      <span>{posting?.title ?? '-'}</span>
+                      <span className="text-xs text-muted-foreground">{applicant.team}</span>
+                    </div>
+                  </td>
+                  <td>
+                    {posting && activeStage ? (
+                      <select
+                        className="flex h-8 w-full rounded-md border border-input bg-background px-2 text-xs"
+                        value={activeStage.id}
+                        onChange={e => setActiveStageByApplicant(prev => ({ ...prev, [applicant.id]: e.target.value }))}
+                      >
+                        {sortedStages.map(stage => (
+                          <option key={stage.id} value={stage.id}>{stage.name}</option>
+                        ))}
+                      </select>
+                    ) : '-'}
+                  </td>
+                  <td>
+                    {activeStage ? (
+                      <StatusSelect
+                        stage={activeStage}
+                        stageRecords={applicant.stageRecords}
+                        onChange={statusId => handleStatusChange(applicant, activeStage, statusId)}
+                        onEditMeta={() => handleEditMeta(applicant, activeStage)}
+                      />
+                    ) : '-'}
+                  </td>
+                  <td className="text-xs">{applicant.applicationDate}</td>
+                  <td>
+                    {applicant.memo && (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <MessageSquare className="w-3.5 h-3.5 text-muted-foreground" />
+                        </TooltipTrigger>
+                        <TooltipContent className="max-w-xs">
+                          <p className="text-xs whitespace-pre-wrap">{applicant.memo}</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    )}
+                  </td>
+                  <td>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="sm" className="h-7 w-7 p-0">
+                          <MoreHorizontal className="w-4 h-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => navigate(`/applicants/${applicant.id}`)}>
+                          <Eye className="w-3.5 h-3.5 mr-2" /> 상세보기
+                        </DropdownMenuItem>
+                        <DropdownMenuSub>
+                          <DropdownMenuSubTrigger>별도 관리 이동</DropdownMenuSubTrigger>
+                          <DropdownMenuSubContent>
+                            {SEPARATE_REASONS.map(reason => (
+                              <DropdownMenuItem key={reason} onClick={() => handleSeparateManagement(applicant, reason)}>
+                                {reason}
+                              </DropdownMenuItem>
+                            ))}
+                          </DropdownMenuSubContent>
+                        </DropdownMenuSub>
+                        <DropdownMenuItem onClick={() => deleteApplicant(applicant.id)} className="text-destructive">
+                          <Trash2 className="w-3.5 h-3.5 mr-2" /> 삭제
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+
+      {completionModal && (
+        <CompletionDateModal
+          open={!!completionModal}
+          onClose={() => setCompletionModal(null)}
+          stepLabel={completionModal.stage.name}
+          isInterview={completionModal.stage.completionForm === 'interview'}
+          initialData={completionModal.initialData}
+          onSubmit={handleCompletionSubmit}
+        />
+      )}
+    </>
+  );
+}
