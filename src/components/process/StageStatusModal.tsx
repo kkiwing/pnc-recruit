@@ -36,6 +36,18 @@ export default function StageStatusModal({ open, onClose, stage, onSave }: Props
     setStatuses(prev => prev.map(s => ({ ...s, isDefault: s.id === id })));
   };
 
+  const setCompletion = (id: string) => {
+    setStatuses(prev => prev.map(s => ({ ...s, isCompletion: s.id === id })));
+  };
+
+  const setPass = (id: string) => {
+    setStatuses(prev => prev.map(s => s.id === id ? { ...s, isPass: true, isFail: false } : { ...s, isPass: false }));
+  };
+
+  const setFail = (id: string) => {
+    setStatuses(prev => prev.map(s => s.id === id ? { ...s, isFail: true, isPass: false } : { ...s, isFail: false }));
+  };
+
   const moveStatus = (index: number, dir: -1 | 1) => {
     setStatuses(prev => {
       const next = [...prev];
@@ -108,6 +120,45 @@ export default function StageStatusModal({ open, onClose, stage, onSave }: Props
                 >
                   기본으로
                 </button>
+              )}
+              {stage.stageType === 'normal' && (
+                status.isCompletion ? (
+                  <Badge variant="outline" className="text-[10px] shrink-0 text-emerald-600 border-emerald-300">완료</Badge>
+                ) : (
+                  <button
+                    type="button"
+                    className="text-[10px] text-muted-foreground hover:text-foreground shrink-0 underline"
+                    onClick={() => setCompletion(status.id)}
+                  >
+                    완료로
+                  </button>
+                )
+              )}
+              {stage.stageType === 'result' && (
+                <>
+                  {status.isPass ? (
+                    <Badge variant="outline" className="text-[10px] shrink-0 text-blue-600 border-blue-300">합격</Badge>
+                  ) : (
+                    <button
+                      type="button"
+                      className="text-[10px] text-muted-foreground hover:text-foreground shrink-0 underline"
+                      onClick={() => setPass(status.id)}
+                    >
+                      합격으로
+                    </button>
+                  )}
+                  {status.isFail ? (
+                    <Badge variant="outline" className="text-[10px] shrink-0 text-red-600 border-red-300">불합격</Badge>
+                  ) : (
+                    <button
+                      type="button"
+                      className="text-[10px] text-muted-foreground hover:text-foreground shrink-0 underline"
+                      onClick={() => setFail(status.id)}
+                    >
+                      불합격으로
+                    </button>
+                  )}
+                </>
               )}
               <button type="button" className="text-destructive hover:text-destructive/80 shrink-0" onClick={() => removeStatus(status.id)}>
                 <Trash2 className="w-3.5 h-3.5" />

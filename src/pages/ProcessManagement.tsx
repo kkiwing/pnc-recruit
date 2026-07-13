@@ -15,7 +15,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Stage, StageStatus, CompletionFormType, AutoSendConfig, getStageColorClass } from '@/types/jobPosting';
+import { Stage, StageType, StageStatus, CompletionFormType, AutoSendConfig, getStageColorClass } from '@/types/jobPosting';
 import { Plus, Trash2, ChevronUp, ChevronDown, Settings2, AlertTriangle } from 'lucide-react';
 import StageStatusModal from '@/components/process/StageStatusModal';
 import AutoSendPanel from '@/components/process/AutoSendPanel';
@@ -24,6 +24,11 @@ const COMPLETION_FORM_LABELS: Record<CompletionFormType, string> = {
   none: '없음',
   period: '기간(안내일/마감일)',
   interview: '면접(기간+시간+담당자)',
+};
+
+const STAGE_TYPE_LABELS: Record<StageType, string> = {
+  normal: '일반',
+  result: '합불 판정',
 };
 
 export default function ProcessManagementPage() {
@@ -35,6 +40,7 @@ export default function ProcessManagementPage() {
   const [showNewStage, setShowNewStage] = useState(false);
   const [newStageName, setNewStageName] = useState('');
   const [newStageForm, setNewStageForm] = useState<CompletionFormType>('none');
+  const [newStageType, setNewStageType] = useState<StageType>('normal');
 
   const posting = jobPostings.find(j => j.id === selectedId);
   const applicantCount = posting ? applicants.filter(a => a.jobPostingId === posting.id).length : 0;
@@ -65,6 +71,10 @@ export default function ProcessManagementPage() {
     persistStages(sortedStages.map(s => s.id === stageId ? { ...s, completionForm } : s));
   };
 
+  const changeStageType = (stageId: string, stageType: StageType) => {
+    persistStages(sortedStages.map(s => s.id === stageId ? { ...s, stageType } : s));
+  };
+
   const saveStatuses = (stageId: string, statuses: StageStatus[]) => {
     persistStages(sortedStages.map(s => s.id === stageId ? { ...s, statuses } : s));
   };
@@ -81,16 +91,25 @@ export default function ProcessManagementPage() {
 
   const addStage = () => {
     if (!newStageName.trim() || !posting) return;
+    const statuses: StageStatus[] = newStageType === 'result'
+      ? [
+          { id: crypto.randomUUID(), name: '대기', color: 'gray', isDefault: true },
+          { id: crypto.randomUUID(), name: '합격', color: 'blue', isPass: true },
+          { id: crypto.randomUUID(), name: '불합격', color: 'red', isFail: true },
+        ]
+      : [{ id: crypto.randomUUID(), name: '대기', color: 'gray', isDefault: true }];
     const newStage: Stage = {
       id: crypto.randomUUID(),
       name: newStageName.trim(),
       order: sortedStages.length + 1,
+      stageType: newStageType,
       completionForm: newStageForm,
-      statuses: [{ id: crypto.randomUUID(), name: '대기', color: 'gray', isDefault: true }],
+      statuses,
     };
     persistStages([...sortedStages, newStage]);
     setNewStageName('');
     setNewStageForm('none');
+    setNewStageType('normal');
     setShowNewStage(false);
   };
 
@@ -132,6 +151,15 @@ export default function ProcessManagementPage() {
                 />
                 <select
                   className="flex h-9 rounded-md border border-input bg-background px-2 text-xs"
+                  value={stage.stageType}
+                  onChange={e => changeStageType(stage.id, e.target.value as StageType)}
+                >
+                  {Object.entries(STAGE_TYPE_LABELS).map(([value, label]) => (
+                    <option key={value} value={value}>구분: {label}</option>
+                  ))}
+                </select>
+                <select
+                  className="flex h-9 rounded-md border border-input bg-background px-2 text-xs"
                   value={stage.completionForm}
                   onChange={e => changeCompletionForm(stage.id, e.target.value as CompletionFormType)}
                 >
@@ -142,7 +170,11 @@ export default function ProcessManagementPage() {
                 <div className="flex items-center gap-1 flex-wrap">
                   {stage.statuses.map(status => (
                     <span key={status.id} className={`text-[11px] px-1.5 py-0.5 rounded ${getStageColorClass(status.color)}`}>
-                      {status.name}{status.isDefault ? ' (기본)' : ''}
+                      {status.name}
+                      {status.isDefault ? ' (기본)' : ''}
+                      {status.isCompletion ? ' (완료)' : ''}
+                      {status.isPass ? ' (합격)' : ''}
+                      {status.isFail ? ' (불합격)' : ''}
                     </span>
                   ))}
                 </div>
@@ -177,6 +209,15 @@ export default function ProcessManagementPage() {
                 placeholder="새 단계 이름"
                 autoFocus
               />
+              <select
+                className="flex h-9 rounded-md border border-input bg-background px-2 text-xs"
+                value={newStageType}
+                onChange={e => setNewStageType(e.target.value as StageType)}
+              >
+                {Object.entries(STAGE_TYPE_LABELS).map(([value, label]) => (
+                  <option key={value} value={value}>구분: {label}</option>
+                ))}
+              </select>
               <select
                 className="flex h-9 rounded-md border border-input bg-background px-2 text-xs"
                 value={newStageForm}
