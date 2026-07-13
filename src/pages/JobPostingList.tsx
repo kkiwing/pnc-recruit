@@ -1,10 +1,12 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useJobPostings } from '@/context/JobPostingContext';
 import { useApplicants } from '@/context/ApplicantContext';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import {
   AlertDialog,
@@ -16,9 +18,20 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Users, UserX, ChevronRight, Plus, Pencil, Trash2, MoreVertical, Eye, EyeOff } from 'lucide-react';
-import { JobPosting, getJobPostingStatus, JOB_POSTING_STATUS_COLORS } from '@/types/jobPosting';
+import { Users, UserX, ChevronRight, Plus, Pencil, Trash2, MoreVertical, Eye, EyeOff, Search, SlidersHorizontal } from 'lucide-react';
+import { JobPosting, JobPostingStatus, EmploymentType, getJobPostingStatus, JOB_POSTING_STATUS_COLORS } from '@/types/jobPosting';
 import JobPostingFormModal from '@/components/jobPosting/JobPostingFormModal';
+
+type SortOption = 'createdDesc' | 'createdAsc' | 'updatedDesc' | 'applicantsDesc' | 'applicantsAsc' | 'statusFirst';
+
+const SORT_LABELS: Record<SortOption, string> = {
+  createdDesc: '최신 생성순',
+  createdAsc: '오래된 생성순',
+  updatedDesc: '최근 수정순',
+  applicantsDesc: '지원자 많은 순',
+  applicantsAsc: '지원자 적은 순',
+  statusFirst: '게시중 우선',
+};
 
 export default function JobPostingListPage() {
   const { jobPostings, deleteJobPosting } = useJobPostings();
@@ -27,6 +40,60 @@ export default function JobPostingListPage() {
   const [showForm, setShowForm] = useState(false);
   const [editTarget, setEditTarget] = useState<JobPosting | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<JobPosting | null>(null);
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState<JobPostingStatus | 'all'>('all');
+  const [employmentTypeFilter, setEmploymentTypeFilter] = useState<EmploymentType | 'all'>('all');
+  const [departmentFilter, setDepartmentFilter] = useState<string>('all');
+  const [sortBy, setSortBy] = useState<SortOption>('createdDesc');
+
+  const departments = useMemo(
+    () => Array.from(new Set(jobPostings.map(j => j.department))).filter(Boolean),
+    [jobPostings]
+  );
+
+  const visiblePostings = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    const withCounts = jobPostings
+      .filter(job => {
+        if (query && !job.title.toLowerCase().includes(query) && !(job.position || '').toLowerCase().includes(query)) return false;
+        if (statusFilter !== 'all' && getJobPostingStatus(job) !== statusFilter) return false;
+        if (employmentTypeFilter !== 'all' && job.employmentType !== employmentTypeFilter) return false;
+        if (departmentFilter !== 'all' && job.department !== departmentFilter) return false;
+        return true;
+      })
+      .map(job => ({
+        job,
+        applicantCount: applicants.filter(a => a.jobPostingId === job.id && !a.isSeparateManagement).length,
+      }));
+
+    const sorted = [...withCounts];
+    switch (sortBy) {
+      case 'createdAsc':
+        sorted.sort((a, b) => a.job.createdAt.localeCompare(b.job.createdAt));
+        break;
+      case 'updatedDesc':
+        sorted.sort((a, b) => b.job.updatedAt.localeCompare(a.job.updatedAt));
+        break;
+      case 'applicantsDesc':
+        sorted.sort((a, b) => b.applicantCount - a.applicantCount);
+        break;
+      case 'applicantsAsc':
+        sorted.sort((a, b) => a.applicantCount - b.applicantCount);
+        break;
+      case 'statusFirst':
+        sorted.sort((a, b) => {
+          const rank = (j: JobPosting) => getJobPostingStatus(j) === '진행중' ? 0 : 1;
+          return rank(a.job) - rank(b.job) || b.job.createdAt.localeCompare(a.job.createdAt);
+        });
+        break;
+      case 'createdDesc':
+      default:
+        sorted.sort((a, b) => b.job.createdAt.localeCompare(a.job.createdAt));
+    }
+    return sorted.map(entry => entry.job);
+  }, [jobPostings, applicants, search, statusFilter, employmentTypeFilter, departmentFilter, sortBy]);
+
+  const isFilterActive = statusFilter !== 'all' || employmentTypeFilter !== 'all' || departmentFilter !== 'all';
 
   return (
     <div className="p-6">
@@ -40,8 +107,78 @@ export default function JobPostingListPage() {
         </Button>
       </div>
 
+      <div className="flex items-center gap-2 mb-4">
+        <div className="relative flex-1 max-w-sm">
+          <Search className="absolute left-2.5 top-2.5 w-4 h-4 text-muted-foreground" />
+          <Input
+            className="pl-9"
+            placeholder="공고 제목, 포지션 검색"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+          />
+        </div>
+
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button variant="outline" className="gap-1.5">
+              <SlidersHorizontal className="w-4 h-4" />
+              필터
+              {isFilterActive && <span className="w-1.5 h-1.5 rounded-full bg-primary" />}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent align="start" className="w-64 space-y-3">
+            <div>
+              <label className="text-xs text-muted-foreground">게시 상태</label>
+              <select
+                className="mt-1 flex h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
+                value={statusFilter}
+                onChange={e => setStatusFilter(e.target.value as JobPostingStatus | 'all')}
+              >
+                <option value="all">전체</option>
+                <option value="진행중">진행중</option>
+                <option value="종료">종료</option>
+              </select>
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground">고용 형태</label>
+              <select
+                className="mt-1 flex h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
+                value={employmentTypeFilter}
+                onChange={e => setEmploymentTypeFilter(e.target.value as EmploymentType | 'all')}
+              >
+                <option value="all">전체</option>
+                <option value="정규직">정규직</option>
+                <option value="계약직">계약직</option>
+                <option value="인턴">인턴</option>
+              </select>
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground">팀</label>
+              <select
+                className="mt-1 flex h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
+                value={departmentFilter}
+                onChange={e => setDepartmentFilter(e.target.value)}
+              >
+                <option value="all">전체</option>
+                {departments.map(dep => <option key={dep} value={dep}>{dep}</option>)}
+              </select>
+            </div>
+          </PopoverContent>
+        </Popover>
+
+        <select
+          className="flex h-10 rounded-md border border-input bg-background px-3 text-sm ml-auto"
+          value={sortBy}
+          onChange={e => setSortBy(e.target.value as SortOption)}
+        >
+          {Object.entries(SORT_LABELS).map(([value, label]) => (
+            <option key={value} value={value}>{label}</option>
+          ))}
+        </select>
+      </div>
+
       <div className="grid gap-4">
-        {jobPostings.map(job => {
+        {visiblePostings.map(job => {
           const jobApplicants = applicants.filter(a => a.jobPostingId === job.id);
           const activeCount = jobApplicants.filter(a => !a.isSeparateManagement).length;
           const separateCount = jobApplicants.filter(a => a.isSeparateManagement).length;
@@ -121,8 +258,10 @@ export default function JobPostingListPage() {
             </Card>
           );
         })}
-        {jobPostings.length === 0 && (
-          <p className="text-center text-sm text-muted-foreground py-12">등록된 채용 공고가 없습니다.</p>
+        {visiblePostings.length === 0 && (
+          <p className="text-center text-sm text-muted-foreground py-12">
+            {jobPostings.length === 0 ? '등록된 채용 공고가 없습니다.' : '조건에 맞는 공고가 없습니다.'}
+          </p>
         )}
       </div>
 
