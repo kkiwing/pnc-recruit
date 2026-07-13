@@ -66,7 +66,7 @@ npm run test       # Vitest 단위 테스트 실행
 
 ## 8. 향후 테크팀 구축 시 참고할 점
 
-- **데이터 모델의 출발점**: `src/types/applicant.ts`, `src/types/jobPosting.ts`에 정의된 프론트엔드 도메인 타입이 실제 서버 스키마 설계 시 좋은 출발점이 될 수 있습니다. 단, `recruitmentStatus`처럼 여러 단계를 하나의 중첩 객체로 다루는 구조는 실서비스에서는 단계별 이력 추적이 가능한 정규화된 테이블(예: `recruitment_steps`, 상태 변경 이력 테이블)로 재설계하는 것을 권장합니다.
+- **데이터 모델의 출발점**: `src/types/applicant.ts`, `src/types/jobPosting.ts`에 정의된 프론트엔드 도메인 타입이 실제 서버 스키마 설계 시 좋은 출발점이 될 수 있습니다. 단, `JobPosting.stages`/`Applicant.stageRecords`처럼 여러 단계를 배열/중첩 객체로 다루는 구조는 실서비스에서는 단계별 이력 추적이 가능한 정규화된 테이블(예: `recruitment_stages`, 상태 변경 이력 테이블)로 재설계하는 것을 권장합니다. 합불 판정 단계 식별(`Stage.stageType`)과 완료/합격/불합격 상태 식별(`StageStatus.isCompletion`/`isPass`/`isFail`)처럼 "의미"를 명시적 필드로 표현하는 패턴은 순서나 이름 문자열에 의존하는 것보다 안전하므로, 서버 스키마에서도 동일한 방향을 유지하는 것을 권장합니다.
 - **CRUD 로직은 전면 교체 필요**: `src/context/ApplicantContext.tsx`, `src/context/JobPostingContext.tsx`의 등록/수정/삭제 함수는 현재 로컬 상태만 다루는 자리표시자입니다. 실제 서버 연동 시 API 호출 기반으로 완전히 다시 구현해야 합니다. 지원자 번호(`no`) 채번, 공고 삭제 시 소속 지원자 cascade 삭제 등은 클라이언트에서 흉내만 낸 로직이므로, 서버(DB 트랜잭션/외래키 제약)에서 제대로 처리해야 합니다.
 - **UI 컴포넌트는 재사용 가능**: `src/components/`의 화면 구성과 shadcn/ui 기반 컴포넌트들은 데이터 소스만 교체하면 그대로 활용 가능하도록 설계되어 있습니다.
 - **인증/권한, 파일 스토리지, 알림 발송**은 이 프로토타입에 전혀 없으므로 요구사항 정의 단계부터 새로 설계가 필요합니다.
