@@ -1,75 +1,49 @@
+@import url('https://cdn.jsdelivr.net/gh/moonspam/NanumSquare@2.0/nanumsquare.css');
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&display=swap');
-
 @layer base {
   :root {
-    --background: 220 14% 96%;
-    --foreground: 220 20% 10%;
+    --background: 0 0% 100%;
+    --foreground: 0 0% 14%;
     --card: 0 0% 100%;
-    --card-foreground: 220 20% 10%;
+    --card-foreground: 0 0% 14%;
     --popover: 0 0% 100%;
-    --popover-foreground: 220 20% 10%;
-    --primary: 217 71% 45%;
+    --popover-foreground: 0 0% 14%;
+    --primary: 0 0% 14%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 220 14% 92%;
-    --secondary-foreground: 220 20% 25%;
-    --muted: 220 14% 95%;
-    --muted-foreground: 220 10% 46%;
-    --accent: 217 71% 95%;
-    --accent-foreground: 217 71% 35%;
+    --secondary: 0 0% 96%;
+    --secondary-foreground: 0 0% 14%;
+    --muted: 0 0% 96%;
+    --muted-foreground: 0 0% 54%;
+    --accent: 0 0% 96%;
+    --accent-foreground: 0 0% 14%;
     --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
-    --border: 220 13% 90%;
-    --input: 220 13% 90%;
-    --ring: 217 71% 45%;
-    --radius: 0.5rem;
-    --sidebar-background: 220 20% 14%;
-    --sidebar-foreground: 220 10% 80%;
-    --sidebar-primary: 217 71% 55%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 220 20% 20%;
-    --sidebar-accent-foreground: 220 10% 90%;
-    --sidebar-border: 220 20% 22%;
-    --sidebar-ring: 217 71% 55%;
-    --success: 142 71% 40%;
+    --border: 0 0% 92%;
+    --input: 0 0% 90%;
+    --ring: 0 0% 14%;
+    --radius: 0.625rem;
+    --link: 204 100% 50%;
+    --success: 142 60% 38%;
     --success-foreground: 0 0% 100%;
     --warning: 38 92% 50%;
-    --warning-foreground: 0 0% 100%;
-    --info: 199 89% 48%;
-    --info-foreground: 0 0% 100%;
-  }
-
-  .dark {
-    --background: 220 20% 10%;
-    --foreground: 220 10% 90%;
-    --card: 220 20% 14%;
-    --card-foreground: 220 10% 90%;
-    --popover: 220 20% 14%;
-    --popover-foreground: 220 10% 90%;
-    --primary: 217 71% 55%;
-    --primary-foreground: 0 0% 100%;
-    --secondary: 220 20% 20%;
-    --secondary-foreground: 220 10% 80%;
-    --muted: 220 20% 18%;
-    --muted-foreground: 220 10% 55%;
-    --accent: 217 71% 20%;
-    --accent-foreground: 217 71% 70%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 220 20% 22%;
-    --input: 220 20% 22%;
-    --ring: 217 71% 55%;
-    --sidebar-background: 220 20% 10%;
-    --sidebar-foreground: 220 10% 80%;
-    --sidebar-primary: 217 71% 55%;
+    --warning-foreground: 0 0% 14%;
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 0 0% 14%;
+    --sidebar-primary: 0 0% 14%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 220 20% 16%;
-    --sidebar-accent-foreground: 220 10% 90%;
-    --sidebar-border: 220 20% 18%;
-    --sidebar-ring: 217 71% 55%;
+    --sidebar-accent: 0 0% 96%;
+    --sidebar-accent-foreground: 0 0% 14%;
+    --sidebar-border: 0 0% 92%;
+    --sidebar-ring: 0 0% 14%;
+
+    --shadow-card: 0 1px 2px 0 rgba(0, 0, 0, 0.04), 0 1px 3px 0 rgba(0, 0, 0, 0.06), 0 0 0 1px rgba(0, 0, 0, 0.04);
+    --shadow-card-hover: 0 4px 8px -2px rgba(0, 0, 0, 0.08), 0 2px 4px -2px rgba(0, 0, 0, 0.06), 0 0 0 1px rgba(0, 0, 0, 0.05);
+    --shadow-soft: 0 1px 2px 0 rgba(0, 0, 0, 0.03), 0 0 0 1px rgba(0, 0, 0, 0.03);
   }
 }
 
@@ -79,36 +53,31 @@
   }
   body {
     @apply bg-background text-foreground;
-    font-family: 'Noto Sans KR', sans-serif;
+    font-family: 'NanumSquare', 'Noto Sans KR', sans-serif;
   }
 }
 
 @layer components {
+  .font-display {
+    font-family: 'NanumSquare', 'Noto Sans KR', sans-serif;
+    letter-spacing: -0.02em;
+  }
+  .card-elevated {
+    @apply bg-card rounded-lg shadow-card transition-shadow duration-200;
+  }
+  .card-elevated:hover {
+    @apply shadow-card-hover;
+  }
+  .card-soft {
+    @apply bg-card rounded-lg shadow-soft;
+  }
   .admin-table th {
-    @apply bg-muted text-muted-foreground text-xs font-semibold uppercase tracking-wider px-3 py-2.5 text-left border-b;
+    @apply bg-muted text-muted-foreground text-xs font-semibold uppercase tracking-wider px-3 py-2.5 text-left border-b border-border;
   }
   .admin-table td {
-    @apply px-3 py-2 text-sm border-b border-border/50;
+    @apply px-3 py-2 text-sm border-b border-border;
   }
   .admin-table tr:hover td {
-    @apply bg-accent/30;
-  }
-  .status-badge {
-    @apply inline-flex items-center px-2 py-0.5 rounded text-xs font-medium cursor-pointer transition-colors;
-  }
-  .status-need {
-    @apply bg-orange-100 text-orange-700;
-  }
-  .status-done {
-    @apply bg-emerald-100 text-emerald-700;
-  }
-  .status-pass {
-    @apply bg-blue-100 text-blue-700;
-  }
-  .status-fail {
-    @apply bg-red-100 text-red-700;
-  }
-  .status-pending {
-    @apply bg-gray-100 text-gray-500;
+    @apply bg-secondary;
   }
 }

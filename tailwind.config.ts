@@ -14,9 +14,16 @@ export default {
     },
     extend: {
       fontFamily: {
-        sans: ["'Noto Sans KR'", "sans-serif"],
+        sans: ["'NanumSquare'", "'Noto Sans KR'", "sans-serif"],
+        display: ["'NanumSquare'", "'Noto Sans KR'", "sans-serif"],
+      },
+      boxShadow: {
+        card: "var(--shadow-card)",
+        "card-hover": "var(--shadow-card-hover)",
+        soft: "var(--shadow-soft)",
       },
       colors: {
+        link: "hsl(var(--link))",
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
@@ -57,10 +64,6 @@ export default {
         warning: {
           DEFAULT: "hsl(var(--warning))",
           foreground: "hsl(var(--warning-foreground))",
-        },
-        info: {
-          DEFAULT: "hsl(var(--info))",
-          foreground: "hsl(var(--info-foreground))",
         },
         sidebar: {
           DEFAULT: "hsl(var(--sidebar-background))",
