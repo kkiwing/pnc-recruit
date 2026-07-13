@@ -9,6 +9,8 @@ import AdminLayout from "@/components/layout/AdminLayout";
 import Dashboard from "@/pages/Dashboard";
 import JobPostingList from "@/pages/JobPostingList";
 import JobPostingDetail from "@/pages/JobPostingDetail";
+import ApplicantList from "@/pages/ApplicantList";
+import SeparateManagement from "@/pages/SeparateManagement";
 import InterviewSchedule from "@/pages/InterviewSchedule";
 import NotFound from "./pages/NotFound.tsx";
 
@@ -27,6 +29,8 @@ const App = () => (
                 <Route path="/" element={<Dashboard />} />
                 <Route path="/postings" element={<JobPostingList />} />
                 <Route path="/postings/:id" element={<JobPostingDetail />} />
+                <Route path="/applicants" element={<ApplicantList />} />
+                <Route path="/separate-management" element={<SeparateManagement />} />
                 <Route path="/interviews" element={<InterviewSchedule />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
