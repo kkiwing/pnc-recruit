@@ -2,10 +2,11 @@ import React, { useMemo, useState } from 'react';
 import { useApplicants } from '@/context/ApplicantContext';
 import { useJobPostings } from '@/context/JobPostingContext';
 import ApplicantOverviewTable from '@/components/applicant/ApplicantOverviewTable';
-import ApplicantToolbar, { ApplicantFilters, ApplicantSortOption, DEFAULT_APPLICANT_FILTERS } from '@/components/applicant/ApplicantToolbar';
+import ApplicantPipelineView from '@/components/applicant/ApplicantPipelineView';
+import ApplicantToolbar, { ApplicantFilters, ApplicantSortOption, ApplicantViewMode, DEFAULT_APPLICANT_FILTERS } from '@/components/applicant/ApplicantToolbar';
 import ApplicantFormModal from '@/components/applicant/ApplicantFormModal';
 import { Button } from '@/components/ui/button';
-import { Plus } from 'lucide-react';
+import { KanbanSquare, Plus } from 'lucide-react';
 import { getCurrentStage, getStageRecordStatus } from '@/types/applicant';
 
 export default function ApplicantListPage() {
@@ -15,6 +16,7 @@ export default function ApplicantListPage() {
   const [search, setSearch] = useState('');
   const [filters, setFilters] = useState<ApplicantFilters>(DEFAULT_APPLICANT_FILTERS);
   const [sortBy, setSortBy] = useState<ApplicantSortOption>('newest');
+  const [viewMode, setViewMode] = useState<ApplicantViewMode>('list');
 
   const activeApplicants = useMemo(() => applicants.filter(a => !a.isSeparateManagement), [applicants]);
 
@@ -100,11 +102,32 @@ export default function ApplicantListPage() {
         statusOptionsForSelectedStage={statusOptionsForSelectedStage}
         sortBy={sortBy}
         onSortByChange={setSortBy}
+        viewMode={viewMode}
+        onViewModeChange={setViewMode}
       />
 
-      <div className="bg-card rounded-lg border shadow-sm">
-        <ApplicantOverviewTable applicants={sorted} />
-      </div>
+      {viewMode === 'list' ? (
+        <div className="bg-card rounded-lg border shadow-sm">
+          <ApplicantOverviewTable applicants={sorted} />
+        </div>
+      ) : selectedJob ? (
+        <ApplicantPipelineView applicants={sorted} jobPosting={selectedJob} />
+      ) : (
+        <div className="bg-card rounded-lg border shadow-sm py-16 flex flex-col items-center gap-3">
+          <KanbanSquare className="w-8 h-8 text-muted-foreground" />
+          <p className="text-sm text-muted-foreground">공고를 선택하면 파이프라인으로 볼 수 있어요.</p>
+          <select
+            className="flex h-10 rounded-md border border-input bg-background px-3 text-sm max-w-[280px]"
+            value=""
+            onChange={e => e.target.value && setFilters(prev => ({ ...prev, jobId: e.target.value, team: 'all', stageId: 'all', statusId: 'all' }))}
+          >
+            <option value="" disabled>공고 선택</option>
+            {jobPostings.map(job => (
+              <option key={job.id} value={job.id}>{job.title}</option>
+            ))}
+          </select>
+        </div>
+      )}
 
       {showForm && (
         <ApplicantFormModal open={showForm} onClose={() => setShowForm(false)} />

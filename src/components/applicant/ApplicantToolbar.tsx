@@ -2,10 +2,12 @@ import React from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Search, SlidersHorizontal, X } from 'lucide-react';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { Search, SlidersHorizontal, X, List, KanbanSquare } from 'lucide-react';
 import { JobPosting, Stage, StageStatus } from '@/types/jobPosting';
 
 export type ApplicantSortOption = 'newest' | 'oldest' | 'name';
+export type ApplicantViewMode = 'list' | 'pipeline';
 
 export interface ApplicantFilters {
   jobId: string;
@@ -38,6 +40,8 @@ interface Props {
   statusOptionsForSelectedStage: StageStatus[];
   sortBy: ApplicantSortOption;
   onSortByChange: (value: ApplicantSortOption) => void;
+  viewMode: ApplicantViewMode;
+  onViewModeChange: (value: ApplicantViewMode) => void;
 }
 
 export default function ApplicantToolbar({
@@ -51,6 +55,8 @@ export default function ApplicantToolbar({
   statusOptionsForSelectedStage,
   sortBy,
   onSortByChange,
+  viewMode,
+  onViewModeChange,
 }: Props) {
   const isJobSelected = filters.jobId !== 'all';
   const isPopoverFilterActive = filters.team !== 'all' || filters.stageId !== 'all' || filters.statusId !== 'all';
@@ -150,6 +156,20 @@ export default function ApplicantToolbar({
             <option key={value} value={value}>{label}</option>
           ))}
         </select>
+
+        <ToggleGroup
+          type="single"
+          value={viewMode}
+          onValueChange={value => value && onViewModeChange(value as ApplicantViewMode)}
+          className="border rounded-md p-0.5"
+        >
+          <ToggleGroupItem value="pipeline" size="sm" className="gap-1.5 px-2.5 text-xs data-[state=on]:bg-accent">
+            <KanbanSquare className="w-3.5 h-3.5" /> 파이프라인
+          </ToggleGroupItem>
+          <ToggleGroupItem value="list" size="sm" className="gap-1.5 px-2.5 text-xs data-[state=on]:bg-accent">
+            <List className="w-3.5 h-3.5" /> 목록
+          </ToggleGroupItem>
+        </ToggleGroup>
       </div>
 
       {hasAnyFilter && (
