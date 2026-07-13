@@ -7,7 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { useJobPostings } from '@/context/JobPostingContext';
 import {
-  JobPosting, CareerType, CoverLetterQuestion,
+  JobPosting, CareerType, EmploymentType, CoverLetterQuestion,
   createDefaultCoverLetterQuestions,
 } from '@/types/jobPosting';
 import { Plus, Trash2, ChevronUp, ChevronDown } from 'lucide-react';
@@ -24,6 +24,8 @@ export default function JobPostingFormModal({ open, onClose, editData }: Props) 
     title: editData?.title || '',
     department: editData?.department || '',
     careerType: (editData?.careerType || '신입') as CareerType,
+    employmentType: (editData?.employmentType || '정규직') as EmploymentType,
+    position: editData?.position || '',
     startDate: editData?.startDate || new Date().toISOString().slice(0, 10),
     endDate: editData?.endDate || '',
     isPublic: editData?.isPublic ?? true,
@@ -67,7 +69,7 @@ export default function JobPostingFormModal({ open, onClose, editData }: Props) 
 
   const handleSubmit = () => {
     if (!form.title.trim()) return;
-    const data = { ...form, coverLetterQuestions: questions };
+    const data = { ...form, position: form.position.trim() || undefined, coverLetterQuestions: questions };
     if (editData?.id) {
       updateJobPosting(editData.id, data);
     } else {
@@ -101,6 +103,22 @@ export default function JobPostingFormModal({ open, onClose, editData }: Props) 
               <option value="신입">신입</option>
               <option value="경력">경력</option>
             </select>
+          </div>
+          <div>
+            <Label>고용 형태</Label>
+            <select
+              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+              value={form.employmentType}
+              onChange={e => handleChange('employmentType', e.target.value)}
+            >
+              <option value="정규직">정규직</option>
+              <option value="계약직">계약직</option>
+              <option value="인턴">인턴</option>
+            </select>
+          </div>
+          <div className="col-span-2">
+            <Label>포지션 <span className="text-xs text-muted-foreground font-normal">(선택)</span></Label>
+            <Input value={form.position} onChange={e => handleChange('position', e.target.value)} placeholder="예: 백엔드 개발자" />
           </div>
           <div>
             <Label>시작일</Label>

@@ -1,4 +1,5 @@
 export type CareerType = '신입' | '경력';
+export type EmploymentType = '정규직' | '계약직' | '인턴';
 
 export interface CoverLetterQuestion {
   id: string;
@@ -11,12 +12,16 @@ export interface JobPosting {
   title: string;
   department: string;
   careerType: CareerType;
+  employmentType: EmploymentType;
+  position?: string;
   startDate: string;
   endDate: string;
   isPublic: boolean;
   description: string;
   content: string;
   coverLetterQuestions: CoverLetterQuestion[];
+  createdBy: string;
+  updatedBy: string;
   createdAt: string;
   updatedAt: string;
 }
