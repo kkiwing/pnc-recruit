@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
-import { Applicant, RecruitmentStatus, StepDetail, STEP_LABELS, REGION_INTERVIEW_FEE, SEPARATE_REASONS, SeparateManagementReason, StepStatus } from '@/types/applicant';
+import { useNavigate } from 'react-router-dom';
+import { Applicant, RecruitmentStatus, StepDetail, STEP_LABELS, RECRUITMENT_STEP_KEYS, REGION_INTERVIEW_FEE, SEPARATE_REASONS, SeparateManagementReason, StepStatus } from '@/types/applicant';
 import { useApplicants } from '@/context/ApplicantContext';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Button } from '@/components/ui/button';
 import { Pencil, Trash2, MoreHorizontal, MessageSquare } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent } from '@/components/ui/dropdown-menu';
 import CompletionDateModal from './CompletionDateModal';
-import ApplicantDetailModal from './ApplicantDetailModal';
 import ApplicantFormModal from './ApplicantFormModal';
 
 interface Props {
@@ -16,15 +16,7 @@ interface Props {
 
 type StepKey = keyof RecruitmentStatus;
 
-const STEP_KEYS: StepKey[] = [
-  'personalityTestNotice',
-  'personalityTestRegistration',
-  'personalityTestResult',
-  'companyFormNotice',
-  'companyFormSubmission',
-  'interviewNotice',
-  'interviewResult',
-];
+const STEP_KEYS: StepKey[] = RECRUITMENT_STEP_KEYS;
 
 const STEPS_NEEDING_DATE: StepKey[] = ['personalityTestNotice', 'companyFormNotice', 'interviewNotice'];
 const RESULT_STEPS: StepKey[] = ['personalityTestResult', 'interviewResult'];
@@ -90,8 +82,8 @@ function StatusSelect({ detail, stepKey, onChange }: { detail: StepDetail; stepK
 
 export default function ApplicantTable({ applicants, showSeparateActions }: Props) {
   const { updateApplicant, deleteApplicant } = useApplicants();
+  const navigate = useNavigate();
   const [completionModal, setCompletionModal] = useState<{ applicantId: string; stepKey: StepKey; isEdit?: boolean } | null>(null);
-  const [detailModal, setDetailModal] = useState<Applicant | null>(null);
   const [editModal, setEditModal] = useState<Applicant | null>(null);
 
   const handleStatusChange = (applicant: Applicant, stepKey: StepKey, newStatus: StepStatus) => {
@@ -197,7 +189,7 @@ export default function ApplicantTable({ applicants, showSeparateActions }: Prop
                 <td>
                   <button
                     className="text-primary hover:underline font-medium"
-                    onClick={() => setDetailModal(applicant)}
+                    onClick={() => navigate(`/applicants/${applicant.id}`)}
                   >
                     {applicant.name}
                   </button>
@@ -296,14 +288,6 @@ export default function ApplicantTable({ applicants, showSeparateActions }: Prop
           isInterview={completionModal.stepKey === 'interviewNotice'}
           initialData={completionModal.isEdit ? currentCompletionApplicant.recruitmentStatus[completionModal.stepKey] : undefined}
           onSubmit={handleCompletionSubmit}
-        />
-      )}
-
-      {detailModal && (
-        <ApplicantDetailModal
-          open={!!detailModal}
-          onClose={() => setDetailModal(null)}
-          applicant={detailModal}
         />
       )}
 

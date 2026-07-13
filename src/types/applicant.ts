@@ -123,6 +123,16 @@ export interface FileAttachment {
   uploadedAt: string;
 }
 
+export const RECRUITMENT_STEP_KEYS: (keyof RecruitmentStatus)[] = [
+  'personalityTestNotice',
+  'personalityTestRegistration',
+  'personalityTestResult',
+  'companyFormNotice',
+  'companyFormSubmission',
+  'interviewNotice',
+  'interviewResult',
+];
+
 export const STEP_LABELS: Record<keyof RecruitmentStatus, string> = {
   personalityTestNotice: '인성검사 안내',
   personalityTestRegistration: '인성검사 공고 등록',

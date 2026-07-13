@@ -10,6 +10,7 @@ import Dashboard from "@/pages/Dashboard";
 import JobPostingList from "@/pages/JobPostingList";
 import JobPostingDetail from "@/pages/JobPostingDetail";
 import ApplicantList from "@/pages/ApplicantList";
+import ApplicantDetail from "@/pages/ApplicantDetail";
 import SeparateManagement from "@/pages/SeparateManagement";
 import InterviewSchedule from "@/pages/InterviewSchedule";
 import NotFound from "./pages/NotFound.tsx";
@@ -30,6 +31,7 @@ const App = () => (
                 <Route path="/postings" element={<JobPostingList />} />
                 <Route path="/postings/:id" element={<JobPostingDetail />} />
                 <Route path="/applicants" element={<ApplicantList />} />
+                <Route path="/applicants/:id" element={<ApplicantDetail />} />
                 <Route path="/separate-management" element={<SeparateManagement />} />
                 <Route path="/interviews" element={<InterviewSchedule />} />
                 <Route path="*" element={<NotFound />} />

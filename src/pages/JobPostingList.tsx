@@ -16,7 +16,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Users, UserX, ChevronRight, Plus, Pencil, Trash2, MoreVertical } from 'lucide-react';
+import { Users, UserX, ChevronRight, Plus, Pencil, Trash2, MoreVertical, Eye, EyeOff } from 'lucide-react';
 import { JobPosting, getJobPostingStatus, JOB_POSTING_STATUS_COLORS } from '@/types/jobPosting';
 import JobPostingFormModal from '@/components/jobPosting/JobPostingFormModal';
 
@@ -70,10 +70,15 @@ export default function JobPostingListPage() {
                       <span className={`text-xs px-2 py-0.5 rounded font-medium ${JOB_POSTING_STATUS_COLORS[jobStatus]}`}>
                         {jobStatus}
                       </span>
+                      <Badge variant="outline" className="text-xs">{job.careerType}</Badge>
                       <span className="text-xs text-muted-foreground">{job.department}</span>
+                      <span className={`inline-flex items-center gap-1 text-xs ${job.isPublic ? 'text-emerald-600' : 'text-muted-foreground'}`}>
+                        {job.isPublic ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
+                        {job.isPublic ? '공개' : '비공개'}
+                      </span>
                     </div>
                     <h3 className="font-semibold text-sm mb-1">{job.title}</h3>
-                    <p className="text-xs text-muted-foreground">{job.startDate} ~ {job.endDate}</p>
+                    <p className="text-xs text-muted-foreground">게시기간 {job.startDate} ~ {job.endDate}</p>
                   </div>
                   <div className="flex items-center gap-6 mr-4">
                     <div className="flex items-center gap-1.5 text-sm">
