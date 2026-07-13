@@ -1,50 +1,109 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useApplicants } from '@/context/ApplicantContext';
+import { useJobPostings } from '@/context/JobPostingContext';
 import ApplicantOverviewTable from '@/components/applicant/ApplicantOverviewTable';
+import ApplicantToolbar, { ApplicantFilters, ApplicantSortOption, DEFAULT_APPLICANT_FILTERS } from '@/components/applicant/ApplicantToolbar';
 import ApplicantFormModal from '@/components/applicant/ApplicantFormModal';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Plus, Search } from 'lucide-react';
+import { Plus } from 'lucide-react';
+import { getCurrentStage, getStageRecordStatus } from '@/types/applicant';
 
 export default function ApplicantListPage() {
   const { applicants } = useApplicants();
+  const { jobPostings } = useJobPostings();
   const [showForm, setShowForm] = useState(false);
   const [search, setSearch] = useState('');
+  const [filters, setFilters] = useState<ApplicantFilters>(DEFAULT_APPLICANT_FILTERS);
+  const [sortBy, setSortBy] = useState<ApplicantSortOption>('newest');
 
-  const activeApplicants = applicants.filter(a => !a.isSeparateManagement);
-  const filtered = activeApplicants.filter(a =>
-    !search
-    || a.name.includes(search)
-    || a.email.includes(search)
-    || a.phone.includes(search)
-    || a.memo.includes(search)
+  const activeApplicants = useMemo(() => applicants.filter(a => !a.isSeparateManagement), [applicants]);
+
+  const jobFiltered = useMemo(
+    () => filters.jobId === 'all' ? activeApplicants : activeApplicants.filter(a => a.jobPostingId === filters.jobId),
+    [activeApplicants, filters.jobId]
   );
+
+  const teamOptions = useMemo(
+    () => Array.from(new Set(jobFiltered.map(a => a.team))).filter(Boolean).sort(),
+    [jobFiltered]
+  );
+
+  const selectedJob = jobPostings.find(j => j.id === filters.jobId);
+  const selectedJobStages = useMemo(
+    () => selectedJob ? [...selectedJob.stages].sort((a, b) => a.order - b.order) : [],
+    [selectedJob]
+  );
+  const selectedStage = selectedJobStages.find(s => s.id === filters.stageId);
+  const statusOptionsForSelectedStage = selectedStage?.statuses ?? [];
+
+  const filtered = useMemo(() => {
+    const query = search.trim();
+    return jobFiltered.filter(a => {
+      if (query && !a.name.includes(query) && !a.email.includes(query) && !a.phone.includes(query) && !a.memo.includes(query)) {
+        return false;
+      }
+      if (filters.team !== 'all' && a.team !== filters.team) return false;
+      if (selectedJob && (filters.stageId !== 'all' || filters.statusId !== 'all')) {
+        const currentStage = getCurrentStage(a.stageRecords, selectedJobStages);
+        if (filters.stageId !== 'all' && currentStage?.id !== filters.stageId) return false;
+        if (filters.statusId !== 'all') {
+          const currentStatus = currentStage && getStageRecordStatus(a.stageRecords, currentStage);
+          if (currentStatus?.id !== filters.statusId) return false;
+        }
+      }
+      return true;
+    });
+  }, [jobFiltered, search, filters, selectedJob, selectedJobStages]);
+
+  const sorted = useMemo(() => {
+    const list = [...filtered];
+    switch (sortBy) {
+      case 'oldest':
+        list.sort((a, b) => a.applicationDate.localeCompare(b.applicationDate));
+        break;
+      case 'name':
+        list.sort((a, b) => a.name.localeCompare(b.name, 'ko'));
+        break;
+      case 'newest':
+      default:
+        list.sort((a, b) => b.applicationDate.localeCompare(a.applicationDate));
+    }
+    return list;
+  }, [filtered, sortBy]);
+
+  const hasActiveFilter = search.trim() !== '' || filters.jobId !== 'all' || filters.team !== 'all' || filters.stageId !== 'all' || filters.statusId !== 'all';
 
   return (
     <div className="p-6">
       <div className="flex items-center justify-between mb-5">
         <div>
           <h2 className="text-lg font-semibold">지원자 목록</h2>
-          <p className="text-sm text-muted-foreground">총 {filtered.length}명</p>
+          <p className="text-sm text-muted-foreground">
+            {hasActiveFilter
+              ? `지원자 ${sorted.length}명 (전체 ${activeApplicants.length}명)`
+              : `지원자 ${activeApplicants.length}명`}
+          </p>
         </div>
-        <div className="flex items-center gap-3">
-          <div className="relative">
-            <Search className="absolute left-2.5 top-2.5 w-4 h-4 text-muted-foreground" />
-            <Input
-              className="pl-9 w-60"
-              placeholder="이름, 이메일, 연락처, 메모 검색"
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-            />
-          </div>
-          <Button onClick={() => setShowForm(true)}>
-            <Plus className="w-4 h-4 mr-1" /> 지원자 등록
-          </Button>
-        </div>
+        <Button onClick={() => setShowForm(true)}>
+          <Plus className="w-4 h-4 mr-1" /> 지원자 등록
+        </Button>
       </div>
 
+      <ApplicantToolbar
+        search={search}
+        onSearchChange={setSearch}
+        jobPostings={jobPostings}
+        filters={filters}
+        onFiltersChange={patch => setFilters(prev => ({ ...prev, ...patch }))}
+        teamOptions={teamOptions}
+        selectedJobStages={selectedJobStages}
+        statusOptionsForSelectedStage={statusOptionsForSelectedStage}
+        sortBy={sortBy}
+        onSortByChange={setSortBy}
+      />
+
       <div className="bg-card rounded-lg border shadow-sm">
-        <ApplicantOverviewTable applicants={filtered} />
+        <ApplicantOverviewTable applicants={sorted} />
       </div>
 
       {showForm && (
