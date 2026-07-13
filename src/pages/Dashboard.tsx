@@ -4,7 +4,7 @@ import { useApplicants } from '@/context/ApplicantContext';
 import { useJobPostings } from '@/context/JobPostingContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Briefcase, Users, UserCheck, Calendar, ChevronRight } from 'lucide-react';
-import { JOB_POSTING_STATUS_LABELS } from '@/types/jobPosting';
+import { getJobPostingStatus, JOB_POSTING_STATUS_COLORS } from '@/types/jobPosting';
 
 export default function DashboardPage() {
   const { applicants } = useApplicants();
@@ -18,7 +18,7 @@ export default function DashboardPage() {
     a.recruitmentStatus.interviewNotice.status === 'done' &&
     a.recruitmentStatus.interviewResult.status === 'pending'
   ).length;
-  const openPostings = jobPostings.filter(j => j.status === 'open').length;
+  const openPostings = jobPostings.filter(j => getJobPostingStatus(j) === '진행중').length;
 
   const stats = [
     { label: '진행중 공고', value: openPostings, icon: Briefcase, color: 'text-primary' },
@@ -81,19 +81,15 @@ export default function DashboardPage() {
                   !a.isSeparateManagement && a.recruitmentStatus.interviewResult.status === 'pass'
                 ).length;
 
-                const statusColor = job.status === 'open'
-                  ? 'bg-emerald-100 text-emerald-800'
-                  : job.status === 'closed'
-                    ? 'bg-muted text-muted-foreground'
-                    : 'bg-amber-100 text-amber-800';
+                const jobStatus = getJobPostingStatus(job);
 
                 return (
                   <tr key={job.id} className="cursor-pointer" onClick={() => navigate(`/postings/${job.id}`)}>
                     <td className="font-medium">{job.title}</td>
                     <td className="text-xs">{job.department}</td>
                     <td>
-                      <span className={`text-xs px-2 py-0.5 rounded font-medium ${statusColor}`}>
-                        {JOB_POSTING_STATUS_LABELS[job.status]}
+                      <span className={`text-xs px-2 py-0.5 rounded font-medium ${JOB_POSTING_STATUS_COLORS[jobStatus]}`}>
+                        {jobStatus}
                       </span>
                     </td>
                     <td className="text-xs">{job.startDate} ~ {job.endDate}</td>

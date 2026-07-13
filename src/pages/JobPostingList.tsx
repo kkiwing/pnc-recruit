@@ -17,7 +17,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Users, UserX, ChevronRight, Plus, Pencil, Trash2, MoreVertical } from 'lucide-react';
-import { JobPosting, JOB_POSTING_STATUS_LABELS } from '@/types/jobPosting';
+import { JobPosting, getJobPostingStatus, JOB_POSTING_STATUS_COLORS } from '@/types/jobPosting';
 import JobPostingFormModal from '@/components/jobPosting/JobPostingFormModal';
 
 export default function JobPostingListPage() {
@@ -55,11 +55,7 @@ export default function JobPostingListPage() {
             a.recruitmentStatus.interviewResult.status === 'pass'
           ).length;
 
-          const statusColor = job.status === 'open'
-            ? 'bg-emerald-100 text-emerald-800'
-            : job.status === 'closed'
-              ? 'bg-muted text-muted-foreground'
-              : 'bg-amber-100 text-amber-800';
+          const jobStatus = getJobPostingStatus(job);
 
           return (
             <Card
@@ -71,8 +67,8 @@ export default function JobPostingListPage() {
                 <div className="flex items-center justify-between">
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-1">
-                      <span className={`text-xs px-2 py-0.5 rounded font-medium ${statusColor}`}>
-                        {JOB_POSTING_STATUS_LABELS[job.status]}
+                      <span className={`text-xs px-2 py-0.5 rounded font-medium ${JOB_POSTING_STATUS_COLORS[jobStatus]}`}>
+                        {jobStatus}
                       </span>
                       <span className="text-xs text-muted-foreground">{job.department}</span>
                     </div>

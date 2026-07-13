@@ -219,8 +219,12 @@ export default function ApplicantTable({ applicants, showSeparateActions }: Prop
                     </TooltipContent>
                   </Tooltip>
                 </td>
-                <td className="text-xs">{applicant.school}</td>
-                <td className="text-xs">{applicant.career}</td>
+                <td className="text-xs">{applicant.educations[0]?.schoolName ?? '-'}</td>
+                <td className="text-xs">
+                  {applicant.careers.length > 0
+                    ? `${applicant.careers[applicant.careers.length - 1].company} · ${applicant.careers[applicant.careers.length - 1].role}`
+                    : '신입'}
+                </td>
                 {STEP_KEYS.map(key => (
                   <td key={key} className="text-center">
                     <StatusSelect

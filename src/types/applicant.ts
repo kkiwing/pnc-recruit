@@ -28,6 +28,59 @@ export interface RecruitmentStatus {
   interviewResult: StepDetail;         // 면접 합격/불합격
 }
 
+export type Gender = '남성' | '여성';
+
+export interface EducationEntry {
+  schoolName: string;
+  degree: '대학교' | '대학원';
+  period: string;
+  majorField: string;
+  major: string;
+  minor?: string;
+  gpa: number;
+  gpaMax: number;
+}
+
+export interface CertificateEntry {
+  name: string;
+  issuer: string;
+  acquiredDate: string;
+}
+
+export interface CareerEntry {
+  company: string;
+  role: string;
+  period: string;
+  description: string;
+}
+
+export interface ActivityEntry {
+  name: string;
+  role: string;
+  organization: string;
+  period: string;
+  description: string;
+}
+
+export interface StatisticsPackageEntry {
+  name: string;
+  level: string;
+  detail: string;
+}
+
+export interface ThesisInfo {
+  title: string;
+  keyword: string;
+  summary: string;
+}
+
+export interface CoverLetterAnswer {
+  questionId: string;
+  answer: string;
+}
+
+export type SubmissionStatus = '완료' | '미완료';
+
 export interface Applicant {
   id: string;
   no: number;
@@ -36,13 +89,21 @@ export interface Applicant {
   name: string;
   platform: string;
   birthYear: string;
+  gender: Gender;
+  birthDate: string;
   email: string;
   phone: string;
   region: string;
   regionDetail: string;
-  school: string;
-  major: string;
-  career: string;
+  address: string;
+  educations: EducationEntry[];
+  certificates: CertificateEntry[];
+  careers: CareerEntry[];
+  activities: ActivityEntry[];
+  statisticsPackages: StatisticsPackageEntry[];
+  thesis?: ThesisInfo;
+  coverLetter: CoverLetterAnswer[];
+  submissionStatus: SubmissionStatus;
   memo: string;
   applicationDate: string;
   recruitmentStatus: RecruitmentStatus;

@@ -53,9 +53,9 @@ export default function ApplicantDetailModal({ open, onClose, applicant }: Props
             <div><span className="text-muted-foreground">이메일:</span> {applicant.email}</div>
             <div><span className="text-muted-foreground">전화:</span> {applicant.phone}</div>
             <div><span className="text-muted-foreground">지역:</span> {applicant.region} {applicant.regionDetail}</div>
-            <div><span className="text-muted-foreground">학교:</span> {applicant.school}</div>
-            <div><span className="text-muted-foreground">전공:</span> {applicant.major}</div>
-            <div className="col-span-2"><span className="text-muted-foreground">경력:</span> {applicant.career}</div>
+            <div><span className="text-muted-foreground">학교:</span> {applicant.educations[0]?.schoolName ?? '-'}</div>
+            <div><span className="text-muted-foreground">전공:</span> {applicant.educations[0]?.major ?? '-'}</div>
+            <div className="col-span-2"><span className="text-muted-foreground">경력:</span> {applicant.careers.length > 0 ? `${applicant.careers.length}건` : '신입'}</div>
           </div>
 
           <div>

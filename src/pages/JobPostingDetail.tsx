@@ -19,7 +19,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { ArrowLeft, Plus, Search, Users, UserX, Pencil, Trash2 } from 'lucide-react';
-import { JOB_POSTING_STATUS_LABELS } from '@/types/jobPosting';
+import { getJobPostingStatus } from '@/types/jobPosting';
 
 export default function JobPostingDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -64,7 +64,7 @@ export default function JobPostingDetailPage() {
         <div className="flex-1">
           <h2 className="text-lg font-semibold">{jobPosting.title}</h2>
           <p className="text-xs text-muted-foreground">
-            {JOB_POSTING_STATUS_LABELS[jobPosting.status]} · {jobPosting.department} · {jobPosting.startDate} ~ {jobPosting.endDate}
+            {getJobPostingStatus(jobPosting)} · {jobPosting.department} · {jobPosting.startDate} ~ {jobPosting.endDate}
           </p>
         </div>
         <Button variant="outline" size="sm" onClick={() => setShowEditForm(true)}>

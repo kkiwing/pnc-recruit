@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useApplicants } from '@/context/ApplicantContext';
 import { useJobPostings } from '@/context/JobPostingContext';
+import { Gender } from '@/types/applicant';
 
 interface Props {
   open: boolean;
@@ -25,13 +26,15 @@ export default function ApplicantFormModal({ open, onClose, editData, defaultJob
     name: editData?.name || '',
     platform: editData?.platform || '',
     birthYear: editData?.birthYear || '',
+    gender: editData?.gender || '남성',
+    birthDate: editData?.birthDate || '',
     email: editData?.email || '',
     phone: editData?.phone || '',
     region: editData?.region || '',
     regionDetail: editData?.regionDetail || '',
-    school: editData?.school || '',
-    major: editData?.major || '',
-    career: editData?.career || '',
+    address: editData?.address || '',
+    school: editData?.educations?.[0]?.schoolName || '',
+    major: editData?.educations?.[0]?.major || '',
     memo: editData?.memo || '',
     applicationDate: editData?.applicationDate || new Date().toISOString().slice(0, 10),
   });
@@ -42,10 +45,41 @@ export default function ApplicantFormModal({ open, onClose, editData, defaultJob
 
   const handleSubmit = () => {
     if (!form.name.trim() || !form.jobPostingId) return;
+    const { school, major, gender, ...rest } = form;
     if (editData?.id) {
-      updateApplicant(editData.id, form);
+      updateApplicant(editData.id, {
+        ...rest,
+        gender: gender as Gender,
+        educations: [{
+          schoolName: school,
+          degree: '대학교',
+          period: '',
+          majorField: '',
+          major,
+          gpa: 0,
+          gpaMax: 4.5,
+        }],
+      });
     } else {
-      addApplicant(form);
+      addApplicant({
+        ...rest,
+        gender: gender as Gender,
+        educations: school || major ? [{
+          schoolName: school,
+          degree: '대학교',
+          period: '',
+          majorField: '',
+          major,
+          gpa: 0,
+          gpaMax: 4.5,
+        }] : [],
+        certificates: [],
+        careers: [],
+        activities: [],
+        statisticsPackages: [],
+        coverLetter: [],
+        submissionStatus: '미완료',
+      });
     }
     onClose();
   };
@@ -75,6 +109,21 @@ export default function ApplicantFormModal({ open, onClose, editData, defaultJob
           <div>
             <Label>이름 *</Label>
             <Input value={form.name} onChange={e => handleChange('name', e.target.value)} placeholder="이름" />
+          </div>
+          <div>
+            <Label>성별</Label>
+            <select
+              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+              value={form.gender}
+              onChange={e => handleChange('gender', e.target.value)}
+            >
+              <option value="남성">남성</option>
+              <option value="여성">여성</option>
+            </select>
+          </div>
+          <div>
+            <Label>생년월일</Label>
+            <Input type="date" value={form.birthDate} onChange={e => handleChange('birthDate', e.target.value)} />
           </div>
           <div>
             <Label>지원일</Label>
@@ -111,6 +160,10 @@ export default function ApplicantFormModal({ open, onClose, editData, defaultJob
             <Label>지역 (시/군/구)</Label>
             <Input value={form.regionDetail} onChange={e => handleChange('regionDetail', e.target.value)} placeholder="강남구" />
           </div>
+          <div className="col-span-2">
+            <Label>상세 주소</Label>
+            <Input value={form.address} onChange={e => handleChange('address', e.target.value)} placeholder="상세 주소를 입력하세요" />
+          </div>
           <div>
             <Label>학교</Label>
             <Input value={form.school} onChange={e => handleChange('school', e.target.value)} placeholder="OO대학교" />
@@ -118,10 +171,6 @@ export default function ApplicantFormModal({ open, onClose, editData, defaultJob
           <div>
             <Label>전공</Label>
             <Input value={form.major} onChange={e => handleChange('major', e.target.value)} placeholder="경영학" />
-          </div>
-          <div className="col-span-2">
-            <Label>경력</Label>
-            <Input value={form.career} onChange={e => handleChange('career', e.target.value)} placeholder="신입 / 경력 3년" />
           </div>
           <div className="col-span-2">
             <Label>특이사항 메모</Label>
