@@ -895,7 +895,7 @@ function buildThesis(raw: RawApplicant, majorField: MajorField): ThesisInfo | un
 function buildCoverLetter(raw: RawApplicant): CoverLetterAnswer[] {
   const role = ROLE_BY_TEAM[raw.team] || raw.team;
   const answers = [
-    `${raw.school}에서 ${raw.major}을(를) 전공하며 쌓은 역량을 바탕으로 ${role} 직무에 기여하고 싶어 지원하게 되었습니다.`,
+    `${raw.school}에서 ${raw.major} 전공을 통해 쌓은 역량을 바탕으로 ${role} 직무에 기여하고 싶어 지원하게 되었습니다.`,
     `${raw.team} 분야는 실제 사용자의 문제를 데이터와 논리로 풀어나가는 과정이 매력적이라고 느껴 흥미를 갖게 되었습니다.`,
     `새로운 도구와 기술을 배우는 데 적극적이며, 관련 스터디와 실습을 통해 꾸준히 역량을 키워왔습니다.`,
     `이전 경험에서 문제 상황을 발견하고 개선안을 제안해 실제 업무 효율을 높였던 경험이 있습니다.`,

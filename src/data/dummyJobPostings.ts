@@ -14,7 +14,7 @@ export const dummyJobPostings: JobPosting[] = [
     department: '개발',
     careerType: '경력',
     startDate: '2026-03-01',
-    endDate: '2026-04-30',
+    endDate: '2026-08-31',
     isPublic: true,
     description: '프론트엔드/백엔드 개발자 채용',
     content:
@@ -29,7 +29,7 @@ export const dummyJobPostings: JobPosting[] = [
     department: '마케팅',
     careerType: '신입',
     startDate: '2026-03-10',
-    endDate: '2026-05-10',
+    endDate: '2026-07-31',
     isPublic: true,
     description: '디지털 마케팅 및 콘텐츠 기획',
     content:
@@ -59,7 +59,7 @@ export const dummyJobPostings: JobPosting[] = [
     department: '기획/인사',
     careerType: '신입',
     startDate: '2026-03-20',
-    endDate: '2026-05-31',
+    endDate: '2026-08-15',
     isPublic: false,
     description: '서비스 기획 및 인사 담당자',
     content:
@@ -89,7 +89,7 @@ export const dummyJobPostings: JobPosting[] = [
     department: '데이터',
     careerType: '신입',
     startDate: '2026-04-01',
-    endDate: '2026-05-31',
+    endDate: '2026-09-30',
     isPublic: true,
     description: '데이터 분석가 및 데이터 엔지니어',
     content:
