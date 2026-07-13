@@ -6,7 +6,7 @@ import { useJobPostings } from '@/context/JobPostingContext';
 import { JobPosting, Stage, getStageColorClass } from '@/types/jobPosting';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Button } from '@/components/ui/button';
-import { Pencil, Trash2, MoreHorizontal, MessageSquare } from 'lucide-react';
+import { Pencil, Trash2, MoreHorizontal, MessageSquare, Clock } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent } from '@/components/ui/dropdown-menu';
 import CompletionDateModal from './CompletionDateModal';
 import ApplicantFormModal from './ApplicantFormModal';
@@ -18,16 +18,21 @@ interface Props {
   jobPosting?: JobPosting;
 }
 
-function StageSelect({ stage, stageRecords, onChange }: { stage: Stage; stageRecords: StageRecord[]; onChange: (statusId: string) => void }) {
+function StageSelect({ stage, stageRecords, onChange, onEditMeta }: {
+  stage: Stage;
+  stageRecords: StageRecord[];
+  onChange: (statusId: string) => void;
+  onEditMeta: () => void;
+}) {
+  const status = getStageRecordStatus(stageRecords, stage);
   const record = stageRecords.find(r => r.stageId === stage.id);
-  const status = record && stage.statuses.find(s => s.id === record.statusId);
   const meta = record?.meta;
   const hasMetaInfo = meta && (meta.startDate || meta.interviewer);
 
   const select = (
     <select
       className={`text-xs rounded px-1.5 py-1 border-0 cursor-pointer font-medium text-center appearance-none ${getStageColorClass(status?.color ?? 'gray')}`}
-      value={record?.statusId ?? ''}
+      value={status?.id ?? ''}
       onChange={e => onChange(e.target.value)}
       style={{ minWidth: '56px' }}
     >
@@ -37,20 +42,32 @@ function StageSelect({ stage, stageRecords, onChange }: { stage: Stage; stageRec
     </select>
   );
 
-  if (hasMetaInfo) {
-    return (
+  if (!hasMetaInfo) {
+    return select;
+  }
+
+  return (
+    <div className="inline-flex items-center gap-1">
+      {select}
       <Tooltip>
-        <TooltipTrigger asChild>{select}</TooltipTrigger>
+        <TooltipTrigger asChild>
+          <button
+            type="button"
+            className="text-muted-foreground hover:text-foreground"
+            onClick={onEditMeta}
+          >
+            <Clock className="w-3 h-3" />
+          </button>
+        </TooltipTrigger>
         <TooltipContent side="top" className="text-xs space-y-1 max-w-xs">
           {meta.startDate && meta.endDate && <p>기간: {meta.startDate} ~ {meta.endDate}</p>}
           {meta.time && <p>시간: {meta.time}</p>}
           {meta.interviewer && <p>담당자: {meta.interviewer}</p>}
+          <p className="text-muted-foreground">클릭해서 일정 수정</p>
         </TooltipContent>
       </Tooltip>
-    );
-  }
-
-  return select;
+    </div>
+  );
 }
 
 export default function ApplicantTable({ applicants, showSeparateActions, jobPosting }: Props) {
@@ -58,7 +75,7 @@ export default function ApplicantTable({ applicants, showSeparateActions, jobPos
   const { jobPostings } = useJobPostings();
   const navigate = useNavigate();
   const [editModal, setEditModal] = useState<Applicant | null>(null);
-  const [completionModal, setCompletionModal] = useState<{ applicantId: string; stage: Stage; statusId: string } | null>(null);
+  const [completionModal, setCompletionModal] = useState<{ applicantId: string; stage: Stage; statusId: string; initialData?: StageRecord['meta'] } | null>(null);
 
   const postingsById = new Map(jobPostings.map(j => [j.id, j]));
   const sortedStages = jobPosting ? [...jobPosting.stages].sort((a, b) => a.order - b.order) : [];
@@ -79,11 +96,11 @@ export default function ApplicantTable({ applicants, showSeparateActions, jobPos
 
   const setStageRecord = (applicant: Applicant, stage: Stage, statusId: string, meta?: StageRecord['meta']) => {
     const now = new Date().toISOString();
-    updateApplicant(applicant.id, {
-      stageRecords: applicant.stageRecords.map(r =>
-        r.stageId === stage.id ? { stageId: stage.id, statusId, meta, updatedAt: now } : r
-      ),
-    });
+    const exists = applicant.stageRecords.some(r => r.stageId === stage.id);
+    const nextRecords = exists
+      ? applicant.stageRecords.map(r => r.stageId === stage.id ? { stageId: stage.id, statusId, meta, updatedAt: now } : r)
+      : [...applicant.stageRecords, { stageId: stage.id, statusId, meta, updatedAt: now }];
+    updateApplicant(applicant.id, { stageRecords: nextRecords });
   };
 
   const handleStatusChange = (applicant: Applicant, stage: Stage, statusId: string) => {
@@ -93,6 +110,13 @@ export default function ApplicantTable({ applicants, showSeparateActions, jobPos
       return;
     }
     setStageRecord(applicant, stage, statusId);
+  };
+
+  const handleEditMeta = (applicant: Applicant, stage: Stage) => {
+    const status = getStageRecordStatus(applicant.stageRecords, stage);
+    const record = applicant.stageRecords.find(r => r.stageId === stage.id);
+    if (!status) return;
+    setCompletionModal({ applicantId: applicant.id, stage, statusId: status.id, initialData: record?.meta });
   };
 
   const handleCompletionSubmit = (data: { startDate: string; endDate: string; time?: string; interviewer?: string }) => {
@@ -192,6 +216,7 @@ export default function ApplicantTable({ applicants, showSeparateActions, jobPos
                           stage={stage}
                           stageRecords={applicant.stageRecords}
                           onChange={statusId => handleStatusChange(applicant, stage, statusId)}
+                          onEditMeta={() => handleEditMeta(applicant, stage)}
                         />
                       </td>
                     ))
@@ -265,6 +290,7 @@ export default function ApplicantTable({ applicants, showSeparateActions, jobPos
           onClose={() => setCompletionModal(null)}
           stepLabel={completionModal.stage.name}
           isInterview={completionModal.stage.completionForm === 'interview'}
+          initialData={completionModal.initialData}
           onSubmit={handleCompletionSubmit}
         />
       )}
