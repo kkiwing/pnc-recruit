@@ -1,10 +1,62 @@
-import { JobPosting, DEFAULT_COVER_LETTER_QUESTION_TEXTS } from '@/types/jobPosting';
+import { JobPosting, Stage, DEFAULT_COVER_LETTER_QUESTION_TEXTS } from '@/types/jobPosting';
 
 function questionsFor(postingId: string) {
   return DEFAULT_COVER_LETTER_QUESTION_TEXTS.map((question, i) => ({
     id: `${postingId}-q${i + 1}`,
     question,
   }));
+}
+
+function progressStatusesFor(prefix: string) {
+  return [
+    { id: `${prefix}-s1`, name: '대기', color: 'gray', isDefault: true },
+    { id: `${prefix}-s2`, name: '필요', color: 'orange' },
+    { id: `${prefix}-s3`, name: '완료', color: 'green' },
+  ];
+}
+
+function resultStatusesFor(prefix: string) {
+  return [
+    { id: `${prefix}-s1`, name: '대기', color: 'gray', isDefault: true },
+    { id: `${prefix}-s2`, name: '합격', color: 'blue' },
+    { id: `${prefix}-s3`, name: '불합격', color: 'red' },
+  ];
+}
+
+function buildStages(postingId: string, defs: { name: string; completionForm: Stage['completionForm']; result?: boolean }[]): Stage[] {
+  return defs.map((d, i) => {
+    const prefix = `${postingId}-stage${i + 1}`;
+    return {
+      id: prefix,
+      name: d.name,
+      order: i + 1,
+      completionForm: d.completionForm,
+      statuses: d.result ? resultStatusesFor(prefix) : progressStatusesFor(prefix),
+    };
+  });
+}
+
+/** 기본 템플릿: 기존 7단계 그대로 */
+function defaultStagesFor(postingId: string): Stage[] {
+  return buildStages(postingId, [
+    { name: '인성검사 안내', completionForm: 'period' },
+    { name: '인성검사 공고 등록', completionForm: 'none' },
+    { name: '인성검사 결과', completionForm: 'none', result: true },
+    { name: '자사양식 안내', completionForm: 'period' },
+    { name: '자사양식 제출', completionForm: 'none' },
+    { name: '면접 안내', completionForm: 'interview' },
+    { name: '면접 결과', completionForm: 'none', result: true },
+  ]);
+}
+
+/** 대체 템플릿 예시: 서류-인성검사-적성검사/면접-임원면접 흐름 */
+function executiveStagesFor(postingId: string): Stage[] {
+  return buildStages(postingId, [
+    { name: '서류', completionForm: 'none' },
+    { name: '인성검사', completionForm: 'period', result: true },
+    { name: '적성검사 및 면접', completionForm: 'interview' },
+    { name: '최종 임원 면접', completionForm: 'none', result: true },
+  ]);
 }
 
 export const dummyJobPostings: JobPosting[] = [
@@ -21,6 +73,7 @@ export const dummyJobPostings: JobPosting[] = [
     content:
       '서비스의 프론트엔드 및 백엔드 개발을 담당할 개발자를 채용합니다. React/TypeScript 기반의 웹 프론트엔드 또는 Java/Spring, Node.js 기반의 서버 개발 경험이 있는 분을 우대합니다. 신규 서비스 설계부터 배포, 운영까지 전 과정에 참여하게 됩니다.',
     coverLetterQuestions: questionsFor('job-01'),
+    stages: defaultStagesFor('job-01'),
     createdBy: 'admin',
     updatedBy: 'admin',
     createdAt: '2026-02-20T09:00:00Z',
@@ -40,6 +93,7 @@ export const dummyJobPostings: JobPosting[] = [
     content:
       '디지털 채널 기반의 마케팅 캠페인 기획 및 운영, 콘텐츠 제작을 담당할 신입 마케터를 채용합니다. SNS/퍼포먼스 마케팅에 대한 이해가 있고, 데이터 기반으로 캠페인 성과를 분석하고 개선할 수 있는 분을 찾습니다.',
     coverLetterQuestions: questionsFor('job-02'),
+    stages: defaultStagesFor('job-02'),
     createdBy: 'admin',
     updatedBy: 'admin',
     createdAt: '2026-03-01T09:00:00Z',
@@ -59,6 +113,7 @@ export const dummyJobPostings: JobPosting[] = [
     content:
       '서비스 전반의 UX/UI 디자인을 담당하거나, 브랜드 영상 콘텐츠를 제작할 경력 디자이너를 채용합니다. 사용자 리서치부터 프로토타이핑, 디자인 시스템 운영 경험이 있는 분을 우대합니다.',
     coverLetterQuestions: questionsFor('job-03'),
+    stages: defaultStagesFor('job-03'),
     createdBy: 'admin',
     updatedBy: 'admin',
     createdAt: '2026-03-05T09:00:00Z',
@@ -77,6 +132,7 @@ export const dummyJobPostings: JobPosting[] = [
     content:
       '신규 서비스 기획 및 운영, 또는 채용/인사 제도 운영을 담당할 인원을 수시로 채용합니다. 내부 추천 및 별도 채널을 통한 지원을 우선 검토하고 있어 공개 채용 페이지에는 노출하지 않습니다.',
     coverLetterQuestions: questionsFor('job-04'),
+    stages: defaultStagesFor('job-04'),
     createdBy: 'admin',
     updatedBy: 'admin',
     createdAt: '2026-03-10T09:00:00Z',
@@ -96,6 +152,7 @@ export const dummyJobPostings: JobPosting[] = [
     content:
       '월/분기/연 결산, 재무제표 작성, 예산 관리를 담당할 경력 회계 담당자를 채용합니다. 전표 처리부터 세무 신고까지 회계 전반의 실무 경험이 있는 분을 우대하며, 관련 자격증 보유자를 우대합니다.',
     coverLetterQuestions: questionsFor('job-05'),
+    stages: executiveStagesFor('job-05'),
     createdBy: 'admin',
     updatedBy: 'admin',
     createdAt: '2026-03-15T09:00:00Z',
@@ -115,6 +172,7 @@ export const dummyJobPostings: JobPosting[] = [
     content:
       'SQL/Python 기반의 데이터 분석 및 파이프라인 구축을 담당할 신입 데이터 인력을 채용합니다. 통계 분석 도구 활용 경험이 있거나, 데이터 기반 의사결정에 관심이 많은 분을 찾습니다.',
     coverLetterQuestions: questionsFor('job-06'),
+    stages: defaultStagesFor('job-06'),
     createdBy: 'admin',
     updatedBy: 'admin',
     createdAt: '2026-03-20T09:00:00Z',

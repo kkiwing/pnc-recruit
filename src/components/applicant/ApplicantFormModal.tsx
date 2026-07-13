@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useApplicants } from '@/context/ApplicantContext';
 import { useJobPostings } from '@/context/JobPostingContext';
-import { Gender } from '@/types/applicant';
+import { Gender, createDefaultStageRecords } from '@/types/applicant';
 
 interface Props {
   open: boolean;
@@ -61,6 +61,7 @@ export default function ApplicantFormModal({ open, onClose, editData, defaultJob
         }],
       });
     } else {
+      const posting = jobPostings.find(j => j.id === form.jobPostingId);
       addApplicant({
         ...rest,
         gender: gender as Gender,
@@ -79,6 +80,7 @@ export default function ApplicantFormModal({ open, onClose, editData, defaultJob
         statisticsPackages: [],
         coverLetter: [],
         submissionStatus: '미완료',
+        stageRecords: posting ? createDefaultStageRecords(posting.stages) : [],
       });
     }
     onClose();

@@ -1,3 +1,5 @@
+import { Stage } from '@/types/jobPosting';
+
 export type SeparateManagementReason =
   | '지원 포기'
   | '인성 미응시'
@@ -7,25 +9,18 @@ export type SeparateManagementReason =
   | '지원 포기(자사양식 작성 후)'
   | '지원 포기(면접 후)';
 
-export type StepStatus = 'pending' | 'need' | 'done' | 'pass' | 'fail';
-
-export interface StepDetail {
-  status: StepStatus;
+export interface StageRecordMeta {
   startDate?: string;
   endDate?: string;
   time?: string;
   interviewer?: string;
-  updatedAt?: string;
 }
 
-export interface RecruitmentStatus {
-  personalityTestNotice: StepDetail;    // 인성검사 안내
-  personalityTestRegistration: StepDetail; // 인성검사 공고 등록
-  personalityTestResult: StepDetail;    // 인성검사 합격/불합격
-  companyFormNotice: StepDetail;        // 자사양식 안내
-  companyFormSubmission: StepDetail;    // 자사양식 제출
-  interviewNotice: StepDetail;         // 면접 안내
-  interviewResult: StepDetail;         // 면접 합격/불합격
+export interface StageRecord {
+  stageId: string;
+  statusId: string;
+  meta?: StageRecordMeta;
+  updatedAt: string;
 }
 
 export type Gender = '남성' | '여성';
@@ -106,7 +101,7 @@ export interface Applicant {
   submissionStatus: SubmissionStatus;
   memo: string;
   applicationDate: string;
-  recruitmentStatus: RecruitmentStatus;
+  stageRecords: StageRecord[];
   isSeparateManagement: boolean;
   separateReason?: SeparateManagementReason;
   files: FileAttachment[];
@@ -122,26 +117,6 @@ export interface FileAttachment {
   url: string;
   uploadedAt: string;
 }
-
-export const RECRUITMENT_STEP_KEYS: (keyof RecruitmentStatus)[] = [
-  'personalityTestNotice',
-  'personalityTestRegistration',
-  'personalityTestResult',
-  'companyFormNotice',
-  'companyFormSubmission',
-  'interviewNotice',
-  'interviewResult',
-];
-
-export const STEP_LABELS: Record<keyof RecruitmentStatus, string> = {
-  personalityTestNotice: '인성검사 안내',
-  personalityTestRegistration: '인성검사 공고 등록',
-  personalityTestResult: '인성검사 결과',
-  companyFormNotice: '자사양식 안내',
-  companyFormSubmission: '자사양식 제출',
-  interviewNotice: '면접 안내',
-  interviewResult: '면접 결과',
-};
 
 export const SEPARATE_REASONS: SeparateManagementReason[] = [
   '지원 포기',
@@ -173,15 +148,47 @@ export const REGION_INTERVIEW_FEE: Record<string, string> = {
   '제주': '왕복 교통비 + 숙박비 지원',
 };
 
-export function createDefaultRecruitmentStatus(): RecruitmentStatus {
-  const defaultStep: StepDetail = { status: 'pending' };
-  return {
-    personalityTestNotice: { ...defaultStep },
-    personalityTestRegistration: { ...defaultStep },
-    personalityTestResult: { ...defaultStep },
-    companyFormNotice: { ...defaultStep },
-    companyFormSubmission: { ...defaultStep },
-    interviewNotice: { ...defaultStep },
-    interviewResult: { ...defaultStep },
-  };
+export function createDefaultStageRecords(stages: Stage[]): StageRecord[] {
+  const now = new Date().toISOString();
+  return stages.map(stage => {
+    const defaultStatus = stage.statuses.find(s => s.isDefault) ?? stage.statuses[0];
+    return { stageId: stage.id, statusId: defaultStatus?.id ?? '', updatedAt: now };
+  });
+}
+
+function findStageStatus(stage: Stage, statusId: string) {
+  return stage.statuses.find(s => s.id === statusId);
+}
+
+/** 순서상 마지막으로 '대기(기본)'가 아닌 단계, 없으면 첫 단계를 현재 단계로 반환 */
+export function getCurrentStage(stageRecords: StageRecord[], stages: Stage[]): Stage | undefined {
+  const sorted = [...stages].sort((a, b) => a.order - b.order);
+  let current: Stage | undefined = sorted[0];
+  for (const stage of sorted) {
+    const record = stageRecords.find(r => r.stageId === stage.id);
+    const status = record && findStageStatus(stage, record.statusId);
+    if (status && !status.isDefault) {
+      current = stage;
+    }
+  }
+  return current;
+}
+
+/** 해당 단계가 기본(대기) 상태를 벗어나 처리되었는지 여부 */
+export function isStageDone(stageRecords: StageRecord[], stage: Stage): boolean {
+  const record = stageRecords.find(r => r.stageId === stage.id);
+  const status = record && findStageStatus(stage, record.statusId);
+  return !!status && !status.isDefault;
+}
+
+/** 해당 단계의 현재 상태 이름이 "합격"인지 여부 */
+export function isStagePassed(stageRecords: StageRecord[], stage: Stage): boolean {
+  const record = stageRecords.find(r => r.stageId === stage.id);
+  const status = record && findStageStatus(stage, record.statusId);
+  return status?.name === '합격';
+}
+
+export function getStageRecordStatus(stageRecords: StageRecord[], stage: Stage) {
+  const record = stageRecords.find(r => r.stageId === stage.id);
+  return record && findStageStatus(stage, record.statusId);
 }

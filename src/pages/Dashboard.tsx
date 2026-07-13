@@ -4,20 +4,31 @@ import { useApplicants } from '@/context/ApplicantContext';
 import { useJobPostings } from '@/context/JobPostingContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Briefcase, Users, UserCheck, Calendar, ChevronRight } from 'lucide-react';
-import { getJobPostingStatus, JOB_POSTING_STATUS_COLORS } from '@/types/jobPosting';
+import { getJobPostingStatus, JOB_POSTING_STATUS_COLORS, getInterviewStage, getFinalStage } from '@/types/jobPosting';
+import { isStageDone, isStagePassed } from '@/types/applicant';
 
 export default function DashboardPage() {
   const { applicants } = useApplicants();
   const { jobPostings } = useJobPostings();
   const navigate = useNavigate();
 
+  const postingsById = new Map(jobPostings.map(j => [j.id, j]));
+
   const totalApplicants = applicants.filter(a => !a.isSeparateManagement).length;
-  const totalPassed = applicants.filter(a => !a.isSeparateManagement && a.recruitmentStatus.interviewResult.status === 'pass').length;
-  const totalInterviewPending = applicants.filter(a =>
-    !a.isSeparateManagement &&
-    a.recruitmentStatus.interviewNotice.status === 'done' &&
-    a.recruitmentStatus.interviewResult.status === 'pending'
-  ).length;
+  const totalPassed = applicants.filter(a => {
+    if (a.isSeparateManagement) return false;
+    const posting = postingsById.get(a.jobPostingId);
+    const finalStage = posting && getFinalStage(posting.stages);
+    return !!finalStage && isStagePassed(a.stageRecords, finalStage);
+  }).length;
+  const totalInterviewPending = applicants.filter(a => {
+    if (a.isSeparateManagement) return false;
+    const posting = postingsById.get(a.jobPostingId);
+    if (!posting) return false;
+    const interviewStage = getInterviewStage(posting.stages);
+    const finalStage = getFinalStage(posting.stages);
+    return !!interviewStage && !!finalStage && isStageDone(a.stageRecords, interviewStage) && !isStageDone(a.stageRecords, finalStage);
+  }).length;
   const openPostings = jobPostings.filter(j => getJobPostingStatus(j) === '진행중').length;
 
   const stats = [
@@ -72,13 +83,14 @@ export default function DashboardPage() {
                 const jobApplicants = applicants.filter(a => a.jobPostingId === job.id);
                 const activeCount = jobApplicants.filter(a => !a.isSeparateManagement).length;
                 const separateCount = jobApplicants.filter(a => a.isSeparateManagement).length;
+                const interviewStage = getInterviewStage(job.stages);
+                const finalStage = getFinalStage(job.stages);
                 const interviewPending = jobApplicants.filter(a =>
-                  !a.isSeparateManagement &&
-                  a.recruitmentStatus.interviewNotice.status === 'done' &&
-                  a.recruitmentStatus.interviewResult.status === 'pending'
+                  !a.isSeparateManagement && interviewStage && finalStage &&
+                  isStageDone(a.stageRecords, interviewStage) && !isStageDone(a.stageRecords, finalStage)
                 ).length;
                 const passed = jobApplicants.filter(a =>
-                  !a.isSeparateManagement && a.recruitmentStatus.interviewResult.status === 'pass'
+                  !a.isSeparateManagement && !!finalStage && isStagePassed(a.stageRecords, finalStage)
                 ).length;
 
                 const jobStatus = getJobPostingStatus(job);

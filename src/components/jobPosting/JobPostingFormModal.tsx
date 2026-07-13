@@ -8,7 +8,7 @@ import { Switch } from '@/components/ui/switch';
 import { useJobPostings } from '@/context/JobPostingContext';
 import {
   JobPosting, CareerType, EmploymentType, CoverLetterQuestion,
-  createDefaultCoverLetterQuestions,
+  createDefaultCoverLetterQuestions, createDefaultStages,
 } from '@/types/jobPosting';
 import { Plus, Trash2, ChevronUp, ChevronDown } from 'lucide-react';
 
@@ -73,7 +73,7 @@ export default function JobPostingFormModal({ open, onClose, editData }: Props) 
     if (editData?.id) {
       updateJobPosting(editData.id, data);
     } else {
-      addJobPosting(data);
+      addJobPosting({ ...data, stages: createDefaultStages() });
     }
     onClose();
   };

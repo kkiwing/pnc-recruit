@@ -5,6 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Calendar } from '@/components/ui/calendar';
 import { Calendar as CalendarIcon, Clock } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { getInterviewStage, getFinalStage } from '@/types/jobPosting';
+import { isStageDone, getStageRecordStatus } from '@/types/applicant';
 
 export default function InterviewSchedulePage() {
   const { applicants } = useApplicants();
@@ -13,27 +15,37 @@ export default function InterviewSchedulePage() {
 
   const active = applicants.filter(a => !a.isSeparateManagement);
 
-  const interviews = useMemo(() => active
-    .filter(a => a.recruitmentStatus.interviewNotice.status === 'done')
-    .map(a => {
-      const job = jobPostings.find(j => j.id === a.jobPostingId);
-      return {
-        id: a.id,
-        name: a.name,
-        team: a.team,
-        phone: a.phone,
-        email: a.email,
-        region: `${a.region} ${a.regionDetail}`,
-        date: a.recruitmentStatus.interviewNotice.endDate || '',
-        time: a.recruitmentStatus.interviewNotice.time || '',
-        interviewer: a.recruitmentStatus.interviewNotice.interviewer || '',
-        result: a.recruitmentStatus.interviewResult.status,
-        jobTitle: job?.title || '-',
-      };
-    })
-    .sort((a, b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time)),
-    [active, jobPostings]
-  );
+  const interviews = useMemo(() => {
+    const postingsById = new Map(jobPostings.map(j => [j.id, j]));
+    return active
+      .map(a => {
+        const job = postingsById.get(a.jobPostingId);
+        if (!job) return null;
+        const interviewStage = getInterviewStage(job.stages);
+        if (!interviewStage || !isStageDone(a.stageRecords, interviewStage)) return null;
+        const meta = a.stageRecords.find(r => r.stageId === interviewStage.id)?.meta;
+        const finalStage = getFinalStage(job.stages);
+        const finalStatus = finalStage && getStageRecordStatus(a.stageRecords, finalStage);
+        const result: 'pending' | 'pass' | 'fail' = !finalStatus || finalStatus.isDefault
+          ? 'pending'
+          : finalStatus.name === '합격' ? 'pass' : 'fail';
+        return {
+          id: a.id,
+          name: a.name,
+          team: a.team,
+          phone: a.phone,
+          email: a.email,
+          region: `${a.region} ${a.regionDetail}`,
+          date: meta?.endDate || '',
+          time: meta?.time || '',
+          interviewer: meta?.interviewer || '',
+          result,
+          jobTitle: job.title,
+        };
+      })
+      .filter((x): x is NonNullable<typeof x> => x !== null)
+      .sort((a, b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time));
+  }, [active, jobPostings]);
 
   const upcoming = interviews.filter(i => i.result === 'pending');
   const completed = interviews.filter(i => i.result !== 'pending');

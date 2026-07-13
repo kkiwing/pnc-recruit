@@ -1,16 +1,40 @@
 import {
-  Applicant, StepDetail, RecruitmentStatus, SeparateManagementReason,
+  Applicant, SeparateManagementReason,
   Gender, EducationEntry, CertificateEntry, CareerEntry, ActivityEntry,
   StatisticsPackageEntry, ThesisInfo, CoverLetterAnswer, SubmissionStatus,
+  StageRecord,
 } from '@/types/applicant';
+import { Stage } from '@/types/jobPosting';
+import { dummyJobPostings } from './dummyJobPostings';
 
-const s = (status: 'pending' | 'need' | 'done' | 'pass' | 'fail', extra?: Partial<StepDetail>): StepDetail => ({
+// 더미 데이터 작성 편의를 위한 구(舊) 7단계 형식 — enrich() 단계에서 각 공고의
+// stages 구조에 맞는 StageRecord[]로 변환된다 (신규 Applicant 타입에는 없음).
+type RawStepStatus = 'pending' | 'need' | 'done' | 'pass' | 'fail';
+interface RawStepDetail {
+  status: RawStepStatus;
+  startDate?: string;
+  endDate?: string;
+  time?: string;
+  interviewer?: string;
+  updatedAt?: string;
+}
+interface RawRecruitmentStatus {
+  personalityTestNotice: RawStepDetail;
+  personalityTestRegistration: RawStepDetail;
+  personalityTestResult: RawStepDetail;
+  companyFormNotice: RawStepDetail;
+  companyFormSubmission: RawStepDetail;
+  interviewNotice: RawStepDetail;
+  interviewResult: RawStepDetail;
+}
+
+const s = (status: RawStepStatus, extra?: Partial<RawStepDetail>): RawStepDetail => ({
   status,
   ...extra,
 });
 
-const pending = (): StepDetail => s('pending');
-const allPending = () => ({
+const pending = (): RawStepDetail => s('pending');
+const allPending = (): RawRecruitmentStatus => ({
   personalityTestNotice: pending(),
   personalityTestRegistration: pending(),
   personalityTestResult: pending(),
@@ -26,7 +50,7 @@ interface RawApplicant {
   id: string; no: number; jobPostingId: string; team: string; name: string; platform: string;
   birthYear: string; email: string; phone: string; region: string; regionDetail: string;
   school: string; major: string; career: string; memo: string; applicationDate: string;
-  recruitmentStatus: RecruitmentStatus; isSeparateManagement: boolean; separateReason?: SeparateManagementReason;
+  recruitmentStatus: RawRecruitmentStatus; isSeparateManagement: boolean; separateReason?: SeparateManagementReason;
   createdAt: string; updatedAt: string;
 }
 
@@ -903,10 +927,49 @@ function buildCoverLetter(raw: RawApplicant): CoverLetterAnswer[] {
   return answers.map((answer, i) => ({ questionId: `${raw.jobPostingId}-q${i + 1}`, answer }));
 }
 
+const postingsById = new Map(dummyJobPostings.map(p => [p.id, p]));
+
+// 공고의 stage 구성 길이에 따라 구(舊) 7단계 값을 대응시킬 키 순서.
+// 4단계(대체 템플릿) 공고는 [안내, 결과, 면접안내, 면접결과]에 해당하는
+// 구 데이터 인덱스([0,2,5,6])만 뽑아 타입이 맞는 단계에 대응시킨다.
+const OLD_KEYS_7: (keyof RawRecruitmentStatus)[] = [
+  'personalityTestNotice', 'personalityTestRegistration', 'personalityTestResult',
+  'companyFormNotice', 'companyFormSubmission', 'interviewNotice', 'interviewResult',
+];
+const OLD_KEYS_4: (keyof RawRecruitmentStatus)[] = [
+  'personalityTestNotice', 'personalityTestResult', 'interviewNotice', 'interviewResult',
+];
+
+const OLD_STATUS_TO_NAME: Partial<Record<RawStepStatus, string>> = {
+  need: '필요', done: '완료', pass: '합격', fail: '불합격',
+};
+
+function convertToStageRecords(raw: RawApplicant, stages: Stage[]): StageRecord[] {
+  const oldKeys = stages.length === OLD_KEYS_4.length ? OLD_KEYS_4 : OLD_KEYS_7;
+  return stages.map((stage, i) => {
+    const oldDetail = oldKeys[i] ? raw.recruitmentStatus[oldKeys[i]] : undefined;
+    const defaultStatus = stage.statuses.find(st => st.isDefault) ?? stage.statuses[0];
+    const wantedName = oldDetail ? OLD_STATUS_TO_NAME[oldDetail.status] : undefined;
+    const matched = wantedName ? stage.statuses.find(st => st.name === wantedName) : undefined;
+    const hasMeta = !!oldDetail && !!(oldDetail.startDate || oldDetail.endDate || oldDetail.time || oldDetail.interviewer);
+    return {
+      stageId: stage.id,
+      statusId: (matched ?? defaultStatus).id,
+      meta: hasMeta ? {
+        startDate: oldDetail!.startDate, endDate: oldDetail!.endDate,
+        time: oldDetail!.time, interviewer: oldDetail!.interviewer,
+      } : undefined,
+      updatedAt: oldDetail?.updatedAt || raw.updatedAt,
+    };
+  });
+}
+
 function enrich(raw: RawApplicant): Applicant {
   const majorField = classifyMajorField(raw.major);
   const allInitial = Object.values(raw.recruitmentStatus).every(step => step.status === 'pending');
   const submissionStatus: SubmissionStatus = allInitial ? '미완료' : '완료';
+  const posting = postingsById.get(raw.jobPostingId);
+  const stageRecords = posting ? convertToStageRecords(raw, posting.stages) : [];
 
   return {
     id: raw.id,
@@ -933,7 +996,7 @@ function enrich(raw: RawApplicant): Applicant {
     submissionStatus,
     memo: raw.memo,
     applicationDate: raw.applicationDate,
-    recruitmentStatus: raw.recruitmentStatus,
+    stageRecords,
     isSeparateManagement: raw.isSeparateManagement,
     separateReason: raw.separateReason,
     files: [],

@@ -20,7 +20,8 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Users, UserX, ChevronRight, Plus, Pencil, Trash2, MoreVertical, Search, SlidersHorizontal } from 'lucide-react';
-import { JobPosting, JobPostingStatus, EmploymentType, getJobPostingStatus, JOB_POSTING_STATUS_COLORS } from '@/types/jobPosting';
+import { JobPosting, JobPostingStatus, EmploymentType, getJobPostingStatus, JOB_POSTING_STATUS_COLORS, getInterviewStage, getFinalStage } from '@/types/jobPosting';
+import { isStageDone, isStagePassed } from '@/types/applicant';
 import JobPostingFormModal from '@/components/jobPosting/JobPostingFormModal';
 
 type SortOption = 'createdDesc' | 'createdAsc' | 'updatedDesc' | 'applicantsDesc' | 'applicantsAsc' | 'statusFirst';
@@ -183,14 +184,14 @@ export default function JobPostingListPage() {
           const jobApplicants = applicants.filter(a => a.jobPostingId === job.id);
           const activeCount = jobApplicants.filter(a => !a.isSeparateManagement).length;
           const separateCount = jobApplicants.filter(a => a.isSeparateManagement).length;
+          const interviewStage = getInterviewStage(job.stages);
+          const finalStage = getFinalStage(job.stages);
           const interviewPending = jobApplicants.filter(a =>
-            !a.isSeparateManagement &&
-            a.recruitmentStatus.interviewNotice.status === 'done' &&
-            a.recruitmentStatus.interviewResult.status === 'pending'
+            !a.isSeparateManagement && interviewStage && finalStage &&
+            isStageDone(a.stageRecords, interviewStage) && !isStageDone(a.stageRecords, finalStage)
           ).length;
           const passed = jobApplicants.filter(a =>
-            !a.isSeparateManagement &&
-            a.recruitmentStatus.interviewResult.status === 'pass'
+            !a.isSeparateManagement && !!finalStage && isStagePassed(a.stageRecords, finalStage)
           ).length;
 
           const jobStatus = getJobPostingStatus(job);
