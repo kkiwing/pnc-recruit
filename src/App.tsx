@@ -9,6 +9,7 @@ import AdminLayout from "@/components/layout/AdminLayout";
 import Dashboard from "@/pages/Dashboard";
 import JobPostingList from "@/pages/JobPostingList";
 import JobPostingDetail from "@/pages/JobPostingDetail";
+import ProcessManagement from "@/pages/ProcessManagement";
 import ApplicantList from "@/pages/ApplicantList";
 import ApplicantDetail from "@/pages/ApplicantDetail";
 import SeparateManagement from "@/pages/SeparateManagement";
@@ -30,6 +31,7 @@ const App = () => (
                 <Route path="/" element={<Dashboard />} />
                 <Route path="/postings" element={<JobPostingList />} />
                 <Route path="/postings/:id" element={<JobPostingDetail />} />
+                <Route path="/process-management" element={<ProcessManagement />} />
                 <Route path="/applicants" element={<ApplicantList />} />
                 <Route path="/applicants/:id" element={<ApplicantDetail />} />
                 <Route path="/separate-management" element={<SeparateManagement />} />

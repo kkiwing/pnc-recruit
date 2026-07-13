@@ -1,10 +1,11 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Briefcase, Calendar, Users, UserX } from 'lucide-react';
+import { LayoutDashboard, Briefcase, Calendar, Users, UserX, Workflow } from 'lucide-react';
 
 const NAV_ITEMS = [
   { to: '/', icon: LayoutDashboard, label: '대시보드' },
   { to: '/postings', icon: Briefcase, label: '공고 관리' },
+  { to: '/process-management', icon: Workflow, label: '프로세스 관리' },
   { to: '/applicants', icon: Users, label: '지원자 목록' },
   { to: '/separate-management', icon: UserX, label: '별도 관리' },
   { to: '/interviews', icon: Calendar, label: '면접 일정' },
