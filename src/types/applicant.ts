@@ -160,13 +160,28 @@ function findStageStatus(stage: Stage, statusId: string) {
   return stage.statuses.find(s => s.id === statusId);
 }
 
+function getDefaultStageStatus(stage: Stage) {
+  return stage.statuses.find(s => s.isDefault) ?? stage.statuses[0];
+}
+
+/**
+ * stageRecords에서 해당 단계의 상태를 조회한다. 기록이 아예 없는 경우(예: 지원자
+ * 생성 이후 새로 추가된 단계)나, 기록은 있지만 참조 중인 statusId가 더 이상
+ * 존재하지 않는 경우(프로세스 관리에서 해당 상태를 삭제)에는 단계의 기본 상태로
+ * 안전하게 폴백한다. 모든 단계 관련 파생 함수는 이 함수를 거쳐야 한다.
+ */
+export function getStageRecordStatus(stageRecords: StageRecord[], stage: Stage) {
+  const record = stageRecords.find(r => r.stageId === stage.id);
+  const status = record && findStageStatus(stage, record.statusId);
+  return status ?? getDefaultStageStatus(stage);
+}
+
 /** 순서상 마지막으로 '대기(기본)'가 아닌 단계, 없으면 첫 단계를 현재 단계로 반환 */
 export function getCurrentStage(stageRecords: StageRecord[], stages: Stage[]): Stage | undefined {
   const sorted = [...stages].sort((a, b) => a.order - b.order);
   let current: Stage | undefined = sorted[0];
   for (const stage of sorted) {
-    const record = stageRecords.find(r => r.stageId === stage.id);
-    const status = record && findStageStatus(stage, record.statusId);
+    const status = getStageRecordStatus(stageRecords, stage);
     if (status && !status.isDefault) {
       current = stage;
     }
@@ -176,26 +191,19 @@ export function getCurrentStage(stageRecords: StageRecord[], stages: Stage[]): S
 
 /** 해당 단계가 기본(대기) 상태를 벗어나 처리되었는지 여부 (중간 상태 포함) */
 export function isStageDone(stageRecords: StageRecord[], stage: Stage): boolean {
-  const record = stageRecords.find(r => r.stageId === stage.id);
-  const status = record && findStageStatus(stage, record.statusId);
+  const status = getStageRecordStatus(stageRecords, stage);
   return !!status && !status.isDefault;
 }
 
 /** 해당 단계가 마지막(완료/결과) 상태까지 도달했는지 여부 — '필요'처럼 중간 상태는 제외 */
 export function isStageCompleted(stageRecords: StageRecord[], stage: Stage): boolean {
   const lastStatus = stage.statuses[stage.statuses.length - 1];
-  const record = stageRecords.find(r => r.stageId === stage.id);
-  return !!lastStatus && record?.statusId === lastStatus.id;
+  const status = getStageRecordStatus(stageRecords, stage);
+  return !!lastStatus && status?.id === lastStatus.id;
 }
 
 /** 해당 단계의 현재 상태 이름이 "합격"인지 여부 */
 export function isStagePassed(stageRecords: StageRecord[], stage: Stage): boolean {
-  const record = stageRecords.find(r => r.stageId === stage.id);
-  const status = record && findStageStatus(stage, record.statusId);
+  const status = getStageRecordStatus(stageRecords, stage);
   return status?.name === '합격';
-}
-
-export function getStageRecordStatus(stageRecords: StageRecord[], stage: Stage) {
-  const record = stageRecords.find(r => r.stageId === stage.id);
-  return record && findStageStatus(stage, record.statusId);
 }
