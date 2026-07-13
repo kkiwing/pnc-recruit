@@ -6,6 +6,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Switch } from '@/components/ui/switch';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import {
@@ -18,7 +19,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Users, UserX, ChevronRight, Plus, Pencil, Trash2, MoreVertical, Eye, EyeOff, Search, SlidersHorizontal } from 'lucide-react';
+import { Users, UserX, ChevronRight, Plus, Pencil, Trash2, MoreVertical, Search, SlidersHorizontal } from 'lucide-react';
 import { JobPosting, JobPostingStatus, EmploymentType, getJobPostingStatus, JOB_POSTING_STATUS_COLORS } from '@/types/jobPosting';
 import JobPostingFormModal from '@/components/jobPosting/JobPostingFormModal';
 
@@ -34,7 +35,7 @@ const SORT_LABELS: Record<SortOption, string> = {
 };
 
 export default function JobPostingListPage() {
-  const { jobPostings, deleteJobPosting } = useJobPostings();
+  const { jobPostings, deleteJobPosting, updateJobPosting } = useJobPostings();
   const { applicants, deleteApplicantsByJobPostingId } = useApplicants();
   const navigate = useNavigate();
   const [showForm, setShowForm] = useState(false);
@@ -208,16 +209,25 @@ export default function JobPostingListPage() {
                         {jobStatus}
                       </span>
                       <Badge variant="outline" className="text-xs">{job.careerType}</Badge>
-                      <span className="text-xs text-muted-foreground">{job.department}</span>
-                      <span className={`inline-flex items-center gap-1 text-xs ${job.isPublic ? 'text-emerald-600' : 'text-muted-foreground'}`}>
-                        {job.isPublic ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
-                        {job.isPublic ? '공개' : '비공개'}
+                      <Badge variant="outline" className="text-xs">{job.employmentType}</Badge>
+                      <span className="text-xs text-muted-foreground">
+                        {job.department}{job.position ? ` · ${job.position}` : ''}
                       </span>
                     </div>
                     <h3 className="font-semibold text-sm mb-1">{job.title}</h3>
                     <p className="text-xs text-muted-foreground">게시기간 {job.startDate} ~ {job.endDate}</p>
                   </div>
                   <div className="flex items-center gap-6 mr-4">
+                    <div
+                      className="flex items-center gap-2"
+                      onClick={e => e.stopPropagation()}
+                    >
+                      <Switch
+                        checked={job.isPublic}
+                        onCheckedChange={checked => updateJobPosting(job.id, { isPublic: checked })}
+                      />
+                      <span className="text-xs text-muted-foreground w-10">{job.isPublic ? '공개' : '비공개'}</span>
+                    </div>
                     <div className="flex items-center gap-1.5 text-sm">
                       <Users className="w-4 h-4 text-primary" />
                       <span className="font-medium">{activeCount}</span>
@@ -253,6 +263,9 @@ export default function JobPostingListPage() {
                     </DropdownMenu>
                   </div>
                   <ChevronRight className="w-5 h-5 text-muted-foreground" />
+                </div>
+                <div className="mt-3 pt-2 border-t text-[11px] text-muted-foreground">
+                  created {job.createdAt.slice(0, 10)} by {job.createdBy} · updated {job.updatedAt.slice(0, 10)} by {job.updatedBy}
                 </div>
               </CardContent>
             </Card>
