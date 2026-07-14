@@ -103,7 +103,7 @@ export default function DashboardPage() {
                         {jobStatus}
                       </Badge>
                     </td>
-                    <td className="text-xs">{job.startDate} ~ {job.endDate}</td>
+                    <td className="text-xs whitespace-nowrap">{job.startDate} ~ {job.endDate}</td>
                     <td className="text-center font-medium">{activeCount}</td>
                     <td className="text-center font-medium">{interviewPending}</td>
                     <td className="text-center font-medium text-success">{passed}</td>

@@ -187,7 +187,7 @@ export default function InterviewSchedulePage() {
                     <td className="font-medium">{item.name}</td>
                     <td>{item.team}</td>
                     <td className="text-xs max-w-[200px] truncate">{item.jobTitle}</td>
-                    <td>{item.date}</td>
+                    <td className="whitespace-nowrap">{item.date}</td>
                     <td>{item.time}</td>
                     <td>{item.interviewer}</td>
                     <td className="text-xs">{item.phone}</td>
@@ -229,7 +229,7 @@ export default function InterviewSchedulePage() {
                     <td className="font-medium">{item.name}</td>
                     <td>{item.team}</td>
                     <td className="text-xs max-w-[200px] truncate">{item.jobTitle}</td>
-                    <td className="text-warning font-medium">{item.date}</td>
+                    <td className="text-warning font-medium whitespace-nowrap">{item.date}</td>
                     <td>{item.time}</td>
                     <td>{item.interviewer}</td>
                     <td className="text-xs">{item.phone}</td>
@@ -267,7 +267,7 @@ export default function InterviewSchedulePage() {
                     <td className="font-medium">{item.name}</td>
                     <td>{item.team}</td>
                     <td className="text-xs max-w-[200px] truncate">{item.jobTitle}</td>
-                    <td>{item.date}</td>
+                    <td className="whitespace-nowrap">{item.date}</td>
                     <td>{item.interviewer}</td>
                     <td>
                       <Badge variant={item.result === 'pass' ? 'success' : 'destructive'} className="text-xs">

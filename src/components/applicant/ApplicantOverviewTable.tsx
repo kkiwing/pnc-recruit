@@ -161,9 +161,9 @@ export default function ApplicantOverviewTable({ applicants, mode = 'active' }: 
                   <th className="w-48">당시 진행 단계</th>
                 </>
               )}
-              <th className="w-24">지원일</th>
-              <th className="w-12">메모</th>
-              <th className="w-16">관리</th>
+              <th className="w-28">지원일</th>
+              <th className="w-12 whitespace-nowrap">메모</th>
+              <th className="w-16 whitespace-nowrap">관리</th>
             </tr>
           </thead>
           <tbody>
@@ -244,7 +244,7 @@ export default function ApplicantOverviewTable({ applicants, mode = 'active' }: 
                       </td>
                     </>
                   )}
-                  <td className="text-xs">{applicant.applicationDate}</td>
+                  <td className="text-xs whitespace-nowrap">{applicant.applicationDate}</td>
                   <td>
                     {applicant.memo && (
                       <Tooltip>
