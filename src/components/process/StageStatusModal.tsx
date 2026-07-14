@@ -3,6 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Stage, StageStatus, STAGE_COLOR_PALETTE } from '@/types/jobPosting';
 import { Plus, Trash2, ChevronUp, ChevronDown, Check } from 'lucide-react';
 
@@ -111,29 +112,39 @@ export default function StageStatusModal({ open, onClose, stage, onSave }: Props
                   />
                 ))}
               </div>
-              {status.isDefault ? (
-                <Badge variant="outline" className="text-[10px] shrink-0">기본</Badge>
-              ) : (
-                <button
-                  type="button"
-                  className="text-[10px] text-muted-foreground hover:text-foreground shrink-0 underline"
-                  onClick={() => setDefault(status.id)}
-                >
-                  기본으로
-                </button>
-              )}
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  {status.isDefault ? (
+                    <Badge variant="outline" className="text-[10px] shrink-0">시작 상태</Badge>
+                  ) : (
+                    <button
+                      type="button"
+                      className="text-[10px] text-muted-foreground hover:text-foreground shrink-0 underline"
+                      onClick={() => setDefault(status.id)}
+                    >
+                      시작 상태로
+                    </button>
+                  )}
+                </TooltipTrigger>
+                <TooltipContent>지원자가 이 단계에 도착하면 자동으로 갖는 상태</TooltipContent>
+              </Tooltip>
               {stage.stageType === 'normal' && (
-                status.isCompletion ? (
-                  <Badge variant="success" className="text-[10px] shrink-0">완료</Badge>
-                ) : (
-                  <button
-                    type="button"
-                    className="text-[10px] text-muted-foreground hover:text-foreground shrink-0 underline"
-                    onClick={() => setCompletion(status.id)}
-                  >
-                    완료로
-                  </button>
-                )
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    {status.isCompletion ? (
+                      <Badge variant="success" className="text-[10px] shrink-0">완료</Badge>
+                    ) : (
+                      <button
+                        type="button"
+                        className="text-[10px] text-muted-foreground hover:text-foreground shrink-0 underline"
+                        onClick={() => setCompletion(status.id)}
+                      >
+                        완료로
+                      </button>
+                    )}
+                  </TooltipTrigger>
+                  <TooltipContent>이 상태가 되면 단계 완료로 집계</TooltipContent>
+                </Tooltip>
               )}
               {stage.stageType === 'result' && (
                 <>
