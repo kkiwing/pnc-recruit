@@ -13,7 +13,7 @@ export default function SeparateManagementPage() {
         <p className="text-sm text-muted-foreground">미응시 / 중도 하차 인원 ({separateApplicants.length}명)</p>
       </div>
 
-      <div className="bg-card rounded-lg border shadow-sm">
+      <div className="card-elevated">
         <ApplicantTable applicants={separateApplicants} showSeparateActions />
       </div>
     </div>
