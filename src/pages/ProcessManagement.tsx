@@ -4,6 +4,7 @@ import { useApplicants } from '@/context/ApplicantContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import {
   AlertDialog,
@@ -122,19 +123,18 @@ export default function ProcessManagementPage() {
       </div>
 
       <div className="mb-5 max-w-md">
-        <select
-          className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
-          value={selectedId}
-          onChange={e => setSelectedId(e.target.value)}
-        >
-          {jobPostings.map(j => <option key={j.id} value={j.id}>{j.title}</option>)}
-        </select>
+        <Select value={selectedId} onValueChange={setSelectedId}>
+          <SelectTrigger><SelectValue /></SelectTrigger>
+          <SelectContent>
+            {jobPostings.map(j => <SelectItem key={j.id} value={j.id}>{j.title}</SelectItem>)}
+          </SelectContent>
+        </Select>
       </div>
 
       {posting && (
         <div className="space-y-3">
           {sortedStages.map((stage, i) => (
-            <div key={stage.id} className="bg-card rounded-lg border shadow-sm">
+            <div key={stage.id} className="card-elevated">
               <div className="flex items-center gap-3 p-4">
                 <div className="flex flex-col gap-0.5">
                   <button type="button" className="text-muted-foreground hover:text-foreground disabled:opacity-30" disabled={i === 0} onClick={() => moveStage(i, -1)}>
@@ -150,24 +150,22 @@ export default function ProcessManagementPage() {
                   value={stage.name}
                   onChange={e => renameStage(stage.id, e.target.value)}
                 />
-                <select
-                  className="flex h-9 rounded-md border border-input bg-background px-2 text-xs"
-                  value={stage.stageType}
-                  onChange={e => changeStageType(stage.id, e.target.value as StageType)}
-                >
-                  {Object.entries(STAGE_TYPE_LABELS).map(([value, label]) => (
-                    <option key={value} value={value}>구분: {label}</option>
-                  ))}
-                </select>
-                <select
-                  className="flex h-9 rounded-md border border-input bg-background px-2 text-xs"
-                  value={stage.completionForm}
-                  onChange={e => changeCompletionForm(stage.id, e.target.value as CompletionFormType)}
-                >
-                  {Object.entries(COMPLETION_FORM_LABELS).map(([value, label]) => (
-                    <option key={value} value={value}>완료 입력폼: {label}</option>
-                  ))}
-                </select>
+                <Select value={stage.stageType} onValueChange={v => changeStageType(stage.id, v as StageType)}>
+                  <SelectTrigger className="w-auto h-9 text-xs"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {Object.entries(STAGE_TYPE_LABELS).map(([value, label]) => (
+                      <SelectItem key={value} value={value}>구분: {label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Select value={stage.completionForm} onValueChange={v => changeCompletionForm(stage.id, v as CompletionFormType)}>
+                  <SelectTrigger className="w-auto h-9 text-xs"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {Object.entries(COMPLETION_FORM_LABELS).map(([value, label]) => (
+                      <SelectItem key={value} value={value}>완료 입력폼: {label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
                 <div className="flex items-center gap-1 flex-wrap">
                   {stage.statuses.map(status => (
                     <StatusBadge key={status.id} color={getStageColorHex(status.color)} className="text-[11px] px-1.5 py-0.5">
@@ -202,7 +200,7 @@ export default function ProcessManagementPage() {
           ))}
 
           {showNewStage ? (
-            <div className="bg-card rounded-lg border shadow-sm p-4 flex items-center gap-2">
+            <div className="card-elevated p-4 flex items-center gap-2">
               <Input
                 className="max-w-xs h-9"
                 value={newStageName}
@@ -210,24 +208,22 @@ export default function ProcessManagementPage() {
                 placeholder="새 단계 이름"
                 autoFocus
               />
-              <select
-                className="flex h-9 rounded-md border border-input bg-background px-2 text-xs"
-                value={newStageType}
-                onChange={e => setNewStageType(e.target.value as StageType)}
-              >
-                {Object.entries(STAGE_TYPE_LABELS).map(([value, label]) => (
-                  <option key={value} value={value}>구분: {label}</option>
-                ))}
-              </select>
-              <select
-                className="flex h-9 rounded-md border border-input bg-background px-2 text-xs"
-                value={newStageForm}
-                onChange={e => setNewStageForm(e.target.value as CompletionFormType)}
-              >
-                {Object.entries(COMPLETION_FORM_LABELS).map(([value, label]) => (
-                  <option key={value} value={value}>완료 입력폼: {label}</option>
-                ))}
-              </select>
+              <Select value={newStageType} onValueChange={v => setNewStageType(v as StageType)}>
+                <SelectTrigger className="w-auto h-9 text-xs"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {Object.entries(STAGE_TYPE_LABELS).map(([value, label]) => (
+                    <SelectItem key={value} value={value}>구분: {label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select value={newStageForm} onValueChange={v => setNewStageForm(v as CompletionFormType)}>
+                <SelectTrigger className="w-auto h-9 text-xs"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {Object.entries(COMPLETION_FORM_LABELS).map(([value, label]) => (
+                    <SelectItem key={value} value={value}>완료 입력폼: {label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               <Button size="sm" onClick={addStage}>추가</Button>
               <Button size="sm" variant="outline" onClick={() => setShowNewStage(false)}>취소</Button>
             </div>
