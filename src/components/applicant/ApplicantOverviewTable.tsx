@@ -6,6 +6,7 @@ import { useJobPostings } from '@/context/JobPostingContext';
 import { Stage, getStageColorHex, getCompletionStatus } from '@/types/jobPosting';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Button } from '@/components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Trash2, MoreHorizontal, MessageSquare, Clock, Eye } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent } from '@/components/ui/dropdown-menu';
 import CompletionDateModal from './CompletionDateModal';
@@ -162,15 +163,17 @@ export default function ApplicantOverviewTable({ applicants }: Props) {
                   </td>
                   <td>
                     {posting && activeStage ? (
-                      <select
-                        className="flex h-8 w-full rounded-md border border-input bg-background px-2 text-xs"
+                      <Select
                         value={activeStage.id}
-                        onChange={e => setActiveStageByApplicant(prev => ({ ...prev, [applicant.id]: e.target.value }))}
+                        onValueChange={v => setActiveStageByApplicant(prev => ({ ...prev, [applicant.id]: v }))}
                       >
-                        {sortedStages.map(stage => (
-                          <option key={stage.id} value={stage.id}>{stage.name}</option>
-                        ))}
-                      </select>
+                        <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {sortedStages.map(stage => (
+                            <SelectItem key={stage.id} value={stage.id}>{stage.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     ) : '-'}
                   </td>
                   <td>

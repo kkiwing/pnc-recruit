@@ -80,7 +80,7 @@ export default function ApplicantPipelineView({ applicants, jobPosting }: Props)
         {columns.map(({ stage, applicants: stageApplicants }) => (
           <div
             key={stage.id}
-            className={`flex-shrink-0 w-64 rounded-lg border bg-muted/30 transition-colors ${dragOverStageId === stage.id ? 'border-primary bg-primary/5' : ''}`}
+            className={`flex-shrink-0 w-64 rounded-lg bg-muted/30 transition-shadow ${dragOverStageId === stage.id ? 'ring-2 ring-ring bg-accent' : ''}`}
             onDragOver={e => { e.preventDefault(); setDragOverStageId(stage.id); }}
             onDragLeave={() => setDragOverStageId(prev => prev === stage.id ? null : prev)}
             onDrop={e => handleDrop(e, stage)}
@@ -100,7 +100,7 @@ export default function ApplicantPipelineView({ applicants, jobPosting }: Props)
                     key={applicant.id}
                     draggable
                     onDragStart={e => e.dataTransfer.setData('text/plain', applicant.id)}
-                    className="bg-card border rounded-md p-2.5 cursor-grab active:cursor-grabbing hover:shadow-sm"
+                    className="card-soft rounded-md p-2.5 cursor-grab active:cursor-grabbing"
                   >
                     <div className="flex items-start justify-between gap-1">
                       <button

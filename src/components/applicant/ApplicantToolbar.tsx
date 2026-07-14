@@ -2,6 +2,7 @@ import React from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Search, SlidersHorizontal, X, List, KanbanSquare } from 'lucide-react';
 import { JobPosting, Stage, StageStatus } from '@/types/jobPosting';
@@ -81,16 +82,15 @@ export default function ApplicantToolbar({
           />
         </div>
 
-        <select
-          className="flex h-10 rounded-md border border-input bg-background px-3 text-sm max-w-[220px]"
-          value={filters.jobId}
-          onChange={e => onFiltersChange({ jobId: e.target.value, team: 'all', stageId: 'all', statusId: 'all' })}
-        >
-          <option value="all">전체 공고</option>
-          {jobPostings.map(job => (
-            <option key={job.id} value={job.id}>{job.title}</option>
-          ))}
-        </select>
+        <Select value={filters.jobId} onValueChange={v => onFiltersChange({ jobId: v, team: 'all', stageId: 'all', statusId: 'all' })}>
+          <SelectTrigger className="max-w-[220px]"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">전체 공고</SelectItem>
+            {jobPostings.map(job => (
+              <SelectItem key={job.id} value={job.id}>{job.title}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
 
         <Popover>
           <PopoverTrigger asChild>
@@ -103,65 +103,69 @@ export default function ApplicantToolbar({
           <PopoverContent align="start" className="w-64 space-y-3">
             <div>
               <label className="text-xs text-muted-foreground">팀</label>
-              <select
-                className="mt-1 flex h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
-                value={filters.team}
-                onChange={e => onFiltersChange({ team: e.target.value })}
-              >
-                <option value="all">전체</option>
-                {teamOptions.map(team => <option key={team} value={team}>{team}</option>)}
-              </select>
+              <Select value={filters.team} onValueChange={v => onFiltersChange({ team: v })}>
+                <SelectTrigger className="mt-1 h-9 text-sm"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">전체</SelectItem>
+                  {teamOptions.map(team => <SelectItem key={team} value={team}>{team}</SelectItem>)}
+                </SelectContent>
+              </Select>
             </div>
             <div>
               <label className="text-xs text-muted-foreground">
                 현재 단계{!isJobSelected && ' (공고 선택 시 사용 가능)'}
               </label>
-              <select
-                className="mt-1 flex h-9 w-full rounded-md border border-input bg-background px-2 text-sm disabled:opacity-50"
+              <Select
                 value={filters.stageId}
                 disabled={!isJobSelected}
-                onChange={e => onFiltersChange({ stageId: e.target.value, statusId: 'all' })}
+                onValueChange={v => onFiltersChange({ stageId: v, statusId: 'all' })}
               >
-                <option value="all">전체</option>
-                {selectedJobStages.map(stage => (
-                  <option key={stage.id} value={stage.id}>{stage.name}</option>
-                ))}
-              </select>
+                <SelectTrigger className="mt-1 h-9 text-sm"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">전체</SelectItem>
+                  {selectedJobStages.map(stage => (
+                    <SelectItem key={stage.id} value={stage.id}>{stage.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div>
               <label className="text-xs text-muted-foreground">
                 상태{filters.stageId === 'all' && isJobSelected && ' (단계 선택 시 사용 가능)'}
               </label>
-              <select
-                className="mt-1 flex h-9 w-full rounded-md border border-input bg-background px-2 text-sm disabled:opacity-50"
+              <Select
                 value={filters.statusId}
                 disabled={filters.stageId === 'all'}
-                onChange={e => onFiltersChange({ statusId: e.target.value })}
+                onValueChange={v => onFiltersChange({ statusId: v })}
               >
-                <option value="all">전체</option>
-                {statusOptionsForSelectedStage.map(status => (
-                  <option key={status.id} value={status.id}>{status.name}</option>
-                ))}
-              </select>
+                <SelectTrigger className="mt-1 h-9 text-sm"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">전체</SelectItem>
+                  {statusOptionsForSelectedStage.map(status => (
+                    <SelectItem key={status.id} value={status.id}>{status.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </PopoverContent>
         </Popover>
 
-        <select
-          className="flex h-10 rounded-md border border-input bg-background px-3 text-sm ml-auto"
-          value={sortBy}
-          onChange={e => onSortByChange(e.target.value as ApplicantSortOption)}
-        >
-          {Object.entries(SORT_LABELS).map(([value, label]) => (
-            <option key={value} value={value}>{label}</option>
-          ))}
-        </select>
+        <Select value={sortBy} onValueChange={v => onSortByChange(v as ApplicantSortOption)}>
+          <SelectTrigger className="w-auto ml-auto text-sm">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {Object.entries(SORT_LABELS).map(([value, label]) => (
+              <SelectItem key={value} value={value}>{label}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
 
         <ToggleGroup
           type="single"
           value={viewMode}
           onValueChange={value => value && onViewModeChange(value as ApplicantViewMode)}
-          className="border rounded-md p-0.5"
+          className="card-soft rounded-md p-0.5"
         >
           <ToggleGroupItem value="pipeline" size="sm" className="gap-1.5 px-2.5 text-xs data-[state=on]:bg-accent">
             <KanbanSquare className="w-3.5 h-3.5" /> 파이프라인

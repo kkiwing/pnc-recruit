@@ -6,6 +6,7 @@ import ApplicantPipelineView from '@/components/applicant/ApplicantPipelineView'
 import ApplicantToolbar, { ApplicantFilters, ApplicantSortOption, ApplicantViewMode, DEFAULT_APPLICANT_FILTERS } from '@/components/applicant/ApplicantToolbar';
 import ApplicantFormModal from '@/components/applicant/ApplicantFormModal';
 import { Button } from '@/components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { KanbanSquare, Plus } from 'lucide-react';
 import { getCurrentStage, getStageRecordStatus } from '@/types/applicant';
 
@@ -107,25 +108,23 @@ export default function ApplicantListPage() {
       />
 
       {viewMode === 'list' ? (
-        <div className="bg-card rounded-lg border shadow-sm">
+        <div className="card-elevated">
           <ApplicantOverviewTable applicants={sorted} />
         </div>
       ) : selectedJob ? (
         <ApplicantPipelineView applicants={sorted} jobPosting={selectedJob} />
       ) : (
-        <div className="bg-card rounded-lg border shadow-sm py-16 flex flex-col items-center gap-3">
+        <div className="card-elevated py-16 flex flex-col items-center gap-3">
           <KanbanSquare className="w-8 h-8 text-muted-foreground" />
           <p className="text-sm text-muted-foreground">공고를 선택하면 파이프라인으로 볼 수 있어요.</p>
-          <select
-            className="flex h-10 rounded-md border border-input bg-background px-3 text-sm max-w-[280px]"
-            value=""
-            onChange={e => e.target.value && setFilters(prev => ({ ...prev, jobId: e.target.value, team: 'all', stageId: 'all', statusId: 'all' }))}
-          >
-            <option value="" disabled>공고 선택</option>
-            {jobPostings.map(job => (
-              <option key={job.id} value={job.id}>{job.title}</option>
-            ))}
-          </select>
+          <Select onValueChange={v => setFilters(prev => ({ ...prev, jobId: v, team: 'all', stageId: 'all', statusId: 'all' }))}>
+            <SelectTrigger className="max-w-[280px]"><SelectValue placeholder="공고 선택" /></SelectTrigger>
+            <SelectContent>
+              {jobPostings.map(job => (
+                <SelectItem key={job.id} value={job.id}>{job.title}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
       )}
 
