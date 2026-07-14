@@ -3,13 +3,15 @@ import { useNavigate } from 'react-router-dom';
 import { Applicant, REGION_INTERVIEW_FEE, SEPARATE_REASONS, SeparateManagementReason, StageRecord, getCurrentStage, getStageRecordStatus } from '@/types/applicant';
 import { useApplicants } from '@/context/ApplicantContext';
 import { useJobPostings } from '@/context/JobPostingContext';
-import { JobPosting, Stage, getStageColorClass, getCompletionStatus } from '@/types/jobPosting';
+import { JobPosting, Stage, getStageColorHex, getCompletionStatus } from '@/types/jobPosting';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Button } from '@/components/ui/button';
 import { Pencil, Trash2, MoreHorizontal, MessageSquare, Clock } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent } from '@/components/ui/dropdown-menu';
 import CompletionDateModal from './CompletionDateModal';
 import ApplicantFormModal from './ApplicantFormModal';
+import StatusSelect from '@/components/common/StatusSelect';
+import StatusBadge from '@/components/common/StatusBadge';
 
 interface Props {
   applicants: Applicant[];
@@ -30,16 +32,11 @@ function StageSelect({ stage, stageRecords, onChange, onEditMeta }: {
   const hasMetaInfo = meta && (meta.startDate || meta.interviewer);
 
   const select = (
-    <select
-      className={`text-xs rounded px-1.5 py-1 border-0 cursor-pointer font-medium text-center appearance-none ${getStageColorClass(status?.color ?? 'gray')}`}
+    <StatusSelect
       value={status?.id ?? ''}
-      onChange={e => onChange(e.target.value)}
-      style={{ minWidth: '56px' }}
-    >
-      {stage.statuses.map(s => (
-        <option key={s.id} value={s.id}>{s.name}</option>
-      ))}
-    </select>
+      options={stage.statuses.map(s => ({ id: s.id, name: s.name, color: getStageColorHex(s.color) }))}
+      onChange={onChange}
+    />
   );
 
   if (!hasMetaInfo) {
@@ -47,7 +44,7 @@ function StageSelect({ stage, stageRecords, onChange, onEditMeta }: {
   }
 
   return (
-    <div className="inline-flex items-center gap-1">
+    <div className="inline-flex items-center gap-1.5">
       {select}
       <Tooltip>
         <TooltipTrigger asChild>
@@ -56,7 +53,7 @@ function StageSelect({ stage, stageRecords, onChange, onEditMeta }: {
             className="text-muted-foreground hover:text-foreground"
             onClick={onEditMeta}
           >
-            <Clock className="w-3 h-3" />
+            <Clock className="w-3.5 h-3.5" />
           </button>
         </TooltipTrigger>
         <TooltipContent side="top" className="text-xs space-y-1 max-w-xs">
@@ -224,9 +221,9 @@ export default function ApplicantTable({ applicants, showSeparateActions, jobPos
                   ) : (
                     <td className="text-xs">
                       {currentStage && currentStatus ? (
-                        <span className={`px-2 py-0.5 rounded font-medium whitespace-nowrap ${getStageColorClass(currentStatus.color)}`}>
+                        <StatusBadge color={getStageColorHex(currentStatus.color)}>
                           {currentStage.name} · {currentStatus.name}
-                        </span>
+                        </StatusBadge>
                       ) : '-'}
                     </td>
                   )}

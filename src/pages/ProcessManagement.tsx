@@ -15,7 +15,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Stage, StageType, StageStatus, CompletionFormType, AutoSendConfig, getStageColorClass } from '@/types/jobPosting';
+import { Stage, StageType, StageStatus, CompletionFormType, AutoSendConfig, getStageColorHex } from '@/types/jobPosting';
+import StatusBadge from '@/components/common/StatusBadge';
 import { Plus, Trash2, ChevronUp, ChevronDown, Settings2, AlertTriangle } from 'lucide-react';
 import StageStatusModal from '@/components/process/StageStatusModal';
 import AutoSendPanel from '@/components/process/AutoSendPanel';
@@ -169,13 +170,13 @@ export default function ProcessManagementPage() {
                 </select>
                 <div className="flex items-center gap-1 flex-wrap">
                   {stage.statuses.map(status => (
-                    <span key={status.id} className={`text-[11px] px-1.5 py-0.5 rounded ${getStageColorClass(status.color)}`}>
+                    <StatusBadge key={status.id} color={getStageColorHex(status.color)} className="text-[11px] px-1.5 py-0.5">
                       {status.name}
                       {status.isDefault ? ' (기본)' : ''}
                       {status.isCompletion ? ' (완료)' : ''}
                       {status.isPass ? ' (합격)' : ''}
                       {status.isFail ? ' (불합격)' : ''}
-                    </span>
+                    </StatusBadge>
                   ))}
                 </div>
                 <div className="ml-auto flex items-center gap-1 shrink-0">

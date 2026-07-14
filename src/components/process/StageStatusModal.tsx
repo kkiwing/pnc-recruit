@@ -3,7 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Stage, StageStatus, STAGE_COLOR_PALETTE, getStageColorClass } from '@/types/jobPosting';
+import { Stage, StageStatus, STAGE_COLOR_PALETTE } from '@/types/jobPosting';
 import { Plus, Trash2, ChevronUp, ChevronDown, Check } from 'lucide-react';
 
 interface Props {
@@ -106,7 +106,8 @@ export default function StageStatusModal({ open, onClose, stage, onSave }: Props
                     type="button"
                     title={swatch.label}
                     onClick={() => recolorStatus(status.id, swatch.id)}
-                    className={`w-5 h-5 rounded-full border-2 ${getStageColorClass(swatch.id).split(' ')[0]} ${status.color === swatch.id ? 'border-foreground' : 'border-transparent'}`}
+                    style={{ backgroundColor: swatch.hex }}
+                    className={`w-5 h-5 rounded-full border-2 ${status.color === swatch.id ? 'border-foreground' : 'border-transparent'}`}
                   />
                 ))}
               </div>
@@ -123,7 +124,7 @@ export default function StageStatusModal({ open, onClose, stage, onSave }: Props
               )}
               {stage.stageType === 'normal' && (
                 status.isCompletion ? (
-                  <Badge variant="outline" className="text-[10px] shrink-0 text-emerald-600 border-emerald-300">완료</Badge>
+                  <Badge variant="success" className="text-[10px] shrink-0">완료</Badge>
                 ) : (
                   <button
                     type="button"
@@ -137,7 +138,7 @@ export default function StageStatusModal({ open, onClose, stage, onSave }: Props
               {stage.stageType === 'result' && (
                 <>
                   {status.isPass ? (
-                    <Badge variant="outline" className="text-[10px] shrink-0 text-blue-600 border-blue-300">합격</Badge>
+                    <Badge variant="success" className="text-[10px] shrink-0">합격</Badge>
                   ) : (
                     <button
                       type="button"
@@ -148,7 +149,7 @@ export default function StageStatusModal({ open, onClose, stage, onSave }: Props
                     </button>
                   )}
                   {status.isFail ? (
-                    <Badge variant="outline" className="text-[10px] shrink-0 text-red-600 border-red-300">불합격</Badge>
+                    <Badge variant="destructive" className="text-[10px] shrink-0">불합격</Badge>
                   ) : (
                     <button
                       type="button"

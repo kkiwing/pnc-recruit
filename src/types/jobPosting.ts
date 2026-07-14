@@ -70,24 +70,25 @@ export interface JobPosting {
 export interface StageColorSwatch {
   id: string;
   label: string;
-  className: string;
+  /** 배지 배경색 (hex) — 텍스트 색은 getContrastTextColor로 자동 계산 */
+  hex: string;
 }
 
 export const STAGE_COLOR_PALETTE: StageColorSwatch[] = [
-  { id: 'gray', label: '회색', className: 'bg-muted text-muted-foreground' },
-  { id: 'orange', label: '주황', className: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300' },
-  { id: 'green', label: '초록', className: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300' },
-  { id: 'blue', label: '파랑', className: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300' },
-  { id: 'red', label: '빨강', className: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300' },
-  { id: 'purple', label: '보라', className: 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300' },
-  { id: 'pink', label: '분홍', className: 'bg-pink-100 text-pink-800 dark:bg-pink-900/30 dark:text-pink-300' },
-  { id: 'yellow', label: '노랑', className: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300' },
-  { id: 'teal', label: '청록', className: 'bg-teal-100 text-teal-800 dark:bg-teal-900/30 dark:text-teal-300' },
-  { id: 'indigo', label: '남색', className: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-300' },
+  { id: 'gray', label: '회색', hex: '#71717a' },
+  { id: 'orange', label: '주황', hex: '#f59e0b' },
+  { id: 'green', label: '초록', hex: '#10b981' },
+  { id: 'blue', label: '파랑', hex: '#3b82f6' },
+  { id: 'red', label: '빨강', hex: '#ef4444' },
+  { id: 'purple', label: '보라', hex: '#8b5cf6' },
+  { id: 'pink', label: '분홍', hex: '#ec4899' },
+  { id: 'yellow', label: '노랑', hex: '#eab308' },
+  { id: 'teal', label: '청록', hex: '#14b8a6' },
+  { id: 'indigo', label: '남색', hex: '#6366f1' },
 ];
 
-export function getStageColorClass(colorId: string): string {
-  return STAGE_COLOR_PALETTE.find(c => c.id === colorId)?.className ?? STAGE_COLOR_PALETTE[0].className;
+export function getStageColorHex(colorId: string): string {
+  return STAGE_COLOR_PALETTE.find(c => c.id === colorId)?.hex ?? STAGE_COLOR_PALETTE[0].hex;
 }
 
 /** stageType이 'result'인 단계들을 순서대로 반환 (합불을 판정하는 단계들) */
@@ -143,11 +144,6 @@ export function getJobPostingStatus(job: Pick<JobPosting, 'endDate'>, now: Date 
   const end = new Date(`${job.endDate}T23:59:59`);
   return now.getTime() > end.getTime() ? '종료' : '진행중';
 }
-
-export const JOB_POSTING_STATUS_COLORS: Record<JobPostingStatus, string> = {
-  '진행중': 'bg-emerald-100 text-emerald-800',
-  '종료': 'bg-muted text-muted-foreground',
-};
 
 export const DEFAULT_COVER_LETTER_QUESTION_TEXTS = [
   '지원 동기를 작성해주세요.',

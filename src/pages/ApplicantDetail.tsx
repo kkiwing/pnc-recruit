@@ -8,23 +8,24 @@ import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { FileAttachment, StageRecord, getStageRecordStatus } from '@/types/applicant';
-import { Stage, getStageColorClass } from '@/types/jobPosting';
+import { Stage, getStageColorHex } from '@/types/jobPosting';
 import { ArrowLeft, FileText, Upload, Trash2, Clock } from 'lucide-react';
 import CompletionDateModal from '@/components/applicant/CompletionDateModal';
+import StatusBadge from '@/components/common/StatusBadge';
+import { Badge } from '@/components/ui/badge';
 
 function StageBadge({ stage, stageRecords, onEditMeta }: { stage: Stage; stageRecords: StageRecord[]; onEditMeta: () => void }) {
   const status = getStageRecordStatus(stageRecords, stage);
   const record = stageRecords.find(r => r.stageId === stage.id);
-  const colorClass = getStageColorClass(status?.color ?? 'gray');
   const meta = record?.meta;
   const badge = (
-    <span className={`text-xs px-2 py-1 rounded font-medium whitespace-nowrap ${colorClass}`}>
+    <StatusBadge color={getStageColorHex(status?.color ?? 'gray')} className="px-2 py-1">
       {stage.name}: {status?.name ?? '-'}
-    </span>
+    </StatusBadge>
   );
   if (meta && (meta.startDate || meta.interviewer)) {
     return (
-      <div className="inline-flex items-center gap-1">
+      <div className="inline-flex items-center gap-1.5">
         <Tooltip>
           <TooltipTrigger asChild>{badge}</TooltipTrigger>
           <TooltipContent side="top" className="text-xs space-y-1 max-w-xs">
@@ -34,7 +35,7 @@ function StageBadge({ stage, stageRecords, onEditMeta }: { stage: Stage; stageRe
           </TooltipContent>
         </Tooltip>
         <button type="button" className="text-muted-foreground hover:text-foreground" onClick={onEditMeta}>
-          <Clock className="w-3 h-3" />
+          <Clock className="w-3.5 h-3.5" />
         </button>
       </div>
     );
@@ -111,9 +112,9 @@ export default function ApplicantDetailPage() {
             No.{applicant.no} · {applicant.team} · {jobPosting?.title ?? '(삭제된 공고)'}
           </p>
         </div>
-        <span className={`ml-auto text-xs px-2 py-1 rounded font-medium ${applicant.submissionStatus === '완료' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}>
+        <Badge variant={applicant.submissionStatus === '완료' ? 'success' : 'warning'} className="ml-auto">
           제출 {applicant.submissionStatus}
-        </span>
+        </Badge>
       </div>
 
       <div className="bg-card rounded-lg border shadow-sm p-5 mb-4">

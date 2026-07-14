@@ -3,12 +3,13 @@ import { useNavigate } from 'react-router-dom';
 import { Applicant, SEPARATE_REASONS, StageRecord, getCurrentStage, getStageRecordStatus } from '@/types/applicant';
 import { useApplicants } from '@/context/ApplicantContext';
 import { useJobPostings } from '@/context/JobPostingContext';
-import { Stage, getStageColorClass, getCompletionStatus } from '@/types/jobPosting';
+import { Stage, getStageColorHex, getCompletionStatus } from '@/types/jobPosting';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Button } from '@/components/ui/button';
 import { Trash2, MoreHorizontal, MessageSquare, Clock, Eye } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent } from '@/components/ui/dropdown-menu';
 import CompletionDateModal from './CompletionDateModal';
+import SharedStatusSelect from '@/components/common/StatusSelect';
 
 interface Props {
   applicants: Applicant[];
@@ -26,22 +27,17 @@ function StatusSelect({ stage, stageRecords, onChange, onEditMeta }: {
   const hasMetaInfo = meta && (meta.startDate || meta.interviewer);
 
   return (
-    <div className="inline-flex items-center gap-1">
-      <select
-        className={`text-xs rounded px-1.5 py-1 border-0 cursor-pointer font-medium text-center appearance-none ${getStageColorClass(status?.color ?? 'gray')}`}
+    <div className="inline-flex items-center gap-1.5">
+      <SharedStatusSelect
         value={status?.id ?? ''}
-        onChange={e => onChange(e.target.value)}
-        style={{ minWidth: '72px' }}
-      >
-        {stage.statuses.map(s => (
-          <option key={s.id} value={s.id}>{s.name}</option>
-        ))}
-      </select>
+        options={stage.statuses.map(s => ({ id: s.id, name: s.name, color: getStageColorHex(s.color) }))}
+        onChange={onChange}
+      />
       {hasMetaInfo && (
         <Tooltip>
           <TooltipTrigger asChild>
             <button type="button" className="text-muted-foreground hover:text-foreground" onClick={onEditMeta}>
-              <Clock className="w-3 h-3" />
+              <Clock className="w-3.5 h-3.5" />
             </button>
           </TooltipTrigger>
           <TooltipContent side="top" className="text-xs space-y-1 max-w-xs">

@@ -20,7 +20,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Users, UserX, ChevronRight, Plus, Pencil, Trash2, MoreVertical, Search, SlidersHorizontal } from 'lucide-react';
-import { JobPosting, JobPostingStatus, EmploymentType, getJobPostingStatus, JOB_POSTING_STATUS_COLORS, getInterviewStage, getFinalStage } from '@/types/jobPosting';
+import { JobPosting, JobPostingStatus, EmploymentType, getJobPostingStatus, getInterviewStage, getFinalStage } from '@/types/jobPosting';
 import { isStageDone, isStageCompleted, isStagePassed } from '@/types/applicant';
 import JobPostingFormModal from '@/components/jobPosting/JobPostingFormModal';
 
@@ -206,9 +206,9 @@ export default function JobPostingListPage() {
                 <div className="flex items-center justify-between">
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-1">
-                      <span className={`text-xs px-2 py-0.5 rounded font-medium ${JOB_POSTING_STATUS_COLORS[jobStatus]}`}>
+                      <Badge variant={jobStatus === '진행중' ? 'success' : 'secondary'} className="text-xs">
                         {jobStatus}
-                      </span>
+                      </Badge>
                       <Badge variant="outline" className="text-xs">{job.careerType}</Badge>
                       <Badge variant="outline" className="text-xs">{job.employmentType}</Badge>
                       <span className="text-xs text-muted-foreground">
@@ -243,7 +243,7 @@ export default function JobPostingListPage() {
                       <Badge variant="secondary" className="text-xs">면접 예정 {interviewPending}</Badge>
                     )}
                     {passed > 0 && (
-                      <Badge className="text-xs bg-emerald-100 text-emerald-800 hover:bg-emerald-200">합격 {passed}</Badge>
+                      <Badge variant="success" className="text-xs">합격 {passed}</Badge>
                     )}
                   </div>
                   <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>

@@ -3,8 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { useApplicants } from '@/context/ApplicantContext';
 import { useJobPostings } from '@/context/JobPostingContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { Briefcase, Users, UserCheck, Calendar, ChevronRight } from 'lucide-react';
-import { getJobPostingStatus, JOB_POSTING_STATUS_COLORS, getInterviewStage, getFinalStage } from '@/types/jobPosting';
+import { getJobPostingStatus, getInterviewStage, getFinalStage } from '@/types/jobPosting';
 import { isStageDone, isStageCompleted, isStagePassed } from '@/types/applicant';
 
 export default function DashboardPage() {
@@ -33,9 +34,9 @@ export default function DashboardPage() {
 
   const stats = [
     { label: '진행중 공고', value: openPostings, icon: Briefcase, color: 'text-primary' },
-    { label: '전체 지원자', value: totalApplicants, icon: Users, color: 'text-blue-600' },
-    { label: '면접 예정', value: totalInterviewPending, icon: Calendar, color: 'text-amber-600' },
-    { label: '최종 합격', value: totalPassed, icon: UserCheck, color: 'text-emerald-600' },
+    { label: '전체 지원자', value: totalApplicants, icon: Users, color: 'text-muted-foreground' },
+    { label: '면접 예정', value: totalInterviewPending, icon: Calendar, color: 'text-warning' },
+    { label: '최종 합격', value: totalPassed, icon: UserCheck, color: 'text-success' },
   ];
 
   return (
@@ -100,14 +101,14 @@ export default function DashboardPage() {
                     <td className="font-medium">{job.title}</td>
                     <td className="text-xs">{job.department}</td>
                     <td>
-                      <span className={`text-xs px-2 py-0.5 rounded font-medium ${JOB_POSTING_STATUS_COLORS[jobStatus]}`}>
+                      <Badge variant={jobStatus === '진행중' ? 'success' : 'secondary'}>
                         {jobStatus}
-                      </span>
+                      </Badge>
                     </td>
                     <td className="text-xs">{job.startDate} ~ {job.endDate}</td>
                     <td className="text-center font-medium">{activeCount}</td>
                     <td className="text-center font-medium">{interviewPending}</td>
-                    <td className="text-center font-medium text-emerald-600">{passed}</td>
+                    <td className="text-center font-medium text-success">{passed}</td>
                     <td className="text-center text-muted-foreground">{separateCount}</td>
                     <td><ChevronRight className="w-4 h-4 text-muted-foreground" /></td>
                   </tr>

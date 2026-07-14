@@ -2,11 +2,12 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Applicant, StageRecord, getCurrentStage, getStageRecordStatus } from '@/types/applicant';
 import { useApplicants } from '@/context/ApplicantContext';
-import { JobPosting, Stage, getStageColorClass, getCompletionStatus } from '@/types/jobPosting';
+import { JobPosting, Stage, getStageColorHex, getCompletionStatus } from '@/types/jobPosting';
 import { Button } from '@/components/ui/button';
 import { MoreHorizontal, ArrowRightLeft } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent } from '@/components/ui/dropdown-menu';
 import CompletionDateModal from './CompletionDateModal';
+import StatusBadge from '@/components/common/StatusBadge';
 
 interface Props {
   applicants: Applicant[];
@@ -134,9 +135,9 @@ export default function ApplicantPipelineView({ applicants, jobPosting }: Props)
                     <div className="flex items-center justify-between mt-1.5">
                       <span className="text-[11px] text-muted-foreground">{applicant.applicationDate}</span>
                       {status && (
-                        <span className={`text-[11px] px-1.5 py-0.5 rounded font-medium ${getStageColorClass(status.color)}`}>
+                        <StatusBadge color={getStageColorHex(status.color)} className="text-[11px] px-1.5 py-0.5">
                           {status.name}
-                        </span>
+                        </StatusBadge>
                       )}
                     </div>
                   </div>

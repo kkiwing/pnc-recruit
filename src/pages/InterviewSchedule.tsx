@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { useApplicants } from '@/context/ApplicantContext';
 import { useJobPostings } from '@/context/JobPostingContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { Calendar } from '@/components/ui/calendar';
 import { Calendar as CalendarIcon, Clock } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -137,9 +138,9 @@ export default function InterviewSchedulePage() {
                             <span className="text-xs bg-accent px-1.5 py-0.5 rounded">{interview.jobTitle}</span>
                             <span className="text-xs text-muted-foreground">담당: {interview.interviewer}</span>
                             {interview.result !== 'pending' && (
-                              <span className={`text-xs px-1.5 py-0.5 rounded ${interview.result === 'pass' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
+                              <Badge variant={interview.result === 'pass' ? 'success' : 'destructive'} className="text-xs">
                                 {interview.result === 'pass' ? '합격' : '불합격'}
-                              </span>
+                              </Badge>
                             )}
                           </div>
                         ))}
@@ -223,9 +224,9 @@ export default function InterviewSchedulePage() {
                     <td>{item.date}</td>
                     <td>{item.interviewer}</td>
                     <td>
-                      <span className={`text-xs px-2 py-0.5 rounded font-medium ${item.result === 'pass' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
+                      <Badge variant={item.result === 'pass' ? 'success' : 'destructive'} className="text-xs">
                         {item.result === 'pass' ? '합격' : '불합격'}
-                      </span>
+                      </Badge>
                     </td>
                   </tr>
                 ))}
