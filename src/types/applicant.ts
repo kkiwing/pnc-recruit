@@ -83,7 +83,6 @@ export interface Applicant {
   team: string;
   name: string;
   platform: string;
-  birthYear: string;
   gender: Gender;
   birthDate: string;
   email: string;
@@ -222,4 +221,9 @@ export function getSeparationStage(applicant: Pick<Applicant, 'stageRecords' | '
     if (stage) return stage;
   }
   return getCurrentStage(applicant.stageRecords, stages);
+}
+
+/** 생년월일(YYYY-MM-DD)에서 출생연도만 뽑아 표시용으로 쓴다. 별도 필드로 저장하지 않는다. */
+export function getBirthYear(birthDate: string): string {
+  return birthDate.slice(0, 4);
 }

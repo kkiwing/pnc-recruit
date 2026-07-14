@@ -978,7 +978,6 @@ function enrich(raw: RawApplicant): Applicant {
     team: raw.team,
     name: raw.name,
     platform: raw.platform,
-    birthYear: raw.birthYear,
     gender: buildGender(raw),
     birthDate: buildBirthDate(raw),
     email: raw.email,

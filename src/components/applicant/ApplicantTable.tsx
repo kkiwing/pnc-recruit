@@ -2,7 +2,7 @@
 // 제거했다. 추후 매트릭스 뷰 재도입을 검토할 수 있어 삭제하지 않고 보존한다.
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Applicant, REGION_INTERVIEW_FEE, SEPARATE_REASONS, SeparateManagementReason, StageRecord, getCurrentStage, getStageRecordStatus } from '@/types/applicant';
+import { Applicant, REGION_INTERVIEW_FEE, SEPARATE_REASONS, SeparateManagementReason, StageRecord, getBirthYear, getCurrentStage, getStageRecordStatus } from '@/types/applicant';
 import { useApplicants } from '@/context/ApplicantContext';
 import { useJobPostings } from '@/context/JobPostingContext';
 import { JobPosting, Stage, getStageColorHex, getCompletionStatus } from '@/types/jobPosting';
@@ -192,7 +192,7 @@ export default function ApplicantTable({ applicants, showSeparateActions, jobPos
                   </td>
                   <td className="text-xs">{applicant.applicationDate}</td>
                   <td className="text-xs">{applicant.platform}</td>
-                  <td className="text-xs">{applicant.birthYear}</td>
+                  <td className="text-xs">{getBirthYear(applicant.birthDate)}</td>
                   <td className="text-xs">{applicant.phone}</td>
                   <td>
                     <Tooltip>

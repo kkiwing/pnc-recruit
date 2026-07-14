@@ -26,7 +26,6 @@ export default function ApplicantFormModal({ open, onClose, editData, defaultJob
     team: editData?.team || '',
     name: editData?.name || '',
     platform: editData?.platform || '',
-    birthYear: editData?.birthYear || '',
     gender: editData?.gender || '남성',
     birthDate: editData?.birthDate || '',
     email: editData?.email || '',
@@ -137,10 +136,6 @@ export default function ApplicantFormModal({ open, onClose, editData, defaultJob
                 {PLATFORMS.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
               </SelectContent>
             </Select>
-          </div>
-          <div>
-            <Label>출생연도</Label>
-            <Input value={form.birthYear} onChange={e => handleChange('birthYear', e.target.value)} placeholder="1990" />
           </div>
           <div>
             <Label>이메일</Label>
