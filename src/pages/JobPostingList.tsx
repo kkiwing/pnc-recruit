@@ -25,9 +25,10 @@ import { JobPosting, JobPostingStatus, EmploymentType, getJobPostingStatus, getI
 import { isStageDone, isStageCompleted, isStagePassed } from '@/types/applicant';
 import JobPostingFormModal from '@/components/jobPosting/JobPostingFormModal';
 
-type SortOption = 'createdDesc' | 'createdAsc' | 'updatedDesc' | 'applicantsDesc' | 'applicantsAsc' | 'statusFirst';
+type SortOption = 'deadlineAsc' | 'createdDesc' | 'createdAsc' | 'updatedDesc' | 'applicantsDesc' | 'applicantsAsc' | 'statusFirst';
 
 const SORT_LABELS: Record<SortOption, string> = {
+  deadlineAsc: '마감일 임박순',
   createdDesc: '최신 생성순',
   createdAsc: '오래된 생성순',
   updatedDesc: '최근 수정순',
@@ -47,7 +48,7 @@ export default function JobPostingListPage() {
   const [statusFilter, setStatusFilter] = useState<JobPostingStatus | 'all'>('all');
   const [employmentTypeFilter, setEmploymentTypeFilter] = useState<EmploymentType | 'all'>('all');
   const [departmentFilter, setDepartmentFilter] = useState<string>('all');
-  const [sortBy, setSortBy] = useState<SortOption>('createdDesc');
+  const [sortBy, setSortBy] = useState<SortOption>('deadlineAsc');
 
   const departments = useMemo(
     () => Array.from(new Set(jobPostings.map(j => j.department))).filter(Boolean),
@@ -71,6 +72,9 @@ export default function JobPostingListPage() {
 
     const sorted = [...withCounts];
     switch (sortBy) {
+      case 'deadlineAsc':
+        sorted.sort((a, b) => (a.job.endDate || '9999-12-31').localeCompare(b.job.endDate || '9999-12-31'));
+        break;
       case 'createdAsc':
         sorted.sort((a, b) => a.job.createdAt.localeCompare(b.job.createdAt));
         break;

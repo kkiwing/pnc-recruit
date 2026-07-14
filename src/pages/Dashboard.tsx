@@ -1,11 +1,12 @@
-import React from 'react';
+import React, { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApplicants } from '@/context/ApplicantContext';
 import { useJobPostings } from '@/context/JobPostingContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Briefcase, Users, UserCheck, Calendar, ChevronRight } from 'lucide-react';
-import { getJobPostingStatus, getFinalStage } from '@/types/jobPosting';
+import { JobPostingStatus, getJobPostingStatus, getFinalStage } from '@/types/jobPosting';
 import { getInterviewInfo, isStagePassed } from '@/types/applicant';
 import { toDateStr } from '@/lib/utils';
 
@@ -13,9 +14,23 @@ export default function DashboardPage() {
   const { applicants } = useApplicants();
   const { jobPostings } = useJobPostings();
   const navigate = useNavigate();
+  const [departmentFilter, setDepartmentFilter] = useState<string>('all');
+  const [statusFilter, setStatusFilter] = useState<JobPostingStatus | 'all'>('all');
 
   const postingsById = new Map(jobPostings.map(j => [j.id, j]));
   const todayStr = toDateStr(new Date());
+
+  const departments = useMemo(
+    () => Array.from(new Set(jobPostings.map(j => j.department))).filter(Boolean),
+    [jobPostings]
+  );
+
+  const visiblePostings = useMemo(() => {
+    return jobPostings
+      .filter(j => departmentFilter === 'all' || j.department === departmentFilter)
+      .filter(j => statusFilter === 'all' || getJobPostingStatus(j) === statusFilter)
+      .sort((a, b) => (a.endDate || '9999-12-31').localeCompare(b.endDate || '9999-12-31'));
+  }, [jobPostings, departmentFilter, statusFilter]);
 
   const totalApplicants = applicants.filter(a => !a.isSeparateManagement).length;
   const totalPassed = applicants.filter(a => {
@@ -61,8 +76,25 @@ export default function DashboardPage() {
       </div>
 
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0">
           <CardTitle className="text-base">공고별 현황</CardTitle>
+          <div className="flex items-center gap-2">
+            <Select value={departmentFilter} onValueChange={setDepartmentFilter}>
+              <SelectTrigger className="w-32 h-8 text-xs"><SelectValue placeholder="팀" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">전체 팀</SelectItem>
+                {departments.map(dep => <SelectItem key={dep} value={dep}>{dep}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <Select value={statusFilter} onValueChange={v => setStatusFilter(v as JobPostingStatus | 'all')}>
+              <SelectTrigger className="w-28 h-8 text-xs"><SelectValue placeholder="상태" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">전체 상태</SelectItem>
+                <SelectItem value="진행중">진행중</SelectItem>
+                <SelectItem value="종료">종료</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </CardHeader>
         <CardContent>
           <table className="admin-table w-full">
@@ -80,7 +112,7 @@ export default function DashboardPage() {
               </tr>
             </thead>
             <tbody>
-              {jobPostings.map(job => {
+              {visiblePostings.map(job => {
                 const jobApplicants = applicants.filter(a => a.jobPostingId === job.id);
                 const activeCount = jobApplicants.filter(a => !a.isSeparateManagement).length;
                 const separateCount = jobApplicants.filter(a => a.isSeparateManagement).length;
@@ -130,6 +162,9 @@ export default function DashboardPage() {
               })}
             </tbody>
           </table>
+          {visiblePostings.length === 0 && (
+            <p className="text-center text-sm text-muted-foreground py-8">조건에 맞는 공고가 없습니다.</p>
+          )}
         </CardContent>
       </Card>
     </div>
