@@ -32,26 +32,28 @@ export default function DashboardPage() {
       .sort((a, b) => (a.endDate || '9999-12-31').localeCompare(b.endDate || '9999-12-31'));
   }, [jobPostings, departmentFilter, statusFilter]);
 
-  const totalApplicants = applicants.filter(a => !a.isSeparateManagement).length;
+  const openPostingIds = new Set(jobPostings.filter(j => getJobPostingStatus(j) === '진행중').map(j => j.id));
+
+  const totalApplicants = applicants.filter(a => !a.isSeparateManagement && openPostingIds.has(a.jobPostingId)).length;
   const totalPassed = applicants.filter(a => {
-    if (a.isSeparateManagement) return false;
+    if (a.isSeparateManagement || !openPostingIds.has(a.jobPostingId)) return false;
     const posting = postingsById.get(a.jobPostingId);
     const finalStage = posting && getFinalStage(posting.stages);
     return !!finalStage && isStagePassed(a.stageRecords, finalStage);
   }).length;
   const totalInterviewPending = applicants.filter(a => {
-    if (a.isSeparateManagement) return false;
+    if (a.isSeparateManagement || !openPostingIds.has(a.jobPostingId)) return false;
     const posting = postingsById.get(a.jobPostingId);
     if (!posting) return false;
     return getInterviewInfo(a.stageRecords, posting.stages, todayStr)?.bucket === 'upcoming';
   }).length;
-  const openPostings = jobPostings.filter(j => getJobPostingStatus(j) === '진행중').length;
+  const openPostings = openPostingIds.size;
 
   const stats = [
     { label: '진행중 공고', value: openPostings, icon: Briefcase, color: 'text-primary' },
-    { label: '전체 지원자', value: totalApplicants, icon: Users, color: 'text-muted-foreground' },
-    { label: '면접 예정', value: totalInterviewPending, icon: Calendar, color: 'text-warning' },
-    { label: '최종 합격', value: totalPassed, icon: UserCheck, color: 'text-success' },
+    { label: '전체 지원자', value: totalApplicants, icon: Users, color: 'text-muted-foreground', sub: '진행중 공고 기준' },
+    { label: '면접 예정', value: totalInterviewPending, icon: Calendar, color: 'text-warning', sub: '진행중 공고 기준' },
+    { label: '최종 합격', value: totalPassed, icon: UserCheck, color: 'text-success', sub: '진행중 공고 기준' },
   ];
 
   return (
@@ -70,6 +72,7 @@ export default function DashboardPage() {
                 <span className="text-xs text-muted-foreground">{stat.label}</span>
               </div>
               <p className="text-2xl font-bold">{stat.value}</p>
+              {stat.sub && <p className="text-[11px] text-muted-foreground mt-0.5">{stat.sub}</p>}
             </CardContent>
           </Card>
         ))}
