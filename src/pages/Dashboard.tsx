@@ -104,10 +104,26 @@ export default function DashboardPage() {
                       </Badge>
                     </td>
                     <td className="text-xs whitespace-nowrap">{job.startDate} ~ {job.endDate}</td>
-                    <td className="text-center font-medium">{activeCount}</td>
+                    <td className="text-center">
+                      <button
+                        type="button"
+                        className="font-medium hover:underline"
+                        onClick={e => { e.stopPropagation(); navigate(`/applicants?posting=${job.id}`); }}
+                      >
+                        {activeCount}
+                      </button>
+                    </td>
                     <td className="text-center font-medium">{interviewPending}</td>
                     <td className="text-center font-medium text-success">{passed}</td>
-                    <td className="text-center text-muted-foreground">{separateCount}</td>
+                    <td className="text-center">
+                      <button
+                        type="button"
+                        className="text-muted-foreground hover:underline"
+                        onClick={e => { e.stopPropagation(); navigate(`/separate-management?posting=${job.id}`); }}
+                      >
+                        {separateCount}
+                      </button>
+                    </td>
                     <td><ChevronRight className="w-4 h-4 text-muted-foreground" /></td>
                   </tr>
                 );
