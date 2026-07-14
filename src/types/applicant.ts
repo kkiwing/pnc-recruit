@@ -1,4 +1,5 @@
-import { Stage, getCompletionStatus, getPassStatus } from '@/types/jobPosting';
+import { Stage, getCompletionStatus, getPassStatus, getInterviewStage, getFinalStage } from '@/types/jobPosting';
+import { toDateStr } from '@/lib/utils';
 
 export type SeparateManagementReason =
   | '지원 포기'
@@ -226,4 +227,31 @@ export function getSeparationStage(applicant: Pick<Applicant, 'stageRecords' | '
 /** 생년월일(YYYY-MM-DD)에서 출생연도만 뽑아 표시용으로 쓴다. 별도 필드로 저장하지 않는다. */
 export function getBirthYear(birthDate: string): string {
   return birthDate.slice(0, 4);
+}
+
+export type InterviewBucket = 'upcoming' | 'overdue' | 'completed';
+
+export interface InterviewInfo {
+  bucket: InterviewBucket;
+  date?: string;
+}
+
+/**
+ * 지원자의 면접 일정 상태를 계산한다. 면접 안내 단계가 아직 완료(면접 일정 확정)되지
+ * 않았으면 undefined를 반환한다(면접 자체가 잡히지 않은 지원자).
+ * - completed: 면접 결과(최종 판정) 단계가 이미 처리됨(합격/불합격) — 면접일과 무관하게 우선
+ * - overdue: 면접일이 오늘보다 이전인데 아직 결과가 입력되지 않음 ("지난 면접")
+ * - upcoming: 면접일이 오늘 이후(또는 날짜 미상)이고 결과 미입력
+ */
+export function getInterviewInfo(stageRecords: StageRecord[], stages: Stage[], todayStr: string = toDateStr(new Date())): InterviewInfo | undefined {
+  const interviewStage = getInterviewStage(stages);
+  if (!interviewStage || !isStageCompleted(stageRecords, interviewStage)) return undefined;
+
+  const record = stageRecords.find(r => r.stageId === interviewStage.id);
+  const date = record?.meta?.endDate;
+  const finalStage = getFinalStage(stages);
+
+  if (finalStage && isStageDone(stageRecords, finalStage)) return { bucket: 'completed', date };
+  if (date && date < todayStr) return { bucket: 'overdue', date };
+  return { bucket: 'upcoming', date };
 }

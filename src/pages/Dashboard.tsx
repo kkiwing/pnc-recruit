@@ -5,8 +5,9 @@ import { useJobPostings } from '@/context/JobPostingContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Briefcase, Users, UserCheck, Calendar, ChevronRight } from 'lucide-react';
-import { getJobPostingStatus, getInterviewStage, getFinalStage } from '@/types/jobPosting';
-import { isStageDone, isStageCompleted, isStagePassed } from '@/types/applicant';
+import { getJobPostingStatus, getFinalStage } from '@/types/jobPosting';
+import { getInterviewInfo, isStagePassed } from '@/types/applicant';
+import { toDateStr } from '@/lib/utils';
 
 export default function DashboardPage() {
   const { applicants } = useApplicants();
@@ -14,6 +15,7 @@ export default function DashboardPage() {
   const navigate = useNavigate();
 
   const postingsById = new Map(jobPostings.map(j => [j.id, j]));
+  const todayStr = toDateStr(new Date());
 
   const totalApplicants = applicants.filter(a => !a.isSeparateManagement).length;
   const totalPassed = applicants.filter(a => {
@@ -26,9 +28,7 @@ export default function DashboardPage() {
     if (a.isSeparateManagement) return false;
     const posting = postingsById.get(a.jobPostingId);
     if (!posting) return false;
-    const interviewStage = getInterviewStage(posting.stages);
-    const finalStage = getFinalStage(posting.stages);
-    return !!interviewStage && !!finalStage && isStageCompleted(a.stageRecords, interviewStage) && !isStageDone(a.stageRecords, finalStage);
+    return getInterviewInfo(a.stageRecords, posting.stages, todayStr)?.bucket === 'upcoming';
   }).length;
   const openPostings = jobPostings.filter(j => getJobPostingStatus(j) === '진행중').length;
 
@@ -84,11 +84,9 @@ export default function DashboardPage() {
                 const jobApplicants = applicants.filter(a => a.jobPostingId === job.id);
                 const activeCount = jobApplicants.filter(a => !a.isSeparateManagement).length;
                 const separateCount = jobApplicants.filter(a => a.isSeparateManagement).length;
-                const interviewStage = getInterviewStage(job.stages);
                 const finalStage = getFinalStage(job.stages);
                 const interviewPending = jobApplicants.filter(a =>
-                  !a.isSeparateManagement && interviewStage && finalStage &&
-                  isStageCompleted(a.stageRecords, interviewStage) && !isStageDone(a.stageRecords, finalStage)
+                  !a.isSeparateManagement && getInterviewInfo(a.stageRecords, job.stages, todayStr)?.bucket === 'upcoming'
                 ).length;
                 const passed = jobApplicants.filter(a =>
                   !a.isSeparateManagement && !!finalStage && isStagePassed(a.stageRecords, finalStage)

@@ -4,10 +4,10 @@ import { useJobPostings } from '@/context/JobPostingContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Calendar } from '@/components/ui/calendar';
-import { Calendar as CalendarIcon, Clock } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { getInterviewStage, getFinalStage } from '@/types/jobPosting';
-import { isStageCompleted, isStageDone, isStagePassed } from '@/types/applicant';
+import { Calendar as CalendarIcon, Clock, AlertTriangle } from 'lucide-react';
+import { cn, toDateStr } from '@/lib/utils';
+import { getFinalStage, getInterviewStage } from '@/types/jobPosting';
+import { getInterviewInfo, isStagePassed } from '@/types/applicant';
 
 export default function InterviewSchedulePage() {
   const { applicants } = useApplicants();
@@ -15,6 +15,7 @@ export default function InterviewSchedulePage() {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
 
   const active = applicants.filter(a => !a.isSeparateManagement);
+  const todayStr = toDateStr(new Date());
 
   const interviews = useMemo(() => {
     const postingsById = new Map(jobPostings.map(j => [j.id, j]));
@@ -22,13 +23,14 @@ export default function InterviewSchedulePage() {
       .map(a => {
         const job = postingsById.get(a.jobPostingId);
         if (!job) return null;
+        const info = getInterviewInfo(a.stageRecords, job.stages, todayStr);
+        if (!info) return null;
         const interviewStage = getInterviewStage(job.stages);
-        if (!interviewStage || !isStageCompleted(a.stageRecords, interviewStage)) return null;
-        const meta = a.stageRecords.find(r => r.stageId === interviewStage.id)?.meta;
+        const meta = interviewStage ? a.stageRecords.find(r => r.stageId === interviewStage.id)?.meta : undefined;
         const finalStage = getFinalStage(job.stages);
-        const result: 'pending' | 'pass' | 'fail' = !finalStage || !isStageDone(a.stageRecords, finalStage)
+        const result: 'pending' | 'pass' | 'fail' = info.bucket !== 'completed'
           ? 'pending'
-          : isStagePassed(a.stageRecords, finalStage) ? 'pass' : 'fail';
+          : finalStage && isStagePassed(a.stageRecords, finalStage) ? 'pass' : 'fail';
         return {
           id: a.id,
           name: a.name,
@@ -36,19 +38,21 @@ export default function InterviewSchedulePage() {
           phone: a.phone,
           email: a.email,
           region: `${a.region} ${a.regionDetail}`,
-          date: meta?.endDate || '',
+          date: info.date || '',
           time: meta?.time || '',
           interviewer: meta?.interviewer || '',
+          bucket: info.bucket,
           result,
           jobTitle: job.title,
         };
       })
       .filter((x): x is NonNullable<typeof x> => x !== null)
       .sort((a, b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time));
-  }, [active, jobPostings]);
+  }, [active, jobPostings, todayStr]);
 
-  const upcoming = interviews.filter(i => i.result === 'pending');
-  const completed = interviews.filter(i => i.result !== 'pending');
+  const upcoming = interviews.filter(i => i.bucket === 'upcoming');
+  const overdue = interviews.filter(i => i.bucket === 'overdue');
+  const completed = interviews.filter(i => i.bucket === 'completed');
 
   // Dates that have interviews (for highlighting on calendar)
   const interviewDates = useMemo(() => {
@@ -75,7 +79,7 @@ export default function InterviewSchedulePage() {
     <div className="p-6">
       <div className="mb-6">
         <h2 className="text-lg font-semibold">면접 일정 관리</h2>
-        <p className="text-sm text-muted-foreground">전체 면접 {interviews.length}건 (예정 {upcoming.length}건 / 완료 {completed.length}건)</p>
+        <p className="text-sm text-muted-foreground">전체 면접 {interviews.length}건 (예정 {upcoming.length}건 / 지난 면접 {overdue.length}건 / 완료 {completed.length}건)</p>
       </div>
 
       {/* Calendar + Timetable */}
@@ -184,6 +188,48 @@ export default function InterviewSchedulePage() {
                     <td>{item.team}</td>
                     <td className="text-xs max-w-[200px] truncate">{item.jobTitle}</td>
                     <td>{item.date}</td>
+                    <td>{item.time}</td>
+                    <td>{item.interviewer}</td>
+                    <td className="text-xs">{item.phone}</td>
+                    <td className="text-xs">{item.region}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 text-warning" /> 지난 면접 (결과 미입력)
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {overdue.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-4">결과 입력이 밀린 면접이 없습니다.</p>
+          ) : (
+            <table className="admin-table w-full">
+              <thead>
+                <tr>
+                  <th>이름</th>
+                  <th>팀</th>
+                  <th>공고</th>
+                  <th>면접일</th>
+                  <th>시간</th>
+                  <th>담당자</th>
+                  <th>연락처</th>
+                  <th>지역</th>
+                </tr>
+              </thead>
+              <tbody>
+                {overdue.map(item => (
+                  <tr key={item.id}>
+                    <td className="font-medium">{item.name}</td>
+                    <td>{item.team}</td>
+                    <td className="text-xs max-w-[200px] truncate">{item.jobTitle}</td>
+                    <td className="text-warning font-medium">{item.date}</td>
                     <td>{item.time}</td>
                     <td>{item.interviewer}</td>
                     <td className="text-xs">{item.phone}</td>
