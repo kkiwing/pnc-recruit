@@ -117,7 +117,7 @@ export default function ApplicantDetailPage() {
         </Badge>
       </div>
 
-      <div className="bg-card rounded-lg border shadow-sm p-5 mb-4">
+      <div className="card-elevated p-5 mb-4">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm mb-4">
           <div><span className="text-muted-foreground">성별:</span> {applicant.gender}</div>
           <div><span className="text-muted-foreground">생년월일:</span> {applicant.birthDate || '-'}</div>
@@ -149,7 +149,7 @@ export default function ApplicantDetailPage() {
         </TabsList>
 
         <TabsContent value="resume" className="space-y-4 mt-4">
-          <section className="bg-card rounded-lg border shadow-sm p-5">
+          <section className="card-elevated p-5">
             <h3 className="text-sm font-semibold mb-3">학력</h3>
             {applicant.educations.length === 0 ? (
               <p className="text-sm text-muted-foreground">등록된 학력이 없습니다.</p>
@@ -171,7 +171,7 @@ export default function ApplicantDetailPage() {
             )}
           </section>
 
-          <section className="bg-card rounded-lg border shadow-sm p-5">
+          <section className="card-elevated p-5">
             <h3 className="text-sm font-semibold mb-3">자격증</h3>
             {applicant.certificates.length === 0 ? (
               <p className="text-sm text-muted-foreground">등록된 자격증이 없습니다.</p>
@@ -187,7 +187,7 @@ export default function ApplicantDetailPage() {
             )}
           </section>
 
-          <section className="bg-card rounded-lg border shadow-sm p-5">
+          <section className="card-elevated p-5">
             <h3 className="text-sm font-semibold mb-3">경력</h3>
             {applicant.careers.length === 0 ? (
               <p className="text-sm text-muted-foreground">신입 지원자입니다.</p>
@@ -207,7 +207,7 @@ export default function ApplicantDetailPage() {
             )}
           </section>
 
-          <section className="bg-card rounded-lg border shadow-sm p-5">
+          <section className="card-elevated p-5">
             <h3 className="text-sm font-semibold mb-3">활동</h3>
             {applicant.activities.length === 0 ? (
               <p className="text-sm text-muted-foreground">등록된 활동이 없습니다.</p>
@@ -227,7 +227,7 @@ export default function ApplicantDetailPage() {
             )}
           </section>
 
-          <section className="bg-card rounded-lg border shadow-sm p-5">
+          <section className="card-elevated p-5">
             <h3 className="text-sm font-semibold mb-3">통계 패키지</h3>
             {applicant.statisticsPackages.length === 0 ? (
               <p className="text-sm text-muted-foreground">등록된 통계 패키지 활용 경험이 없습니다.</p>
@@ -244,7 +244,7 @@ export default function ApplicantDetailPage() {
           </section>
 
           {applicant.thesis && (
-            <section className="bg-card rounded-lg border shadow-sm p-5">
+            <section className="card-elevated p-5">
               <h3 className="text-sm font-semibold mb-3">논문</h3>
               <p className="text-sm font-medium">{applicant.thesis.title}</p>
               <p className="text-xs text-muted-foreground mt-1">키워드: {applicant.thesis.keyword}</p>
@@ -254,7 +254,7 @@ export default function ApplicantDetailPage() {
         </TabsContent>
 
         <TabsContent value="coverLetter" className="mt-4">
-          <section className="bg-card rounded-lg border shadow-sm p-5 space-y-5">
+          <section className="card-elevated p-5 space-y-5">
             {applicant.coverLetter.length === 0 ? (
               <p className="text-sm text-muted-foreground">제출된 자기소개서가 없습니다.</p>
             ) : (
@@ -274,13 +274,13 @@ export default function ApplicantDetailPage() {
         </TabsContent>
 
         <TabsContent value="memo" className="mt-4 space-y-4">
-          <section className="bg-card rounded-lg border shadow-sm p-5">
+          <section className="card-elevated p-5">
             <Label>특이사항 메모</Label>
             <Textarea value={memo} onChange={e => setMemo(e.target.value)} rows={4} className="mt-1" />
             <Button size="sm" className="mt-2" onClick={saveMemo}>메모 저장</Button>
           </section>
 
-          <section className="bg-card rounded-lg border shadow-sm p-5">
+          <section className="card-elevated p-5">
             <div className="flex items-center justify-between mb-2">
               <Label>첨부 파일</Label>
               <label className="cursor-pointer">

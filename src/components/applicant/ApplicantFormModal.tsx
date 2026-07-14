@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useApplicants } from '@/context/ApplicantContext';
 import { useJobPostings } from '@/context/JobPostingContext';
 import { Gender, createDefaultStageRecords } from '@/types/applicant';
@@ -95,14 +96,12 @@ export default function ApplicantFormModal({ open, onClose, editData, defaultJob
         <div className="grid grid-cols-2 gap-4 py-4">
           <div className="col-span-2">
             <Label>채용 공고 *</Label>
-            <select
-              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-              value={form.jobPostingId}
-              onChange={e => handleChange('jobPostingId', e.target.value)}
-            >
-              <option value="">공고 선택</option>
-              {jobPostings.map(j => <option key={j.id} value={j.id}>{j.title}</option>)}
-            </select>
+            <Select value={form.jobPostingId || undefined} onValueChange={v => handleChange('jobPostingId', v)}>
+              <SelectTrigger><SelectValue placeholder="공고 선택" /></SelectTrigger>
+              <SelectContent>
+                {jobPostings.map(j => <SelectItem key={j.id} value={j.id}>{j.title}</SelectItem>)}
+              </SelectContent>
+            </Select>
           </div>
           <div>
             <Label>팀</Label>
@@ -114,14 +113,13 @@ export default function ApplicantFormModal({ open, onClose, editData, defaultJob
           </div>
           <div>
             <Label>성별</Label>
-            <select
-              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-              value={form.gender}
-              onChange={e => handleChange('gender', e.target.value)}
-            >
-              <option value="남성">남성</option>
-              <option value="여성">여성</option>
-            </select>
+            <Select value={form.gender} onValueChange={v => handleChange('gender', v)}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="남성">남성</SelectItem>
+                <SelectItem value="여성">여성</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
           <div>
             <Label>생년월일</Label>
@@ -133,14 +131,12 @@ export default function ApplicantFormModal({ open, onClose, editData, defaultJob
           </div>
           <div>
             <Label>지원플랫폼</Label>
-            <select
-              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-              value={form.platform}
-              onChange={e => handleChange('platform', e.target.value)}
-            >
-              <option value="">선택</option>
-              {PLATFORMS.map(p => <option key={p} value={p}>{p}</option>)}
-            </select>
+            <Select value={form.platform || undefined} onValueChange={v => handleChange('platform', v)}>
+              <SelectTrigger><SelectValue placeholder="선택" /></SelectTrigger>
+              <SelectContent>
+                {PLATFORMS.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
+              </SelectContent>
+            </Select>
           </div>
           <div>
             <Label>출생연도</Label>
