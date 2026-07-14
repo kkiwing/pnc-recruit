@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useJobPostings } from '@/context/JobPostingContext';
 import { useApplicants } from '@/context/ApplicantContext';
+import JobPostingDetailLink from '@/components/applicant/JobPostingDetailLink';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -36,7 +38,17 @@ const STAGE_TYPE_LABELS: Record<StageType, string> = {
 export default function ProcessManagementPage() {
   const { jobPostings, updateJobPosting } = useJobPostings();
   const { applicants } = useApplicants();
-  const [selectedId, setSelectedId] = useState(jobPostings[0]?.id ?? '');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [selectedId, setSelectedIdState] = useState(() => searchParams.get('posting') || jobPostings[0]?.id || '');
+
+  const setSelectedId = (id: string) => {
+    setSelectedIdState(id);
+    setSearchParams(sp => {
+      const next = new URLSearchParams(sp);
+      next.set('posting', id);
+      return next;
+    }, { replace: true });
+  };
   const [statusModalStage, setStatusModalStage] = useState<Stage | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Stage | null>(null);
   const [showNewStage, setShowNewStage] = useState(false);
@@ -122,13 +134,14 @@ export default function ProcessManagementPage() {
         <p className="text-sm text-muted-foreground">공고별 전형 단계와 자동 발송 설정을 관리합니다.</p>
       </div>
 
-      <div className="mb-5 max-w-md">
+      <div className="mb-5 flex items-center gap-3 max-w-md">
         <Select value={selectedId} onValueChange={setSelectedId}>
           <SelectTrigger><SelectValue /></SelectTrigger>
           <SelectContent>
             {jobPostings.map(j => <SelectItem key={j.id} value={j.id}>{j.title}</SelectItem>)}
           </SelectContent>
         </Select>
+        {posting && <JobPostingDetailLink jobPostingId={posting.id} className="shrink-0" />}
       </div>
 
       {posting && (

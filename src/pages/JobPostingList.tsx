@@ -226,16 +226,24 @@ export default function JobPostingListPage() {
                       />
                       <span className="text-xs text-muted-foreground w-10">{job.isPublic ? '공개' : '비공개'}</span>
                     </div>
-                    <div className="flex items-center gap-1.5 text-sm">
+                    <button
+                      type="button"
+                      className="flex items-center gap-1.5 text-sm hover:underline"
+                      onClick={e => { e.stopPropagation(); navigate(`/applicants?posting=${job.id}`); }}
+                    >
                       <Users className="w-4 h-4 text-primary" />
                       <span className="font-medium">{activeCount}</span>
                       <span className="text-xs text-muted-foreground">지원자</span>
-                    </div>
-                    <div className="flex items-center gap-1.5 text-sm">
+                    </button>
+                    <button
+                      type="button"
+                      className="flex items-center gap-1.5 text-sm hover:underline"
+                      onClick={e => { e.stopPropagation(); navigate(`/separate-management?posting=${job.id}`); }}
+                    >
                       <UserX className="w-4 h-4 text-destructive" />
                       <span className="font-medium">{separateCount}</span>
                       <span className="text-xs text-muted-foreground">별도관리</span>
-                    </div>
+                    </button>
                     {interviewPending > 0 && (
                       <Badge variant="secondary" className="text-xs">면접 예정 {interviewPending}</Badge>
                     )}

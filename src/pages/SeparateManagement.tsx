@@ -1,8 +1,10 @@
 import React, { useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useApplicants } from '@/context/ApplicantContext';
 import { useJobPostings } from '@/context/JobPostingContext';
 import ApplicantOverviewTable from '@/components/applicant/ApplicantOverviewTable';
 import JobPostingSelect from '@/components/applicant/JobPostingSelect';
+import JobPostingDetailLink from '@/components/applicant/JobPostingDetailLink';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Search } from 'lucide-react';
@@ -11,9 +13,20 @@ import { SEPARATE_REASONS } from '@/types/applicant';
 export default function SeparateManagementPage() {
   const { applicants } = useApplicants();
   const { jobPostings } = useJobPostings();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [search, setSearch] = useState('');
   const [reasonFilter, setReasonFilter] = useState<string>('all');
-  const [jobId, setJobId] = useState('all');
+  const [jobId, setJobIdState] = useState(() => searchParams.get('posting') ?? 'all');
+
+  const setJobId = (id: string) => {
+    setJobIdState(id);
+    setSearchParams(sp => {
+      const next = new URLSearchParams(sp);
+      if (id === 'all') next.delete('posting');
+      else next.set('posting', id);
+      return next;
+    }, { replace: true });
+  };
 
   const separateApplicants = useMemo(() => applicants.filter(a => a.isSeparateManagement), [applicants]);
 
@@ -62,6 +75,7 @@ export default function SeparateManagementPage() {
             ))}
           </SelectContent>
         </Select>
+        {jobId !== 'all' && <JobPostingDetailLink jobPostingId={jobId} />}
       </div>
 
       <div className="card-elevated">

@@ -1,3 +1,5 @@
+// 현재 미사용 — 공고 상세를 허브 페이지로 재편하며 매트릭스(단계별 컬럼) 뷰 탭을
+// 제거했다. 추후 매트릭스 뷰 재도입을 검토할 수 있어 삭제하지 않고 보존한다.
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Applicant, REGION_INTERVIEW_FEE, SEPARATE_REASONS, SeparateManagementReason, StageRecord, getCurrentStage, getStageRecordStatus } from '@/types/applicant';

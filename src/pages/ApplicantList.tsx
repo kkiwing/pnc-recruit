@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useApplicants } from '@/context/ApplicantContext';
 import { useJobPostings } from '@/context/JobPostingContext';
 import ApplicantOverviewTable from '@/components/applicant/ApplicantOverviewTable';
@@ -13,11 +14,30 @@ import { getCurrentStage, getStageRecordStatus } from '@/types/applicant';
 export default function ApplicantListPage() {
   const { applicants } = useApplicants();
   const { jobPostings } = useJobPostings();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [showForm, setShowForm] = useState(false);
   const [search, setSearch] = useState('');
-  const [filters, setFilters] = useState<ApplicantFilters>(DEFAULT_APPLICANT_FILTERS);
+  const [filters, setFiltersState] = useState<ApplicantFilters>(() => ({
+    ...DEFAULT_APPLICANT_FILTERS,
+    jobId: searchParams.get('posting') ?? 'all',
+  }));
   const [sortBy, setSortBy] = useState<ApplicantSortOption>('newest');
   const [viewMode, setViewMode] = useState<ApplicantViewMode>('list');
+
+  const setFilters = (updater: (prev: ApplicantFilters) => ApplicantFilters) => {
+    setFiltersState(prev => {
+      const next = updater(prev);
+      if (next.jobId !== prev.jobId) {
+        setSearchParams(sp => {
+          const nextParams = new URLSearchParams(sp);
+          if (next.jobId === 'all') nextParams.delete('posting');
+          else nextParams.set('posting', next.jobId);
+          return nextParams;
+        }, { replace: true });
+      }
+      return next;
+    });
+  };
 
   const activeApplicants = useMemo(() => applicants.filter(a => !a.isSeparateManagement), [applicants]);
 

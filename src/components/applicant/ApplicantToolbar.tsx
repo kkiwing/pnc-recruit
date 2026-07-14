@@ -7,6 +7,7 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Search, SlidersHorizontal, X, List, KanbanSquare } from 'lucide-react';
 import { JobPosting, Stage, StageStatus } from '@/types/jobPosting';
 import JobPostingSelect from '@/components/applicant/JobPostingSelect';
+import JobPostingDetailLink from '@/components/applicant/JobPostingDetailLink';
 
 export type ApplicantSortOption = 'newest' | 'oldest' | 'name';
 export type ApplicantViewMode = 'list' | 'pipeline';
@@ -176,7 +177,10 @@ export default function ApplicantToolbar({
       {hasAnyFilter && (
         <div className="flex items-center gap-1.5 flex-wrap mt-2.5">
           {selectedJob && (
-            <FilterChip label={`공고: ${selectedJob.title}`} onRemove={() => onFiltersChange({ jobId: 'all', team: 'all', stageId: 'all', statusId: 'all' })} />
+            <>
+              <FilterChip label={`공고: ${selectedJob.title}`} onRemove={() => onFiltersChange({ jobId: 'all', team: 'all', stageId: 'all', statusId: 'all' })} />
+              <JobPostingDetailLink jobPostingId={selectedJob.id} />
+            </>
           )}
           {filters.team !== 'all' && (
             <FilterChip label={`팀: ${filters.team}`} onRemove={() => onFiltersChange({ team: 'all' })} />
