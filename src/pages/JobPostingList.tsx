@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import {
   AlertDialog,
@@ -131,52 +132,48 @@ export default function JobPostingListPage() {
           <PopoverContent align="start" className="w-64 space-y-3">
             <div>
               <label className="text-xs text-muted-foreground">게시 상태</label>
-              <select
-                className="mt-1 flex h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
-                value={statusFilter}
-                onChange={e => setStatusFilter(e.target.value as JobPostingStatus | 'all')}
-              >
-                <option value="all">전체</option>
-                <option value="진행중">진행중</option>
-                <option value="종료">종료</option>
-              </select>
+              <Select value={statusFilter} onValueChange={v => setStatusFilter(v as JobPostingStatus | 'all')}>
+                <SelectTrigger className="mt-1 h-9 text-sm"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">전체</SelectItem>
+                  <SelectItem value="진행중">진행중</SelectItem>
+                  <SelectItem value="종료">종료</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div>
               <label className="text-xs text-muted-foreground">고용 형태</label>
-              <select
-                className="mt-1 flex h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
-                value={employmentTypeFilter}
-                onChange={e => setEmploymentTypeFilter(e.target.value as EmploymentType | 'all')}
-              >
-                <option value="all">전체</option>
-                <option value="정규직">정규직</option>
-                <option value="계약직">계약직</option>
-                <option value="인턴">인턴</option>
-              </select>
+              <Select value={employmentTypeFilter} onValueChange={v => setEmploymentTypeFilter(v as EmploymentType | 'all')}>
+                <SelectTrigger className="mt-1 h-9 text-sm"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">전체</SelectItem>
+                  <SelectItem value="정규직">정규직</SelectItem>
+                  <SelectItem value="계약직">계약직</SelectItem>
+                  <SelectItem value="인턴">인턴</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div>
               <label className="text-xs text-muted-foreground">팀</label>
-              <select
-                className="mt-1 flex h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
-                value={departmentFilter}
-                onChange={e => setDepartmentFilter(e.target.value)}
-              >
-                <option value="all">전체</option>
-                {departments.map(dep => <option key={dep} value={dep}>{dep}</option>)}
-              </select>
+              <Select value={departmentFilter} onValueChange={setDepartmentFilter}>
+                <SelectTrigger className="mt-1 h-9 text-sm"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">전체</SelectItem>
+                  {departments.map(dep => <SelectItem key={dep} value={dep}>{dep}</SelectItem>)}
+                </SelectContent>
+              </Select>
             </div>
           </PopoverContent>
         </Popover>
 
-        <select
-          className="flex h-10 rounded-md border border-input bg-background px-3 text-sm ml-auto"
-          value={sortBy}
-          onChange={e => setSortBy(e.target.value as SortOption)}
-        >
-          {Object.entries(SORT_LABELS).map(([value, label]) => (
-            <option key={value} value={value}>{label}</option>
-          ))}
-        </select>
+        <Select value={sortBy} onValueChange={v => setSortBy(v as SortOption)}>
+          <SelectTrigger className="w-auto ml-auto text-sm"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            {Object.entries(SORT_LABELS).map(([value, label]) => (
+              <SelectItem key={value} value={value}>{label}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       <div className="grid gap-4">
@@ -199,7 +196,7 @@ export default function JobPostingListPage() {
           return (
             <Card
               key={job.id}
-              className="cursor-pointer hover:shadow-md transition-shadow"
+              className="cursor-pointer"
               onClick={() => navigate(`/postings/${job.id}`)}
             >
               <CardContent className="p-5">

@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useJobPostings } from '@/context/JobPostingContext';
 import {
   JobPosting, CareerType, EmploymentType, CoverLetterQuestion,
@@ -95,26 +96,24 @@ export default function JobPostingFormModal({ open, onClose, editData }: Props) 
           </div>
           <div>
             <Label>구분</Label>
-            <select
-              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-              value={form.careerType}
-              onChange={e => handleChange('careerType', e.target.value)}
-            >
-              <option value="신입">신입</option>
-              <option value="경력">경력</option>
-            </select>
+            <Select value={form.careerType} onValueChange={v => handleChange('careerType', v)}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="신입">신입</SelectItem>
+                <SelectItem value="경력">경력</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
           <div>
             <Label>고용 형태</Label>
-            <select
-              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-              value={form.employmentType}
-              onChange={e => handleChange('employmentType', e.target.value)}
-            >
-              <option value="정규직">정규직</option>
-              <option value="계약직">계약직</option>
-              <option value="인턴">인턴</option>
-            </select>
+            <Select value={form.employmentType} onValueChange={v => handleChange('employmentType', v)}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="정규직">정규직</SelectItem>
+                <SelectItem value="계약직">계약직</SelectItem>
+                <SelectItem value="인턴">인턴</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
           <div className="col-span-2">
             <Label>포지션 <span className="text-xs text-muted-foreground font-normal">(선택)</span></Label>
@@ -128,7 +127,7 @@ export default function JobPostingFormModal({ open, onClose, editData }: Props) 
             <Label>마감일</Label>
             <Input type="date" value={form.endDate} onChange={e => handleChange('endDate', e.target.value)} />
           </div>
-          <div className="col-span-2 flex items-center justify-between rounded-md border px-3 py-2">
+          <div className="col-span-2 flex items-center justify-between card-soft px-3 py-2">
             <div>
               <Label className="mb-0">공개 여부</Label>
               <p className="text-xs text-muted-foreground">비공개로 설정하면 채용 페이지에 노출되지 않습니다.</p>
