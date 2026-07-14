@@ -104,6 +104,8 @@ export interface Applicant {
   stageRecords: StageRecord[];
   isSeparateManagement: boolean;
   separateReason?: SeparateManagementReason;
+  /** 별도관리로 전환된 시점의 단계 id — 이후 stageRecords가 바뀌어도 "당시 진행 단계" 표시가 흔들리지 않도록 스냅샷 */
+  separateStageId?: string;
   files: FileAttachment[];
   createdAt: string;
   updatedAt: string;
@@ -207,4 +209,17 @@ export function isStagePassed(stageRecords: StageRecord[], stage: Stage): boolea
   const passStatus = getPassStatus(stage);
   const status = getStageRecordStatus(stageRecords, stage);
   return !!passStatus && status?.id === passStatus.id;
+}
+
+/**
+ * 별도관리 전환 시점의 단계를 반환한다. separateStageId 스냅샷이 있고 해당 단계가
+ * 아직 존재하면 그 단계를, 없으면(스냅샷이 없는 레거시 데이터이거나 단계가 삭제된
+ * 경우) stageRecords 기준 현재 단계로 폴백한다.
+ */
+export function getSeparationStage(applicant: Pick<Applicant, 'stageRecords' | 'separateStageId'>, stages: Stage[]): Stage | undefined {
+  if (applicant.separateStageId) {
+    const stage = stages.find(s => s.id === applicant.separateStageId);
+    if (stage) return stage;
+  }
+  return getCurrentStage(applicant.stageRecords, stages);
 }

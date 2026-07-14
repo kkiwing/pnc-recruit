@@ -6,6 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Search, SlidersHorizontal, X, List, KanbanSquare } from 'lucide-react';
 import { JobPosting, Stage, StageStatus } from '@/types/jobPosting';
+import JobPostingSelect from '@/components/applicant/JobPostingSelect';
 
 export type ApplicantSortOption = 'newest' | 'oldest' | 'name';
 export type ApplicantViewMode = 'list' | 'pipeline';
@@ -82,15 +83,11 @@ export default function ApplicantToolbar({
           />
         </div>
 
-        <Select value={filters.jobId} onValueChange={v => onFiltersChange({ jobId: v, team: 'all', stageId: 'all', statusId: 'all' })}>
-          <SelectTrigger className="max-w-[220px]"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">전체 공고</SelectItem>
-            {jobPostings.map(job => (
-              <SelectItem key={job.id} value={job.id}>{job.title}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <JobPostingSelect
+          jobPostings={jobPostings}
+          value={filters.jobId}
+          onChange={v => onFiltersChange({ jobId: v, team: 'all', stageId: 'all', statusId: 'all' })}
+        />
 
         <Popover>
           <PopoverTrigger asChild>

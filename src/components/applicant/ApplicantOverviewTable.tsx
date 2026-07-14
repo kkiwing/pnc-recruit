@@ -1,19 +1,33 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Applicant, SEPARATE_REASONS, StageRecord, getCurrentStage, getStageRecordStatus } from '@/types/applicant';
+import { Applicant, SEPARATE_REASONS, StageRecord, getCurrentStage, getSeparationStage, getStageRecordStatus } from '@/types/applicant';
 import { useApplicants } from '@/context/ApplicantContext';
 import { useJobPostings } from '@/context/JobPostingContext';
 import { Stage, getStageColorHex, getCompletionStatus } from '@/types/jobPosting';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Trash2, MoreHorizontal, MessageSquare, Clock, Eye } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { Trash2, MoreHorizontal, MessageSquare, Clock, Eye, Undo2 } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent } from '@/components/ui/dropdown-menu';
 import CompletionDateModal from './CompletionDateModal';
 import SharedStatusSelect from '@/components/common/StatusSelect';
+import StatusBadge from '@/components/common/StatusBadge';
 
 interface Props {
   applicants: Applicant[];
+  /** 'active'(기본): 전형/상태를 직접 편집하는 지원자 목록. 'separate': 별도관리 사유/당시 단계를 보여주는 읽기 전용 목록. */
+  mode?: 'active' | 'separate';
 }
 
 function StatusSelect({ stage, stageRecords, onChange, onEditMeta }: {
@@ -53,12 +67,13 @@ function StatusSelect({ stage, stageRecords, onChange, onEditMeta }: {
   );
 }
 
-export default function ApplicantOverviewTable({ applicants }: Props) {
+export default function ApplicantOverviewTable({ applicants, mode = 'active' }: Props) {
   const { updateApplicant, deleteApplicant } = useApplicants();
   const { jobPostings } = useJobPostings();
   const navigate = useNavigate();
   const [activeStageByApplicant, setActiveStageByApplicant] = useState<Record<string, string>>({});
   const [completionModal, setCompletionModal] = useState<{ applicantId: string; stage: Stage; statusId: string; initialData?: StageRecord['meta'] } | null>(null);
+  const [restoreTarget, setRestoreTarget] = useState<Applicant | null>(null);
 
   const postingsById = new Map(jobPostings.map(j => [j.id, j]));
 
@@ -70,10 +85,23 @@ export default function ApplicantOverviewTable({ applicants }: Props) {
   };
 
   const handleSeparateManagement = (applicant: Applicant, reason: typeof SEPARATE_REASONS[number]) => {
+    const posting = postingsById.get(applicant.jobPostingId);
+    const sortedStages = posting ? [...posting.stages].sort((a, b) => a.order - b.order) : [];
+    const currentStage = getCurrentStage(applicant.stageRecords, sortedStages);
     updateApplicant(applicant.id, {
       isSeparateManagement: true,
       separateReason: reason,
+      separateStageId: currentStage?.id,
     });
+  };
+
+  const handleRestoreApplicant = (applicant: Applicant) => {
+    updateApplicant(applicant.id, {
+      isSeparateManagement: false,
+      separateReason: undefined,
+      separateStageId: undefined,
+    });
+    setRestoreTarget(null);
   };
 
   const setStageRecord = (applicant: Applicant, stage: Stage, statusId: string, meta?: StageRecord['meta']) => {
@@ -122,8 +150,17 @@ export default function ApplicantOverviewTable({ applicants }: Props) {
             <tr>
               <th>지원자</th>
               <th>공고</th>
-              <th className="w-40">전형</th>
-              <th className="w-32">상태</th>
+              {mode === 'active' ? (
+                <>
+                  <th className="w-40">전형</th>
+                  <th className="w-32">상태</th>
+                </>
+              ) : (
+                <>
+                  <th className="w-40">별도관리 사유</th>
+                  <th className="w-48">당시 진행 단계</th>
+                </>
+              )}
               <th className="w-24">지원일</th>
               <th className="w-12">메모</th>
               <th className="w-16">관리</th>
@@ -141,6 +178,8 @@ export default function ApplicantOverviewTable({ applicants }: Props) {
               const posting = postingsById.get(applicant.jobPostingId);
               const sortedStages = posting ? [...posting.stages].sort((a, b) => a.order - b.order) : [];
               const activeStage = posting ? getActiveStage(applicant, sortedStages) : undefined;
+              const separationStage = mode === 'separate' ? getSeparationStage(applicant, sortedStages) : undefined;
+              const separationStatus = separationStage ? getStageRecordStatus(applicant.stageRecords, separationStage) : undefined;
 
               return (
                 <tr key={applicant.id}>
@@ -161,31 +200,50 @@ export default function ApplicantOverviewTable({ applicants }: Props) {
                       <span className="text-xs text-muted-foreground">{applicant.team}</span>
                     </div>
                   </td>
-                  <td>
-                    {posting && activeStage ? (
-                      <Select
-                        value={activeStage.id}
-                        onValueChange={v => setActiveStageByApplicant(prev => ({ ...prev, [applicant.id]: v }))}
-                      >
-                        <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          {sortedStages.map(stage => (
-                            <SelectItem key={stage.id} value={stage.id}>{stage.name}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    ) : '-'}
-                  </td>
-                  <td>
-                    {activeStage ? (
-                      <StatusSelect
-                        stage={activeStage}
-                        stageRecords={applicant.stageRecords}
-                        onChange={statusId => handleStatusChange(applicant, activeStage, statusId)}
-                        onEditMeta={() => handleEditMeta(applicant, activeStage)}
-                      />
-                    ) : '-'}
-                  </td>
+                  {mode === 'active' ? (
+                    <>
+                      <td>
+                        {posting && activeStage ? (
+                          <Select
+                            value={activeStage.id}
+                            onValueChange={v => setActiveStageByApplicant(prev => ({ ...prev, [applicant.id]: v }))}
+                          >
+                            <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              {sortedStages.map(stage => (
+                                <SelectItem key={stage.id} value={stage.id}>{stage.name}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        ) : '-'}
+                      </td>
+                      <td>
+                        {activeStage ? (
+                          <StatusSelect
+                            stage={activeStage}
+                            stageRecords={applicant.stageRecords}
+                            onChange={statusId => handleStatusChange(applicant, activeStage, statusId)}
+                            onEditMeta={() => handleEditMeta(applicant, activeStage)}
+                          />
+                        ) : '-'}
+                      </td>
+                    </>
+                  ) : (
+                    <>
+                      <td>
+                        {applicant.separateReason ? (
+                          <Badge variant="outline" className="text-xs whitespace-nowrap">{applicant.separateReason}</Badge>
+                        ) : '-'}
+                      </td>
+                      <td>
+                        {separationStage && separationStatus ? (
+                          <StatusBadge color={getStageColorHex(separationStatus.color)} className="whitespace-nowrap">
+                            {separationStage.name} · {separationStatus.name}
+                          </StatusBadge>
+                        ) : '-'}
+                      </td>
+                    </>
+                  )}
                   <td className="text-xs">{applicant.applicationDate}</td>
                   <td>
                     {applicant.memo && (
@@ -210,16 +268,22 @@ export default function ApplicantOverviewTable({ applicants }: Props) {
                         <DropdownMenuItem onClick={() => navigate(`/applicants/${applicant.id}`)}>
                           <Eye className="w-3.5 h-3.5 mr-2" /> 상세보기
                         </DropdownMenuItem>
-                        <DropdownMenuSub>
-                          <DropdownMenuSubTrigger>별도 관리 이동</DropdownMenuSubTrigger>
-                          <DropdownMenuSubContent>
-                            {SEPARATE_REASONS.map(reason => (
-                              <DropdownMenuItem key={reason} onClick={() => handleSeparateManagement(applicant, reason)}>
-                                {reason}
-                              </DropdownMenuItem>
-                            ))}
-                          </DropdownMenuSubContent>
-                        </DropdownMenuSub>
+                        {mode === 'active' ? (
+                          <DropdownMenuSub>
+                            <DropdownMenuSubTrigger>별도 관리 이동</DropdownMenuSubTrigger>
+                            <DropdownMenuSubContent>
+                              {SEPARATE_REASONS.map(reason => (
+                                <DropdownMenuItem key={reason} onClick={() => handleSeparateManagement(applicant, reason)}>
+                                  {reason}
+                                </DropdownMenuItem>
+                              ))}
+                            </DropdownMenuSubContent>
+                          </DropdownMenuSub>
+                        ) : (
+                          <DropdownMenuItem onClick={() => setRestoreTarget(applicant)}>
+                            <Undo2 className="w-3.5 h-3.5 mr-2" /> 지원자 목록으로 복귀
+                          </DropdownMenuItem>
+                        )}
                         <DropdownMenuItem onClick={() => deleteApplicant(applicant.id)} className="text-destructive">
                           <Trash2 className="w-3.5 h-3.5 mr-2" /> 삭제
                         </DropdownMenuItem>
@@ -243,6 +307,23 @@ export default function ApplicantOverviewTable({ applicants }: Props) {
           onSubmit={handleCompletionSubmit}
         />
       )}
+
+      <AlertDialog open={!!restoreTarget} onOpenChange={open => !open && setRestoreTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>지원자 목록으로 복귀하시겠습니까?</AlertDialogTitle>
+            <AlertDialogDescription>
+              "{restoreTarget?.name}"님을 별도 관리에서 해제하고 일반 지원자 목록으로 되돌립니다.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>취소</AlertDialogCancel>
+            <AlertDialogAction onClick={() => restoreTarget && handleRestoreApplicant(restoreTarget)}>
+              복귀
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }

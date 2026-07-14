@@ -78,9 +78,12 @@ export default function ApplicantTable({ applicants, showSeparateActions, jobPos
   const sortedStages = jobPosting ? [...jobPosting.stages].sort((a, b) => a.order - b.order) : [];
 
   const handleSeparateManagement = (applicant: Applicant, reason: SeparateManagementReason) => {
+    const posting = jobPosting ?? postingsById.get(applicant.jobPostingId);
+    const currentStage = posting && getCurrentStage(applicant.stageRecords, posting.stages);
     updateApplicant(applicant.id, {
       isSeparateManagement: true,
       separateReason: reason,
+      separateStageId: currentStage?.id,
     });
   };
 
@@ -88,6 +91,7 @@ export default function ApplicantTable({ applicants, showSeparateActions, jobPos
     updateApplicant(applicant.id, {
       isSeparateManagement: false,
       separateReason: undefined,
+      separateStageId: undefined,
     });
   };
 
