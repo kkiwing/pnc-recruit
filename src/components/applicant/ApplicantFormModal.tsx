@@ -26,7 +26,7 @@ export default function ApplicantFormModal({ open, onClose, editData, defaultJob
     team: editData?.team || '',
     name: editData?.name || '',
     platform: editData?.platform || '',
-    gender: editData?.gender || '남성',
+    gender: editData?.gender || '',
     birthDate: editData?.birthDate || '',
     email: editData?.email || '',
     phone: editData?.phone || '',
@@ -43,8 +43,13 @@ export default function ApplicantFormModal({ open, onClose, editData, defaultJob
     setForm(prev => ({ ...prev, [field]: value }));
   };
 
+  const handleJobPostingChange = (jobPostingId: string) => {
+    const posting = jobPostings.find(j => j.id === jobPostingId);
+    setForm(prev => ({ ...prev, jobPostingId, team: posting?.department ?? prev.team }));
+  };
+
   const handleSubmit = () => {
-    if (!form.name.trim() || !form.jobPostingId) return;
+    if (!form.name.trim() || !form.jobPostingId || !form.gender) return;
     const { school, major, gender, ...rest } = form;
     if (editData?.id) {
       updateApplicant(editData.id, {
@@ -95,7 +100,7 @@ export default function ApplicantFormModal({ open, onClose, editData, defaultJob
         <div className="grid grid-cols-2 gap-4 py-4">
           <div className="col-span-2">
             <Label>채용 공고 *</Label>
-            <Select value={form.jobPostingId || undefined} onValueChange={v => handleChange('jobPostingId', v)}>
+            <Select value={form.jobPostingId || undefined} onValueChange={handleJobPostingChange}>
               <SelectTrigger><SelectValue placeholder="공고 선택" /></SelectTrigger>
               <SelectContent>
                 {jobPostings.map(j => <SelectItem key={j.id} value={j.id}>{j.title}</SelectItem>)}
@@ -104,16 +109,16 @@ export default function ApplicantFormModal({ open, onClose, editData, defaultJob
           </div>
           <div>
             <Label>팀</Label>
-            <Input value={form.team} onChange={e => handleChange('team', e.target.value)} placeholder="팀명" />
+            <Input value={form.team} onChange={e => handleChange('team', e.target.value)} placeholder="채용 공고 선택 시 자동 입력" />
           </div>
           <div>
             <Label>이름 *</Label>
             <Input value={form.name} onChange={e => handleChange('name', e.target.value)} placeholder="이름" />
           </div>
           <div>
-            <Label>성별</Label>
-            <Select value={form.gender} onValueChange={v => handleChange('gender', v)}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
+            <Label>성별 *</Label>
+            <Select value={form.gender || undefined} onValueChange={v => handleChange('gender', v)}>
+              <SelectTrigger><SelectValue placeholder="선택" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="남성">남성</SelectItem>
                 <SelectItem value="여성">여성</SelectItem>
