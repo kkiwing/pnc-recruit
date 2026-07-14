@@ -21,6 +21,7 @@ import {
 import { Trash2, MoreHorizontal, MessageSquare, Clock, Eye, Undo2 } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent } from '@/components/ui/dropdown-menu';
 import CompletionDateModal from './CompletionDateModal';
+import MemoModal from './MemoModal';
 import SharedStatusSelect from '@/components/common/StatusSelect';
 import StatusBadge from '@/components/common/StatusBadge';
 
@@ -74,8 +75,14 @@ export default function ApplicantOverviewTable({ applicants, mode = 'active' }: 
   const [activeStageByApplicant, setActiveStageByApplicant] = useState<Record<string, string>>({});
   const [completionModal, setCompletionModal] = useState<{ applicantId: string; stage: Stage; statusId: string; initialData?: StageRecord['meta'] } | null>(null);
   const [restoreTarget, setRestoreTarget] = useState<Applicant | null>(null);
+  const [memoTarget, setMemoTarget] = useState<Applicant | null>(null);
 
   const postingsById = new Map(jobPostings.map(j => [j.id, j]));
+
+  const handleSaveMemo = (memo: string) => {
+    if (!memoTarget) return;
+    updateApplicant(memoTarget.id, { memo });
+  };
 
   const getActiveStage = (applicant: Applicant, sortedStages: Stage[]): Stage | undefined => {
     const chosenId = activeStageByApplicant[applicant.id];
@@ -246,16 +253,14 @@ export default function ApplicantOverviewTable({ applicants, mode = 'active' }: 
                   )}
                   <td className="text-xs whitespace-nowrap">{applicant.applicationDate}</td>
                   <td>
-                    {applicant.memo && (
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <MessageSquare className="w-3.5 h-3.5 text-muted-foreground" />
-                        </TooltipTrigger>
-                        <TooltipContent className="max-w-xs">
-                          <p className="text-xs whitespace-pre-wrap">{applicant.memo}</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    )}
+                    <button
+                      type="button"
+                      title="메모 보기/작성"
+                      className={`hover:text-foreground ${applicant.memo ? 'text-muted-foreground' : 'text-muted-foreground/30'}`}
+                      onClick={() => setMemoTarget(applicant)}
+                    >
+                      <MessageSquare className="w-3.5 h-3.5" />
+                    </button>
                   </td>
                   <td>
                     <DropdownMenu>
@@ -305,6 +310,17 @@ export default function ApplicantOverviewTable({ applicants, mode = 'active' }: 
           isInterview={completionModal.stage.completionForm === 'interview'}
           initialData={completionModal.initialData}
           onSubmit={handleCompletionSubmit}
+        />
+      )}
+
+      {memoTarget && (
+        <MemoModal
+          open={!!memoTarget}
+          onClose={() => setMemoTarget(null)}
+          applicantId={memoTarget.id}
+          applicantName={memoTarget.name}
+          memo={memoTarget.memo}
+          onSave={handleSaveMemo}
         />
       )}
 
