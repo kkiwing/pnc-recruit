@@ -185,6 +185,17 @@ export const DEFAULT_STAGE_NAMES = [
   '면접 결과',
 ] as const;
 
+/** 단계 배열을 새 id로 깊은 복사한다. 프리셋을 새 공고에 스냅샷으로 복사할 때,
+ * 이후 프리셋 수정이 이미 생성된 공고에 영향을 주지 않도록 참조를 완전히 분리한다. */
+export function cloneStages(stages: Stage[]): Stage[] {
+  return stages.map(s => ({
+    ...s,
+    id: crypto.randomUUID(),
+    statuses: s.statuses.map(st => ({ ...st, id: crypto.randomUUID() })),
+    autoSend: s.autoSend ? { ...s.autoSend, channels: [...s.autoSend.channels] } : undefined,
+  }));
+}
+
 export function createDefaultStages(): Stage[] {
   const defs: { name: string; completionForm: CompletionFormType; result?: boolean }[] = [
     { name: '인성검사 안내', completionForm: 'period' },

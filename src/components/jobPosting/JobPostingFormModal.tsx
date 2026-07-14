@@ -7,9 +7,10 @@ import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useJobPostings } from '@/context/JobPostingContext';
+import { useProcessPreset } from '@/context/ProcessPresetContext';
 import {
   JobPosting, CareerType, EmploymentType, CoverLetterQuestion,
-  createDefaultCoverLetterQuestions, createDefaultStages,
+  createDefaultCoverLetterQuestions, cloneStages,
 } from '@/types/jobPosting';
 import { Plus, Trash2, ChevronUp, ChevronDown } from 'lucide-react';
 
@@ -21,6 +22,7 @@ interface Props {
 
 export default function JobPostingFormModal({ open, onClose, editData }: Props) {
   const { addJobPosting, updateJobPosting } = useJobPostings();
+  const { presetStages } = useProcessPreset();
   const [form, setForm] = useState({
     title: editData?.title || '',
     department: editData?.department || '',
@@ -74,7 +76,7 @@ export default function JobPostingFormModal({ open, onClose, editData }: Props) 
     if (editData?.id) {
       updateJobPosting(editData.id, data);
     } else {
-      addJobPosting({ ...data, stages: createDefaultStages() });
+      addJobPosting({ ...data, stages: cloneStages(presetStages) });
     }
     onClose();
   };

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useJobPostings } from '@/context/JobPostingContext';
 import { useApplicants } from '@/context/ApplicantContext';
+import { useProcessPreset } from '@/context/ProcessPresetContext';
 import JobPostingDetailLink from '@/components/applicant/JobPostingDetailLink';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -20,7 +21,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Stage, StageType, StageStatus, CompletionFormType, AutoSendConfig, getStageColorHex } from '@/types/jobPosting';
 import StatusBadge from '@/components/common/StatusBadge';
-import { Plus, Trash2, ChevronUp, ChevronDown, Settings2, AlertTriangle } from 'lucide-react';
+import { Plus, Trash2, ChevronUp, ChevronDown, Settings2, AlertTriangle, Info } from 'lucide-react';
 import StageStatusModal from '@/components/process/StageStatusModal';
 import AutoSendPanel from '@/components/process/AutoSendPanel';
 
@@ -35,11 +36,14 @@ const STAGE_TYPE_LABELS: Record<StageType, string> = {
   result: '합불 판정',
 };
 
+const PRESET_ID = '__preset__';
+
 export default function ProcessManagementPage() {
   const { jobPostings, updateJobPosting } = useJobPostings();
   const { applicants } = useApplicants();
+  const { presetStages, setPresetStages } = useProcessPreset();
   const [searchParams, setSearchParams] = useSearchParams();
-  const [selectedId, setSelectedIdState] = useState(() => searchParams.get('posting') || jobPostings[0]?.id || '');
+  const [selectedId, setSelectedIdState] = useState(() => searchParams.get('posting') || PRESET_ID);
 
   const setSelectedId = (id: string) => {
     setSelectedIdState(id);
@@ -56,17 +60,17 @@ export default function ProcessManagementPage() {
   const [newStageForm, setNewStageForm] = useState<CompletionFormType>('none');
   const [newStageType, setNewStageType] = useState<StageType>('normal');
 
-  const posting = jobPostings.find(j => j.id === selectedId);
+  const isPreset = selectedId === PRESET_ID;
+  const posting = isPreset ? undefined : jobPostings.find(j => j.id === selectedId);
   const applicantCount = posting ? applicants.filter(a => a.jobPostingId === posting.id).length : 0;
 
-  if (jobPostings.length === 0) {
-    return <div className="p-6 text-sm text-muted-foreground">등록된 채용 공고가 없습니다. 먼저 공고를 등록해주세요.</div>;
-  }
-
-  const sortedStages = posting ? [...posting.stages].sort((a, b) => a.order - b.order) : [];
+  const sortedStages = isPreset
+    ? [...presetStages].sort((a, b) => a.order - b.order)
+    : posting ? [...posting.stages].sort((a, b) => a.order - b.order) : [];
 
   const persistStages = (stages: Stage[]) => {
-    if (posting) updateJobPosting(posting.id, { stages });
+    if (isPreset) setPresetStages(stages);
+    else if (posting) updateJobPosting(posting.id, { stages });
   };
 
   const moveStage = (index: number, dir: -1 | 1) => {
@@ -104,7 +108,7 @@ export default function ProcessManagementPage() {
   };
 
   const addStage = () => {
-    if (!newStageName.trim() || !posting) return;
+    if (!newStageName.trim() || !(posting || isPreset)) return;
     const statuses: StageStatus[] = newStageType === 'result'
       ? [
           { id: crypto.randomUUID(), name: '대기', color: 'gray', isDefault: true },
@@ -138,13 +142,24 @@ export default function ProcessManagementPage() {
         <Select value={selectedId} onValueChange={setSelectedId}>
           <SelectTrigger><SelectValue /></SelectTrigger>
           <SelectContent>
+            <SelectItem value={PRESET_ID}>기본 프리셋</SelectItem>
             {jobPostings.map(j => <SelectItem key={j.id} value={j.id}>{j.title}</SelectItem>)}
           </SelectContent>
         </Select>
         {posting && <JobPostingDetailLink jobPostingId={posting.id} className="shrink-0" />}
       </div>
 
-      {posting && (
+      {isPreset && (
+        <div className="card-soft px-3 py-2 mb-5 flex items-start gap-2 text-xs text-muted-foreground max-w-2xl">
+          <Info className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+          <p>
+            새 공고에 기본 적용되는 프로세스입니다. 여기서 수정해도 이미 등록된 공고에는 소급 적용되지 않으며(공고 생성 시점에 복사됨),
+            새로고침하면 초기값으로 리셋됩니다(프로토타입 한계).
+          </p>
+        </div>
+      )}
+
+      {(posting || isPreset) && (
         <div className="space-y-3">
           {sortedStages.map((stage, i) => (
             <div key={stage.id} className="card-elevated">
@@ -246,6 +261,10 @@ export default function ProcessManagementPage() {
             </Button>
           )}
         </div>
+      )}
+
+      {!posting && !isPreset && (
+        <p className="text-sm text-muted-foreground">선택한 공고를 찾을 수 없습니다. 다른 공고를 선택해주세요.</p>
       )}
 
       {statusModalStage && (

@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ApplicantProvider } from "@/context/ApplicantContext";
 import { JobPostingProvider } from "@/context/JobPostingContext";
+import { ProcessPresetProvider } from "@/context/ProcessPresetContext";
 import AdminLayout from "@/components/layout/AdminLayout";
 import Dashboard from "@/pages/Dashboard";
 import JobPostingList from "@/pages/JobPostingList";
@@ -24,23 +25,25 @@ const App = () => (
       <Toaster />
       <Sonner />
       <JobPostingProvider>
-        <ApplicantProvider>
-          <BrowserRouter>
-            <AdminLayout>
-              <Routes>
-                <Route path="/" element={<Dashboard />} />
-                <Route path="/postings" element={<JobPostingList />} />
-                <Route path="/postings/:id" element={<JobPostingDetail />} />
-                <Route path="/process-management" element={<ProcessManagement />} />
-                <Route path="/applicants" element={<ApplicantList />} />
-                <Route path="/applicants/:id" element={<ApplicantDetail />} />
-                <Route path="/separate-management" element={<SeparateManagement />} />
-                <Route path="/interviews" element={<InterviewSchedule />} />
-                <Route path="*" element={<NotFound />} />
-              </Routes>
-            </AdminLayout>
-          </BrowserRouter>
-        </ApplicantProvider>
+        <ProcessPresetProvider>
+          <ApplicantProvider>
+            <BrowserRouter>
+              <AdminLayout>
+                <Routes>
+                  <Route path="/" element={<Dashboard />} />
+                  <Route path="/postings" element={<JobPostingList />} />
+                  <Route path="/postings/:id" element={<JobPostingDetail />} />
+                  <Route path="/process-management" element={<ProcessManagement />} />
+                  <Route path="/applicants" element={<ApplicantList />} />
+                  <Route path="/applicants/:id" element={<ApplicantDetail />} />
+                  <Route path="/separate-management" element={<SeparateManagement />} />
+                  <Route path="/interviews" element={<InterviewSchedule />} />
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+              </AdminLayout>
+            </BrowserRouter>
+          </ApplicantProvider>
+        </ProcessPresetProvider>
       </JobPostingProvider>
     </TooltipProvider>
   </QueryClientProvider>
