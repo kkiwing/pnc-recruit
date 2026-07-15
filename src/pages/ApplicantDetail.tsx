@@ -7,14 +7,14 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { FileAttachment, StageRecord, getStageRecordStatus, getCurrentStage } from '@/types/applicant';
+import { FileAttachment, FINAL_RESULT_LOCK_MESSAGE, StageRecord, getStageRecordStatus, getCurrentStage } from '@/types/applicant';
 import { Stage, getStageColorHex } from '@/types/jobPosting';
 import { ArrowLeft, FileText, Upload, Trash2, Clock, Check } from 'lucide-react';
 import CompletionDateModal from '@/components/applicant/CompletionDateModal';
 import StatusBadge from '@/components/common/StatusBadge';
 import { Badge } from '@/components/ui/badge';
 
-function StageBadge({ stage, stageRecords, onEditMeta }: { stage: Stage; stageRecords: StageRecord[]; onEditMeta: () => void }) {
+function StageBadge({ stage, stageRecords, onEditMeta, disabled }: { stage: Stage; stageRecords: StageRecord[]; onEditMeta: () => void; disabled?: boolean }) {
   const status = getStageRecordStatus(stageRecords, stage);
   const record = stageRecords.find(r => r.stageId === stage.id);
   const meta = record?.meta;
@@ -30,7 +30,9 @@ function StageBadge({ stage, stageRecords, onEditMeta }: { stage: Stage; stageRe
         <Tooltip>
           <TooltipTrigger asChild>{badge}</TooltipTrigger>
           <TooltipContent side="top" className="text-xs space-y-1 max-w-xs">
-            {hasMetaInfo ? (
+            {disabled ? (
+              <p>{FINAL_RESULT_LOCK_MESSAGE}</p>
+            ) : hasMetaInfo ? (
               <>
                 {meta?.startDate && meta?.endDate && <p>기간: {meta.startDate} ~ {meta.endDate}</p>}
                 {meta?.time && <p>시간: {meta.time}</p>}
@@ -41,7 +43,12 @@ function StageBadge({ stage, stageRecords, onEditMeta }: { stage: Stage; stageRe
             )}
           </TooltipContent>
         </Tooltip>
-        <button type="button" className="text-muted-foreground hover:text-foreground" onClick={onEditMeta}>
+        <button
+          type="button"
+          disabled={disabled}
+          className="text-muted-foreground hover:text-foreground disabled:opacity-40 disabled:cursor-not-allowed"
+          onClick={onEditMeta}
+        >
           <Clock className="w-3.5 h-3.5" />
         </button>
       </div>
@@ -189,7 +196,13 @@ export default function ApplicantDetailPage() {
           <div className="flex flex-wrap gap-1.5">
             {jobPosting
               ? [...jobPosting.stages].sort((a, b) => a.order - b.order).map(stage => (
-                  <StageBadge key={stage.id} stage={stage} stageRecords={applicant.stageRecords} onEditMeta={() => setEditingStage(stage)} />
+                  <StageBadge
+                    key={stage.id}
+                    stage={stage}
+                    stageRecords={applicant.stageRecords}
+                    onEditMeta={() => setEditingStage(stage)}
+                    disabled={!!applicant.finalResult}
+                  />
                 ))
               : <span className="text-xs text-muted-foreground">전형 단계 정보를 찾을 수 없습니다.</span>
             }

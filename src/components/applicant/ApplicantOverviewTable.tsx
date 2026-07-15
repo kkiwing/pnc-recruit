@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Applicant, StageRecord, getCurrentStage, getSeparationStage, getStageRecordStatus } from '@/types/applicant';
+import { Applicant, FINAL_RESULT_LOCK_MESSAGE, StageRecord, getCurrentStage, getSeparationStage, getStageRecordStatus } from '@/types/applicant';
 import { useApplicants } from '@/context/ApplicantContext';
 import { useJobPostings } from '@/context/JobPostingContext';
 import { Stage, getStageColorHex } from '@/types/jobPosting';
@@ -26,6 +26,7 @@ import FinalResultModal from './FinalResultModal';
 import SeparateManagementModal from './SeparateManagementModal';
 import SharedStatusSelect from '@/components/common/StatusSelect';
 import StatusBadge from '@/components/common/StatusBadge';
+import LockedTooltip from '@/components/common/LockedTooltip';
 
 interface Props {
   applicants: Applicant[];
@@ -33,11 +34,12 @@ interface Props {
   mode?: 'active' | 'separate';
 }
 
-function StatusSelect({ stage, stageRecords, onChange, onEditMeta }: {
+function StatusSelect({ stage, stageRecords, onChange, onEditMeta, disabled }: {
   stage: Stage;
   stageRecords: StageRecord[];
   onChange: (statusId: string) => void;
   onEditMeta: () => void;
+  disabled?: boolean;
 }) {
   const status = getStageRecordStatus(stageRecords, stage);
   const record = stageRecords.find(r => r.stageId === stage.id);
@@ -46,20 +48,32 @@ function StatusSelect({ stage, stageRecords, onChange, onEditMeta }: {
 
   return (
     <div className="inline-flex items-center gap-1.5">
-      <SharedStatusSelect
-        value={status?.id ?? ''}
-        options={stage.statuses.map(s => ({ id: s.id, name: s.name, color: getStageColorHex(s.color) }))}
-        onChange={onChange}
-      />
+      <LockedTooltip locked={!!disabled} message={FINAL_RESULT_LOCK_MESSAGE}>
+        <SharedStatusSelect
+          value={status?.id ?? ''}
+          options={stage.statuses.map(s => ({ id: s.id, name: s.name, color: getStageColorHex(s.color) }))}
+          onChange={onChange}
+          disabled={disabled}
+        />
+      </LockedTooltip>
       {status?.hasDateInput && (
         <Tooltip>
           <TooltipTrigger asChild>
-            <button type="button" className="text-muted-foreground hover:text-foreground" onClick={onEditMeta}>
-              <Clock className="w-3.5 h-3.5" />
-            </button>
+            <span className="inline-block">
+              <button
+                type="button"
+                disabled={disabled}
+                className="text-muted-foreground hover:text-foreground disabled:opacity-40 disabled:cursor-not-allowed"
+                onClick={onEditMeta}
+              >
+                <Clock className="w-3.5 h-3.5" />
+              </button>
+            </span>
           </TooltipTrigger>
           <TooltipContent side="top" className="text-xs space-y-1 max-w-xs">
-            {hasMetaInfo ? (
+            {disabled ? (
+              <p>{FINAL_RESULT_LOCK_MESSAGE}</p>
+            ) : hasMetaInfo ? (
               <>
                 {meta?.startDate && meta?.endDate && <p>기간: {meta.startDate} ~ {meta.endDate}</p>}
                 {meta?.time && <p>시간: {meta.time}</p>}
@@ -232,17 +246,20 @@ export default function ApplicantOverviewTable({ applicants, mode = 'active' }: 
                     <>
                       <td>
                         {posting && activeStage ? (
-                          <Select
-                            value={activeStage.id}
-                            onValueChange={v => setActiveStageByApplicant(prev => ({ ...prev, [applicant.id]: v }))}
-                          >
-                            <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
-                            <SelectContent>
-                              {sortedStages.map(stage => (
-                                <SelectItem key={stage.id} value={stage.id}>{stage.name}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                          <LockedTooltip locked={!!applicant.finalResult} message={FINAL_RESULT_LOCK_MESSAGE}>
+                            <Select
+                              value={activeStage.id}
+                              onValueChange={v => setActiveStageByApplicant(prev => ({ ...prev, [applicant.id]: v }))}
+                              disabled={!!applicant.finalResult}
+                            >
+                              <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                              <SelectContent>
+                                {sortedStages.map(stage => (
+                                  <SelectItem key={stage.id} value={stage.id}>{stage.name}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </LockedTooltip>
                         ) : '-'}
                       </td>
                       <td>
@@ -252,6 +269,7 @@ export default function ApplicantOverviewTable({ applicants, mode = 'active' }: 
                             stageRecords={applicant.stageRecords}
                             onChange={statusId => handleStatusChange(applicant, activeStage, statusId)}
                             onEditMeta={() => handleEditMeta(applicant, activeStage)}
+                            disabled={!!applicant.finalResult}
                           />
                         ) : '-'}
                       </td>

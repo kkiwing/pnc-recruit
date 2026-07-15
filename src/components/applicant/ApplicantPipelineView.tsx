@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Applicant, StageRecord, getCurrentStage, getStageRecordStatus } from '@/types/applicant';
+import { Applicant, FINAL_RESULT_LOCK_MESSAGE, StageRecord, getCurrentStage, getStageRecordStatus } from '@/types/applicant';
 import { useApplicants } from '@/context/ApplicantContext';
 import { JobPosting, Stage, getStageColorHex } from '@/types/jobPosting';
 import { Button } from '@/components/ui/button';
-import { MoreHorizontal, ArrowRightLeft } from 'lucide-react';
+import { MoreHorizontal, ArrowRightLeft, Lock } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent } from '@/components/ui/dropdown-menu';
 import CompletionDateModal from './CompletionDateModal';
 import StatusBadge from '@/components/common/StatusBadge';
@@ -46,6 +46,7 @@ export default function ApplicantPipelineView({ applicants, jobPosting }: Props)
   };
 
   const moveApplicantToStage = (applicant: Applicant, targetStage: Stage) => {
+    if (applicant.finalResult) return;
     const currentStage = getCurrentStage(applicant.stageRecords, sortedStages);
     if (currentStage?.id === targetStage.id) return;
     const nextStatusId = targetStage.statuses.find(s => !s.isDefault)?.id ?? targetStage.statuses[0]?.id;
@@ -94,12 +95,13 @@ export default function ApplicantPipelineView({ applicants, jobPosting }: Props)
               )}
               {stageApplicants.map(applicant => {
                 const status = getStageRecordStatus(applicant.stageRecords, stage);
+                const locked = !!applicant.finalResult;
                 return (
                   <div
                     key={applicant.id}
-                    draggable
+                    draggable={!locked}
                     onDragStart={e => e.dataTransfer.setData('text/plain', applicant.id)}
-                    className="card-soft rounded-md p-2.5 cursor-grab active:cursor-grabbing"
+                    className={`card-soft rounded-md p-2.5 ${locked ? 'opacity-70' : 'cursor-grab active:cursor-grabbing'}`}
                   >
                     <div className="flex items-start justify-between gap-1">
                       <button
@@ -115,18 +117,24 @@ export default function ApplicantPipelineView({ applicants, jobPosting }: Props)
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuSub>
-                            <DropdownMenuSubTrigger>
-                              <ArrowRightLeft className="w-3.5 h-3.5 mr-2" /> 다른 단계로 이동
-                            </DropdownMenuSubTrigger>
-                            <DropdownMenuSubContent>
-                              {sortedStages.filter(s => s.id !== stage.id).map(targetStage => (
-                                <DropdownMenuItem key={targetStage.id} onClick={() => moveApplicantToStage(applicant, targetStage)}>
-                                  {targetStage.name}
-                                </DropdownMenuItem>
-                              ))}
-                            </DropdownMenuSubContent>
-                          </DropdownMenuSub>
+                          {locked ? (
+                            <DropdownMenuItem disabled className="text-muted-foreground text-xs whitespace-normal">
+                              <Lock className="w-3.5 h-3.5 mr-2 shrink-0" /> {FINAL_RESULT_LOCK_MESSAGE}
+                            </DropdownMenuItem>
+                          ) : (
+                            <DropdownMenuSub>
+                              <DropdownMenuSubTrigger>
+                                <ArrowRightLeft className="w-3.5 h-3.5 mr-2" /> 다른 단계로 이동
+                              </DropdownMenuSubTrigger>
+                              <DropdownMenuSubContent>
+                                {sortedStages.filter(s => s.id !== stage.id).map(targetStage => (
+                                  <DropdownMenuItem key={targetStage.id} onClick={() => moveApplicantToStage(applicant, targetStage)}>
+                                    {targetStage.name}
+                                  </DropdownMenuItem>
+                                ))}
+                              </DropdownMenuSubContent>
+                            </DropdownMenuSub>
+                          )}
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </div>

@@ -80,6 +80,10 @@ export interface FinalResult {
   decidedAt: string;
 }
 
+/** 최종 결과가 지정된 지원자의 전형 조작 UI(목록 셀렉트, 파이프라인 드래그/메뉴,
+ * 상세 페이지 조작)를 잠글 때 공통으로 보여주는 안내 문구. */
+export const FINAL_RESULT_LOCK_MESSAGE = '최종 결과가 지정되어 전형이 종료된 지원자입니다.';
+
 export interface Applicant {
   id: string;
   no: number;
