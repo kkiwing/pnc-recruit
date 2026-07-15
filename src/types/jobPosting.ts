@@ -7,15 +7,6 @@ export interface CoverLetterQuestion {
   maxLength?: number;
 }
 
-/**
- * 단계의 성격. 'result'는 "이 단계 안에 합불 판정이 포함된다"를 나타낸다(예: 인성검사,
- * 면접). 이 값 자체가 최종 합격 여부를 결정하지는 않는다 — 최종 판정은
- * Applicant.finalResult로 전형 구조와 완전히 분리되어 있다. stageType은 프로세스
- * 관리에서 "단계 추가" 시 기본 상태 세트(대기/진행중/완료 vs 대기/합격/불합격)를
- * 고르는 용도로만 쓰인다.
- */
-export type StageType = 'normal' | 'result';
-
 export interface StageStatus {
   id: string;
   name: string;
@@ -23,13 +14,9 @@ export interface StageStatus {
   /** 아직 처리되지 않은 시작 상태. statuses 배열의 첫 번째 항목과 항상 동기화되며
    * (syncDefaultStatus 참고), 별도로 지정하는 UI는 없다 — 순서를 바꾸면 따라간다. */
   isDefault?: boolean;
-  /** 이 상태가 되면 해당 단계가 끝난 것으로 집계된다("단계 종료"). normal/result
-   * 단계 모두에 적용 가능하며, 한 단계 안에 여러 개 있을 수 있다(예: 합격/불합격 둘 다). */
+  /** 이 상태가 되면 해당 단계가 끝난 것으로 집계된다("단계 종료"). 한 단계 안에
+   * 여러 상태가 동시에 이 플래그를 가질 수 있다(예: "합격"과 "불합격" 둘 다). */
   isCompletion?: boolean;
-  /** "합격" 의미의 상태 (보통 isCompletion과 함께 지정) */
-  isPass?: boolean;
-  /** "불합격" 의미의 상태 (보통 isCompletion과 함께 지정) */
-  isFail?: boolean;
   /** 이 상태로 바꿀 때 날짜(기간)+시간(선택)+메모 입력 모달을 띄울지 여부. 예전에는
    * 단계 속성(completionForm)이었으나, "안내" 성격의 상태만 날짜가 필요하다는 점을
    * 더 정확히 표현하기 위해 상태 속성으로 옮겼다. */
@@ -43,11 +30,19 @@ export interface AutoSendConfig {
   body: string;
 }
 
+/**
+ * 단계에는 "합불 판정 단계"와 "일반 단계" 같은 구분이 없다. "합격"/"불합격"이라는
+ * 이름의 상태값은 그저 이름과 색을 가진 일반 상태로 존재할 수 있고(진행 상황을
+ * 보여주는 용도), 집계에는 전혀 쓰이지 않는다 — 최종 합불은 오직
+ * Applicant.finalResult로만 판단한다. 단계별로 합불을 판정한다는 개념 자체를
+ * 프로토타입 검증 과정에서 폐지했다(2026-07-15 decision-log 참고): 상태값 관리
+ * 화면에 "구분"·"합격으로"·"불합격으로" 같은 개념이 늘어나 복잡도만 커지고,
+ * 실제로 필요한 것은 finalResult 하나로 충분했다.
+ */
 export interface Stage {
   id: string;
   name: string;
   order: number;
-  stageType: StageType;
   statuses: StageStatus[];
   autoSend?: AutoSendConfig;
 }
@@ -96,22 +91,6 @@ export function getStageColorHex(colorId: string): string {
   return STAGE_COLOR_PALETTE.find(c => c.id === colorId)?.hex ?? STAGE_COLOR_PALETTE[0].hex;
 }
 
-/** result 단계에서 "합격"을 의미하는 상태. isPass가 명시되지 않은 레거시 단계는
- * 이름이 "합격"인 상태로 폴백한다. */
-export function getPassStatus(stage: Stage): StageStatus | undefined {
-  const explicit = stage.statuses.find(s => s.isPass);
-  if (explicit) return explicit;
-  return stage.statuses.find(s => s.name === '합격');
-}
-
-/** result 단계에서 "불합격"을 의미하는 상태. isFail이 명시되지 않은 레거시 단계는
- * 이름이 "불합격"인 상태로 폴백한다. */
-export function getFailStatus(stage: Stage): StageStatus | undefined {
-  const explicit = stage.statuses.find(s => s.isFail);
-  if (explicit) return explicit;
-  return stage.statuses.find(s => s.name === '불합격');
-}
-
 /** statuses 배열의 첫 번째 항목을 isDefault=true로, 나머지를 false로 맞춘다.
  * 상태 목록을 추가/삭제/순서 변경할 때마다 반드시 이 함수를 거쳐야 "시작 상태 =
  * 목록 맨 위"라는 불변식이 유지된다(상태 관리 모달에서 별도로 "시작"을 지정하는
@@ -142,21 +121,12 @@ export function createDefaultCoverLetterQuestions(): CoverLetterQuestion[] {
   }));
 }
 
-/** "단계 추가"에서 일반 단계에 기본으로 적용하는 상태 세트. */
+/** "단계 추가"에서 새 단계에 기본으로 적용하는 상태 세트. */
 export function progressStatuses(): StageStatus[] {
   return [
     { id: crypto.randomUUID(), name: '대기', color: 'gray', isDefault: true },
     { id: crypto.randomUUID(), name: '진행중', color: 'orange' },
     { id: crypto.randomUUID(), name: '완료', color: 'green', isCompletion: true },
-  ];
-}
-
-/** "단계 추가"에서 합불 판정 단계에 기본으로 적용하는 상태 세트. */
-export function resultStatuses(): StageStatus[] {
-  return [
-    { id: crypto.randomUUID(), name: '대기', color: 'gray', isDefault: true },
-    { id: crypto.randomUUID(), name: '합격', color: 'blue', isPass: true, isCompletion: true },
-    { id: crypto.randomUUID(), name: '불합격', color: 'red', isFail: true, isCompletion: true },
   ];
 }
 
@@ -175,37 +145,37 @@ export function cloneStages(stages: Stage[]): Stage[] {
 
 /**
  * 기본 프로세스 프리셋(4단계): 인성검사 → 자사양식 → 면접 → 최종.
- * 각 단계의 첫 상태가 시작 상태이며, 합격/불합격은 모두 단계 종료(isCompletion)로
- * 집계된다. "안내" 상태만 hasDateInput으로 날짜+메모 입력을 받는다. 전형 단계
- * 자체는 합불을 최종 결정하지 않는다 — 최종 합격/불합격은 Applicant.finalResult로
- * 전형 구조와 무관하게 별도 지정한다(특별 채용 등 예외 대응).
+ * 각 단계의 첫 상태가 시작 상태이다. "합격"/"불합격"은 이름·색만 있는 순수한
+ * 일반 상태다(진행 상황을 보여주는 용도일 뿐 단계 종료·집계 어디에도 쓰이지
+ * 않는다). "안내" 상태만 hasDateInput으로 날짜+메모 입력을 받는다. 최종
+ * 합격/불합격은 Applicant.finalResult로 전형 구조와 무관하게 별도 지정한다
+ * (특별 채용 등 예외 대응).
  */
 export function createDefaultStages(): Stage[] {
-  const stage = (name: string, stageType: StageType, statuses: StageStatus[]): Omit<Stage, 'id' | 'order'> => ({
+  const stage = (name: string, statuses: StageStatus[]): Omit<Stage, 'id' | 'order'> => ({
     name,
-    stageType,
     statuses,
   });
 
   const defs = [
-    stage('인성검사', 'result', [
+    stage('인성검사', [
       { id: crypto.randomUUID(), name: '안내', color: 'gray', isDefault: true, hasDateInput: true },
       { id: crypto.randomUUID(), name: '공고등록', color: 'orange' },
       { id: crypto.randomUUID(), name: '진행완료', color: 'purple' },
-      { id: crypto.randomUUID(), name: '합격', color: 'blue', isPass: true, isCompletion: true },
-      { id: crypto.randomUUID(), name: '불합격', color: 'red', isFail: true, isCompletion: true },
+      { id: crypto.randomUUID(), name: '합격', color: 'blue' },
+      { id: crypto.randomUUID(), name: '불합격', color: 'red' },
     ]),
-    stage('자사양식', 'normal', [
+    stage('자사양식', [
       { id: crypto.randomUUID(), name: '안내', color: 'gray', isDefault: true, hasDateInput: true },
       { id: crypto.randomUUID(), name: '작성완료', color: 'green', isCompletion: true },
     ]),
-    stage('면접', 'result', [
+    stage('면접', [
       { id: crypto.randomUUID(), name: '안내', color: 'gray', isDefault: true, hasDateInput: true },
       { id: crypto.randomUUID(), name: '진행완료', color: 'purple' },
-      { id: crypto.randomUUID(), name: '합격', color: 'blue', isPass: true, isCompletion: true },
-      { id: crypto.randomUUID(), name: '불합격', color: 'red', isFail: true, isCompletion: true },
+      { id: crypto.randomUUID(), name: '합격', color: 'blue' },
+      { id: crypto.randomUUID(), name: '불합격', color: 'red' },
     ]),
-    stage('최종', 'normal', [
+    stage('최종', [
       { id: crypto.randomUUID(), name: '안내', color: 'gray', isDefault: true, hasDateInput: true },
       { id: crypto.randomUUID(), name: '전형완료', color: 'green', isCompletion: true },
     ]),

@@ -33,19 +33,14 @@ export default function StageStatusModal({ open, onClose, stage, onSave }: Props
     setStatuses(prev => prev.map(s => s.id === id ? { ...s, color } : s));
   };
 
-  /** "단계 종료" 체크: 다른(합격/불합격이 아닌) 상태의 종료 체크는 자동 해제하고,
-   * 체크한 상태를 목록 맨 아래로 옮긴다. 합격/불합격은 별도 버튼으로 관리하므로
-   * 여기서는 건드리지 않는다 — 한 단계에 합격/불합격이 모두 종료로 남아있을 수 있다. */
+  /** "단계 종료" 체크: 체크한 상태를 목록 맨 아래로 옮기고, 다른 상태의 종료
+   * 체크는 자동으로 해제한다 — 한 단계에서 "종료"는 항상 하나만 유지된다. */
   const toggleCompletion = (id: string) => {
     setStatuses(prev => {
       const target = prev.find(s => s.id === id);
       if (!target) return prev;
       const turningOn = !target.isCompletion;
-      const next = prev.map(s => {
-        if (s.id === id) return { ...s, isCompletion: turningOn };
-        if (turningOn && !s.isPass && !s.isFail) return { ...s, isCompletion: false };
-        return s;
-      });
+      const next = prev.map(s => ({ ...s, isCompletion: s.id === id ? turningOn : false }));
       if (!turningOn) return next;
       const idx = next.findIndex(s => s.id === id);
       const [item] = next.splice(idx, 1);
@@ -56,14 +51,6 @@ export default function StageStatusModal({ open, onClose, stage, onSave }: Props
 
   const toggleDateInput = (id: string) => {
     setStatuses(prev => prev.map(s => s.id === id ? { ...s, hasDateInput: !s.hasDateInput } : s));
-  };
-
-  const setPass = (id: string) => {
-    setStatuses(prev => prev.map(s => s.id === id ? { ...s, isPass: true, isFail: false, isCompletion: true } : { ...s, isPass: false }));
-  };
-
-  const setFail = (id: string) => {
-    setStatuses(prev => prev.map(s => s.id === id ? { ...s, isFail: true, isPass: false, isCompletion: true } : { ...s, isFail: false }));
   };
 
   const moveStatus = (index: number, dir: -1 | 1) => {
@@ -157,32 +144,6 @@ export default function StageStatusModal({ open, onClose, stage, onSave }: Props
                 </TooltipTrigger>
                 <TooltipContent>이 상태로 바꿀 때 날짜(기간)+시간+메모 입력 모달을 띄움</TooltipContent>
               </Tooltip>
-              {stage.stageType === 'result' && (
-                <>
-                  {status.isPass ? (
-                    <Badge variant="success" className="text-[10px] shrink-0">합격</Badge>
-                  ) : (
-                    <button
-                      type="button"
-                      className="text-[10px] text-muted-foreground hover:text-foreground shrink-0 underline"
-                      onClick={() => setPass(status.id)}
-                    >
-                      합격으로
-                    </button>
-                  )}
-                  {status.isFail ? (
-                    <Badge variant="destructive" className="text-[10px] shrink-0">불합격</Badge>
-                  ) : (
-                    <button
-                      type="button"
-                      className="text-[10px] text-muted-foreground hover:text-foreground shrink-0 underline"
-                      onClick={() => setFail(status.id)}
-                    >
-                      불합격으로
-                    </button>
-                  )}
-                </>
-              )}
               <button type="button" className="text-destructive hover:text-destructive/80 shrink-0" onClick={() => removeStatus(status.id)}>
                 <Trash2 className="w-3.5 h-3.5" />
               </button>

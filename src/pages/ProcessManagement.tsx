@@ -19,16 +19,11 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Stage, StageType, StageStatus, AutoSendConfig, getStageColorHex, progressStatuses, resultStatuses } from '@/types/jobPosting';
+import { Stage, StageStatus, AutoSendConfig, getStageColorHex, progressStatuses } from '@/types/jobPosting';
 import StatusBadge from '@/components/common/StatusBadge';
 import { Plus, Trash2, ChevronUp, ChevronDown, Settings2, AlertTriangle, Info } from 'lucide-react';
 import StageStatusModal from '@/components/process/StageStatusModal';
 import AutoSendPanel from '@/components/process/AutoSendPanel';
-
-const STAGE_TYPE_LABELS: Record<StageType, string> = {
-  normal: '일반',
-  result: '합불 판정',
-};
 
 const PRESET_ID = '__preset__';
 
@@ -51,7 +46,6 @@ export default function ProcessManagementPage() {
   const [deleteTarget, setDeleteTarget] = useState<Stage | null>(null);
   const [showNewStage, setShowNewStage] = useState(false);
   const [newStageName, setNewStageName] = useState('');
-  const [newStageType, setNewStageType] = useState<StageType>('normal');
 
   const isPreset = selectedId === PRESET_ID;
   const posting = isPreset ? undefined : jobPostings.find(j => j.id === selectedId);
@@ -78,10 +72,6 @@ export default function ProcessManagementPage() {
     persistStages(sortedStages.map(s => s.id === stageId ? { ...s, name } : s));
   };
 
-  const changeStageType = (stageId: string, stageType: StageType) => {
-    persistStages(sortedStages.map(s => s.id === stageId ? { ...s, stageType } : s));
-  };
-
   const saveStatuses = (stageId: string, statuses: StageStatus[]) => {
     persistStages(sortedStages.map(s => s.id === stageId ? { ...s, statuses } : s));
   };
@@ -98,17 +88,14 @@ export default function ProcessManagementPage() {
 
   const addStage = () => {
     if (!newStageName.trim() || !(posting || isPreset)) return;
-    const statuses: StageStatus[] = newStageType === 'result' ? resultStatuses() : progressStatuses();
     const newStage: Stage = {
       id: crypto.randomUUID(),
       name: newStageName.trim(),
       order: sortedStages.length + 1,
-      stageType: newStageType,
-      statuses,
+      statuses: progressStatuses(),
     };
     persistStages([...sortedStages, newStage]);
     setNewStageName('');
-    setNewStageType('normal');
     setShowNewStage(false);
   };
 
@@ -159,22 +146,12 @@ export default function ProcessManagementPage() {
                   value={stage.name}
                   onChange={e => renameStage(stage.id, e.target.value)}
                 />
-                <Select value={stage.stageType} onValueChange={v => changeStageType(stage.id, v as StageType)}>
-                  <SelectTrigger className="w-auto h-9 text-xs"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {Object.entries(STAGE_TYPE_LABELS).map(([value, label]) => (
-                      <SelectItem key={value} value={value}>구분: {label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
                 <div className="flex items-center gap-1 flex-wrap">
                   {stage.statuses.map(status => (
                     <StatusBadge key={status.id} color={getStageColorHex(status.color)} className="text-[11px] px-1.5 py-0.5">
                       {status.name}
                       {status.isDefault ? ' (시작)' : ''}
                       {status.isCompletion ? ' (단계종료)' : ''}
-                      {status.isPass ? ' (합격)' : ''}
-                      {status.isFail ? ' (불합격)' : ''}
                     </StatusBadge>
                   ))}
                 </div>
@@ -209,14 +186,6 @@ export default function ProcessManagementPage() {
                 placeholder="새 단계 이름"
                 autoFocus
               />
-              <Select value={newStageType} onValueChange={v => setNewStageType(v as StageType)}>
-                <SelectTrigger className="w-auto h-9 text-xs"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {Object.entries(STAGE_TYPE_LABELS).map(([value, label]) => (
-                    <SelectItem key={value} value={value}>구분: {label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
               <Button size="sm" onClick={addStage}>추가</Button>
               <Button size="sm" variant="outline" onClick={() => setShowNewStage(false)}>취소</Button>
             </div>

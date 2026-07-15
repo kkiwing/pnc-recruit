@@ -1,4 +1,4 @@
-import { Stage, getPassStatus } from '@/types/jobPosting';
+import { Stage } from '@/types/jobPosting';
 import { toDateStr } from '@/lib/utils';
 
 export type SeparateManagementReason =
@@ -217,13 +217,6 @@ export function isStageDone(stageRecords: StageRecord[], stage: Stage): boolean 
 export function isStageCompleted(stageRecords: StageRecord[], stage: Stage): boolean {
   const status = getStageRecordStatus(stageRecords, stage);
   return !!status?.isCompletion;
-}
-
-/** 해당 단계의 현재 상태가 "합격"(isPass)인지 여부 */
-export function isStagePassed(stageRecords: StageRecord[], stage: Stage): boolean {
-  const passStatus = getPassStatus(stage);
-  const status = getStageRecordStatus(stageRecords, stage);
-  return !!passStatus && status?.id === passStatus.id;
 }
 
 /**

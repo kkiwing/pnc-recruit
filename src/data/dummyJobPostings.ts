@@ -10,16 +10,18 @@ function questionsFor(postingId: string) {
 function progressStatusesFor(prefix: string) {
   return [
     { id: `${prefix}-s1`, name: '대기', color: 'gray', isDefault: true },
-    { id: `${prefix}-s2`, name: '필요', color: 'orange' },
+    { id: `${prefix}-s2`, name: '진행중', color: 'orange' },
     { id: `${prefix}-s3`, name: '완료', color: 'green', isCompletion: true },
   ];
 }
 
+/** 합불형 단계(서류·인성검사 등)에서 쓰는 상태 세트. "합격"/"불합격"은 이름·색만
+ * 있는 일반 상태다 — 단계 종료·집계 어디에도 쓰이지 않는다(진행 표시 전용). */
 function resultStatusesFor(prefix: string) {
   return [
     { id: `${prefix}-s1`, name: '대기', color: 'gray', isDefault: true },
-    { id: `${prefix}-s2`, name: '합격', color: 'blue', isPass: true, isCompletion: true },
-    { id: `${prefix}-s3`, name: '불합격', color: 'red', isFail: true, isCompletion: true },
+    { id: `${prefix}-s2`, name: '합격', color: 'blue' },
+    { id: `${prefix}-s3`, name: '불합격', color: 'red' },
   ];
 }
 
@@ -30,7 +32,6 @@ function buildStages(postingId: string, defs: { name: string; result?: boolean }
       id: prefix,
       name: d.name,
       order: i + 1,
-      stageType: d.result ? 'result' as const : 'normal' as const,
       statuses: d.result ? resultStatusesFor(prefix) : progressStatusesFor(prefix),
     };
   });
@@ -49,33 +50,33 @@ function defaultStagesFor(postingId: string): Stage[] {
   const final = `${postingId}-final`;
   return [
     {
-      id: personality, name: '인성검사', order: 1, stageType: 'result',
+      id: personality, name: '인성검사', order: 1,
       statuses: [
         { id: `${personality}-notice`, name: '안내', color: 'gray', isDefault: true, hasDateInput: true },
         { id: `${personality}-registered`, name: '공고등록', color: 'orange' },
         { id: `${personality}-inprogress`, name: '진행완료', color: 'purple' },
-        { id: `${personality}-pass`, name: '합격', color: 'blue', isPass: true, isCompletion: true },
-        { id: `${personality}-fail`, name: '불합격', color: 'red', isFail: true, isCompletion: true },
+        { id: `${personality}-pass`, name: '합격', color: 'blue' },
+        { id: `${personality}-fail`, name: '불합격', color: 'red' },
       ],
     },
     {
-      id: form, name: '자사양식', order: 2, stageType: 'normal',
+      id: form, name: '자사양식', order: 2,
       statuses: [
         { id: `${form}-notice`, name: '안내', color: 'gray', isDefault: true, hasDateInput: true },
         { id: `${form}-done`, name: '작성완료', color: 'green', isCompletion: true },
       ],
     },
     {
-      id: interview, name: '면접', order: 3, stageType: 'result',
+      id: interview, name: '면접', order: 3,
       statuses: [
         { id: `${interview}-notice`, name: '안내', color: 'gray', isDefault: true, hasDateInput: true },
         { id: `${interview}-inprogress`, name: '진행완료', color: 'purple' },
-        { id: `${interview}-pass`, name: '합격', color: 'blue', isPass: true, isCompletion: true },
-        { id: `${interview}-fail`, name: '불합격', color: 'red', isFail: true, isCompletion: true },
+        { id: `${interview}-pass`, name: '합격', color: 'blue' },
+        { id: `${interview}-fail`, name: '불합격', color: 'red' },
       ],
     },
     {
-      id: final, name: '최종', order: 4, stageType: 'normal',
+      id: final, name: '최종', order: 4,
       statuses: [
         { id: `${final}-notice`, name: '안내', color: 'gray', isDefault: true, hasDateInput: true },
         { id: `${final}-done`, name: '전형완료', color: 'green', isCompletion: true },
