@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { Stage, StageStatus, STAGE_COLOR_PALETTE } from '@/types/jobPosting';
+import { Stage, StageStatus, STAGE_COLOR_PALETTE, syncDefaultStatus } from '@/types/jobPosting';
 import { Plus, Trash2, ChevronUp, ChevronDown, Check } from 'lucide-react';
 
 interface Props {
@@ -33,20 +33,37 @@ export default function StageStatusModal({ open, onClose, stage, onSave }: Props
     setStatuses(prev => prev.map(s => s.id === id ? { ...s, color } : s));
   };
 
-  const setDefault = (id: string) => {
-    setStatuses(prev => prev.map(s => ({ ...s, isDefault: s.id === id })));
+  /** "단계 종료" 체크: 다른(합격/불합격이 아닌) 상태의 종료 체크는 자동 해제하고,
+   * 체크한 상태를 목록 맨 아래로 옮긴다. 합격/불합격은 별도 버튼으로 관리하므로
+   * 여기서는 건드리지 않는다 — 한 단계에 합격/불합격이 모두 종료로 남아있을 수 있다. */
+  const toggleCompletion = (id: string) => {
+    setStatuses(prev => {
+      const target = prev.find(s => s.id === id);
+      if (!target) return prev;
+      const turningOn = !target.isCompletion;
+      const next = prev.map(s => {
+        if (s.id === id) return { ...s, isCompletion: turningOn };
+        if (turningOn && !s.isPass && !s.isFail) return { ...s, isCompletion: false };
+        return s;
+      });
+      if (!turningOn) return next;
+      const idx = next.findIndex(s => s.id === id);
+      const [item] = next.splice(idx, 1);
+      next.push(item);
+      return next;
+    });
   };
 
-  const setCompletion = (id: string) => {
-    setStatuses(prev => prev.map(s => ({ ...s, isCompletion: s.id === id })));
+  const toggleDateInput = (id: string) => {
+    setStatuses(prev => prev.map(s => s.id === id ? { ...s, hasDateInput: !s.hasDateInput } : s));
   };
 
   const setPass = (id: string) => {
-    setStatuses(prev => prev.map(s => s.id === id ? { ...s, isPass: true, isFail: false } : { ...s, isPass: false }));
+    setStatuses(prev => prev.map(s => s.id === id ? { ...s, isPass: true, isFail: false, isCompletion: true } : { ...s, isPass: false }));
   };
 
   const setFail = (id: string) => {
-    setStatuses(prev => prev.map(s => s.id === id ? { ...s, isFail: true, isPass: false } : { ...s, isFail: false }));
+    setStatuses(prev => prev.map(s => s.id === id ? { ...s, isFail: true, isPass: false, isCompletion: true } : { ...s, isFail: false }));
   };
 
   const moveStatus = (index: number, dir: -1 | 1) => {
@@ -62,8 +79,7 @@ export default function StageStatusModal({ open, onClose, stage, onSave }: Props
   const handleSave = () => {
     const cleaned = statuses.filter(s => s.name.trim());
     if (cleaned.length === 0) return;
-    if (!cleaned.some(s => s.isDefault)) cleaned[0].isDefault = true;
-    onSave(cleaned);
+    onSave(syncDefaultStatus(cleaned));
     onClose();
   };
 
@@ -73,9 +89,12 @@ export default function StageStatusModal({ open, onClose, stage, onSave }: Props
         <DialogHeader>
           <DialogTitle>"{stage.name}" 상태값 관리</DialogTitle>
         </DialogHeader>
+        <p className="text-xs text-muted-foreground -mt-2">
+          목록 맨 위 상태가 시작 상태입니다. 화살표로 순서를 바꾸면 시작 상태도 함께 바뀝니다.
+        </p>
         <div className="space-y-2 py-2">
           {statuses.map((status, i) => (
-            <div key={status.id} className="flex items-center gap-2 bg-muted/40 rounded-md p-2">
+            <div key={status.id} className="flex items-center gap-2 bg-muted/40 rounded-md p-2 flex-wrap">
               <div className="flex flex-col gap-0.5">
                 <button
                   type="button"
@@ -95,7 +114,7 @@ export default function StageStatusModal({ open, onClose, stage, onSave }: Props
                 </button>
               </div>
               <Input
-                className="h-8 flex-1"
+                className="h-8 flex-1 min-w-[100px]"
                 value={status.name}
                 onChange={e => renameStatus(status.id, e.target.value)}
                 placeholder="상태 이름"
@@ -112,40 +131,32 @@ export default function StageStatusModal({ open, onClose, stage, onSave }: Props
                   />
                 ))}
               </div>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  {status.isDefault ? (
-                    <Badge variant="outline" className="text-[10px] shrink-0">시작 상태</Badge>
-                  ) : (
-                    <button
-                      type="button"
-                      className="text-[10px] text-muted-foreground hover:text-foreground shrink-0 underline"
-                      onClick={() => setDefault(status.id)}
-                    >
-                      시작 상태로
-                    </button>
-                  )}
-                </TooltipTrigger>
-                <TooltipContent>지원자가 이 단계에 도착하면 자동으로 갖는 상태</TooltipContent>
-              </Tooltip>
-              {stage.stageType === 'normal' && (
+              {i === 0 && (
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    {status.isCompletion ? (
-                      <Badge variant="success" className="text-[10px] shrink-0">완료</Badge>
-                    ) : (
-                      <button
-                        type="button"
-                        className="text-[10px] text-muted-foreground hover:text-foreground shrink-0 underline"
-                        onClick={() => setCompletion(status.id)}
-                      >
-                        완료로
-                      </button>
-                    )}
+                    <Badge variant="outline" className="text-[10px] shrink-0">시작</Badge>
                   </TooltipTrigger>
-                  <TooltipContent>이 상태가 되면 단계 완료로 집계</TooltipContent>
+                  <TooltipContent>지원자가 이 단계에 도착하면 자동으로 갖는 상태</TooltipContent>
                 </Tooltip>
               )}
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <label className="flex items-center gap-1 text-[10px] text-muted-foreground shrink-0 cursor-pointer">
+                    <input type="checkbox" checked={!!status.isCompletion} onChange={() => toggleCompletion(status.id)} />
+                    단계종료
+                  </label>
+                </TooltipTrigger>
+                <TooltipContent>이 상태가 되면 단계 종료로 집계</TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <label className="flex items-center gap-1 text-[10px] text-muted-foreground shrink-0 cursor-pointer">
+                    <input type="checkbox" checked={!!status.hasDateInput} onChange={() => toggleDateInput(status.id)} />
+                    날짜+메모
+                  </label>
+                </TooltipTrigger>
+                <TooltipContent>이 상태로 바꿀 때 날짜(기간)+시간+메모 입력 모달을 띄움</TooltipContent>
+              </Tooltip>
               {stage.stageType === 'result' && (
                 <>
                   {status.isPass ? (

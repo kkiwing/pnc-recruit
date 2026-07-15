@@ -146,7 +146,7 @@ export function createDefaultCoverLetterQuestions(): CoverLetterQuestion[] {
 export function progressStatuses(): StageStatus[] {
   return [
     { id: crypto.randomUUID(), name: '대기', color: 'gray', isDefault: true },
-    { id: crypto.randomUUID(), name: '필요', color: 'orange' },
+    { id: crypto.randomUUID(), name: '진행중', color: 'orange' },
     { id: crypto.randomUUID(), name: '완료', color: 'green', isCompletion: true },
   ];
 }
