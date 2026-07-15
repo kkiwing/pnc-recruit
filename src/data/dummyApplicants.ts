@@ -1,5 +1,5 @@
 import {
-  Applicant, SeparateManagementReason,
+  Applicant,
   Gender, EducationEntry, CertificateEntry, CareerEntry, ActivityEntry,
   StatisticsPackageEntry, ThesisInfo, CoverLetterAnswer, SubmissionStatus,
   StageRecord, StageRecordMeta, FinalResult,
@@ -50,7 +50,7 @@ interface RawApplicant {
   id: string; no: number; jobPostingId: string; team: string; name: string; platform: string;
   birthYear: string; email: string; phone: string; region: string; regionDetail: string;
   school: string; major: string; career: string; memo: string; applicationDate: string;
-  recruitmentStatus: RawRecruitmentStatus; isSeparateManagement: boolean; separateReason?: SeparateManagementReason;
+  recruitmentStatus: RawRecruitmentStatus; isSeparateManagement: boolean; separateReason?: string; separatedAt?: string;
   createdAt: string; updatedAt: string;
 }
 
@@ -189,7 +189,7 @@ const rawApplicants: RawApplicant[] = [
       interviewNotice: s('pending'),
       interviewResult: s('pending'),
     },
-    isSeparateManagement: true, separateReason: '인성 미응시', createdAt: '2026-03-06T09:00:00Z', updatedAt: '2026-03-22T10:00:00Z',
+    isSeparateManagement: true, separateReason: '인성검사 안내 발송 후 응시 기한(3/20)까지 연락이 닿지 않아 미응시 처리함.', separatedAt: '2026-03-22T10:00:00Z', createdAt: '2026-03-06T09:00:00Z', updatedAt: '2026-03-22T10:00:00Z',
   },
   {
     id: 'd01-12', no: 12, jobPostingId: 'job-01', team: '백엔드', name: '조현서', platform: '워크넷', birthYear: '1997', email: 'hyunseo.jo@naver.com', phone: '010-2233-4455', region: '서울', regionDetail: '송파구', school: '건국대학교', major: '소프트웨어학', career: '경력 2년', memo: '개인 사유로 포기', applicationDate: '2026-03-07',
@@ -202,7 +202,7 @@ const rawApplicants: RawApplicant[] = [
       interviewNotice: s('pending'),
       interviewResult: s('pending'),
     },
-    isSeparateManagement: true, separateReason: '지원 포기(인성 응시 후)', createdAt: '2026-03-07T09:00:00Z', updatedAt: '2026-03-25T10:00:00Z',
+    isSeparateManagement: true, separateReason: '인성검사까지는 응시했으나 이후 연락 두절, 개인 사정으로 전형 포기 의사 확인.', separatedAt: '2026-03-25T10:00:00Z', createdAt: '2026-03-07T09:00:00Z', updatedAt: '2026-03-25T10:00:00Z',
   },
 
   // ===== job-02: 마케팅팀 (9명, 별도관리 1명 포함) =====
@@ -321,7 +321,7 @@ const rawApplicants: RawApplicant[] = [
       interviewNotice: s('pending'),
       interviewResult: s('pending'),
     },
-    isSeparateManagement: true, separateReason: '지원 포기(자사양식 작성 후)', createdAt: '2026-03-13T09:00:00Z', updatedAt: '2026-04-04T10:00:00Z',
+    isSeparateManagement: true, separateReason: '자사양식 제출까지 완료했으나 타사 합격으로 최종 포기 의사를 전달받음.', separatedAt: '2026-04-04T10:00:00Z', createdAt: '2026-03-13T09:00:00Z', updatedAt: '2026-04-04T10:00:00Z',
   },
 
   // ===== job-03: 디자인팀 (8명, 별도관리 1명 포함) =====
@@ -427,7 +427,7 @@ const rawApplicants: RawApplicant[] = [
       interviewNotice: s('done', { startDate: '2026-04-10', endDate: '2026-04-10', time: '10:00', interviewer: '최팀장' }),
       interviewResult: s('pending'),
     },
-    isSeparateManagement: true, separateReason: '지원 포기(면접 후)', createdAt: '2026-03-17T09:00:00Z', updatedAt: '2026-04-11T10:00:00Z',
+    isSeparateManagement: true, separateReason: '면접 완료 후 타사 입사를 이유로 전형 포기 의사를 전달받음.', separatedAt: '2026-04-11T10:00:00Z', createdAt: '2026-03-17T09:00:00Z', updatedAt: '2026-04-11T10:00:00Z',
   },
 
   // ===== job-04: 기획/인사팀 (9명, 별도관리 2명 포함) =====
@@ -533,7 +533,7 @@ const rawApplicants: RawApplicant[] = [
       interviewNotice: s('pending'),
       interviewResult: s('pending'),
     },
-    isSeparateManagement: true, separateReason: '자사양식 미작성', createdAt: '2026-03-23T09:00:00Z', updatedAt: '2026-04-13T10:00:00Z',
+    isSeparateManagement: true, separateReason: '자사양식 안내 후 제출 기한(4/12)까지 미제출, 이후 연락도 닿지 않음.', separatedAt: '2026-04-13T10:00:00Z', createdAt: '2026-03-23T09:00:00Z', updatedAt: '2026-04-13T10:00:00Z',
   },
   {
     id: 'd04-09', no: 38, jobPostingId: 'job-04', team: '서비스기획', name: '고은채', platform: '사람인', birthYear: '1999', email: 'eunchae.go@gmail.com', phone: '010-9090-0101', region: '서울', regionDetail: '강동구', school: '동덕여자대학교', major: '국제경영', career: '신입', memo: '개인 사유로 포기', applicationDate: '2026-03-24',
@@ -546,7 +546,7 @@ const rawApplicants: RawApplicant[] = [
       interviewNotice: s('pending'),
       interviewResult: s('pending'),
     },
-    isSeparateManagement: true, separateReason: '지원 포기(인성 응시 후)', createdAt: '2026-03-24T09:00:00Z', updatedAt: '2026-04-08T10:00:00Z',
+    isSeparateManagement: true, separateReason: '인성검사 응시는 완료했으나 개인 사정으로 전형을 포기함.', separatedAt: '2026-04-08T10:00:00Z', createdAt: '2026-03-24T09:00:00Z', updatedAt: '2026-04-08T10:00:00Z',
   },
 
   // ===== job-05: 재무/회계팀 (7명, 별도관리 1명 포함) =====
@@ -639,7 +639,7 @@ const rawApplicants: RawApplicant[] = [
       interviewNotice: s('done', { startDate: '2026-04-18', endDate: '2026-04-18', time: '10:00', interviewer: '한부장' }),
       interviewResult: s('pending'),
     },
-    isSeparateManagement: true, separateReason: '면접 취소', createdAt: '2026-03-27T09:00:00Z', updatedAt: '2026-04-18T09:00:00Z',
+    isSeparateManagement: true, separateReason: '면접 당일 개인 사정으로 참석이 어렵다는 연락을 받아 취소 처리함.', separatedAt: '2026-04-18T09:00:00Z', createdAt: '2026-03-27T09:00:00Z', updatedAt: '2026-04-18T09:00:00Z',
   },
 
   // ===== job-06: 데이터팀 (8명, 별도관리 1명 포함) =====
@@ -737,7 +737,7 @@ const rawApplicants: RawApplicant[] = [
       interviewNotice: s('pending'),
       interviewResult: s('pending'),
     },
-    isSeparateManagement: true, separateReason: '지원 포기', createdAt: '2026-04-03T09:00:00Z', updatedAt: '2026-04-10T10:00:00Z',
+    isSeparateManagement: true, separateReason: '지원 직후 전화로 지원 포기 의사를 전달받음.', separatedAt: '2026-04-10T10:00:00Z', createdAt: '2026-04-03T09:00:00Z', updatedAt: '2026-04-10T10:00:00Z',
   },
 ];
 
@@ -1077,6 +1077,7 @@ function enrich(raw: RawApplicant): Applicant {
     finalResult: FINAL_RESULTS[raw.id] ?? null,
     isSeparateManagement: raw.isSeparateManagement,
     separateReason: raw.separateReason,
+    separatedAt: raw.separatedAt,
     files: [],
     createdAt: raw.createdAt,
     updatedAt: raw.updatedAt,

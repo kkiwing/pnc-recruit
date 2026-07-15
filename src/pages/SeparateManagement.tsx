@@ -6,16 +6,13 @@ import ApplicantOverviewTable from '@/components/applicant/ApplicantOverviewTabl
 import JobPostingSelect from '@/components/applicant/JobPostingSelect';
 import JobPostingDetailLink from '@/components/applicant/JobPostingDetailLink';
 import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Search } from 'lucide-react';
-import { SEPARATE_REASONS } from '@/types/applicant';
 
 export default function SeparateManagementPage() {
   const { applicants } = useApplicants();
   const { jobPostings } = useJobPostings();
   const [searchParams, setSearchParams] = useSearchParams();
   const [search, setSearch] = useState('');
-  const [reasonFilter, setReasonFilter] = useState<string>('all');
   const [jobId, setJobIdState] = useState(() => searchParams.get('posting') ?? 'all');
 
   const setJobId = (id: string) => {
@@ -34,15 +31,21 @@ export default function SeparateManagementPage() {
     const query = search.trim();
     return separateApplicants.filter(a => {
       if (jobId !== 'all' && a.jobPostingId !== jobId) return false;
-      if (reasonFilter !== 'all' && a.separateReason !== reasonFilter) return false;
-      if (query && !a.name.includes(query) && !a.email.includes(query) && !a.phone.includes(query) && !a.memo.includes(query)) {
+      if (
+        query &&
+        !a.name.includes(query) &&
+        !a.email.includes(query) &&
+        !a.phone.includes(query) &&
+        !a.memo.includes(query) &&
+        !(a.separateReason ?? '').includes(query)
+      ) {
         return false;
       }
       return true;
     });
-  }, [separateApplicants, search, reasonFilter, jobId]);
+  }, [separateApplicants, search, jobId]);
 
-  const hasActiveFilter = search.trim() !== '' || reasonFilter !== 'all' || jobId !== 'all';
+  const hasActiveFilter = search.trim() !== '' || jobId !== 'all';
 
   return (
     <div className="p-6">
@@ -60,21 +63,12 @@ export default function SeparateManagementPage() {
           <Search className="absolute left-2.5 top-2.5 w-4 h-4 text-muted-foreground" />
           <Input
             className="pl-9"
-            placeholder="이름, 이메일, 연락처, 메모 검색"
+            placeholder="이름, 이메일, 연락처, 메모, 사유 검색"
             value={search}
             onChange={e => setSearch(e.target.value)}
           />
         </div>
         <JobPostingSelect jobPostings={jobPostings} value={jobId} onChange={setJobId} />
-        <Select value={reasonFilter} onValueChange={setReasonFilter}>
-          <SelectTrigger className="max-w-[200px]"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">전체 사유</SelectItem>
-            {SEPARATE_REASONS.map(reason => (
-              <SelectItem key={reason} value={reason}>{reason}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
         {jobId !== 'all' && <JobPostingDetailLink jobPostingId={jobId} />}
       </div>
 

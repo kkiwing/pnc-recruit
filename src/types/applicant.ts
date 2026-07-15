@@ -1,15 +1,6 @@
 import { Stage } from '@/types/jobPosting';
 import { toDateStr } from '@/lib/utils';
 
-export type SeparateManagementReason =
-  | '지원 포기'
-  | '인성 미응시'
-  | '자사양식 미작성'
-  | '면접 취소'
-  | '지원 포기(인성 응시 후)'
-  | '지원 포기(자사양식 작성 후)'
-  | '지원 포기(면접 후)';
-
 export interface StageRecordMeta {
   startDate?: string;
   endDate?: string;
@@ -117,7 +108,10 @@ export interface Applicant {
   /** 전형 단계와 무관한 최종 합불 판정. 미정이면 null. */
   finalResult: FinalResult | null;
   isSeparateManagement: boolean;
-  separateReason?: SeparateManagementReason;
+  /** 별도 관리로 옮기는 사유. 정해진 목록에서 고르는 게 아니라 담당자가 직접 서술하는 자유 텍스트다. */
+  separateReason?: string;
+  /** 별도 관리로 전환된 일시. 사유를 나중에 수정해도 이 값은 최초 이동 시점 그대로 유지된다. */
+  separatedAt?: string;
   /** 별도관리로 전환된 시점의 단계 id — 이후 stageRecords가 바뀌어도 "당시 진행 단계" 표시가 흔들리지 않도록 스냅샷 */
   separateStageId?: string;
   files: FileAttachment[];
@@ -133,16 +127,6 @@ export interface FileAttachment {
   url: string;
   uploadedAt: string;
 }
-
-export const SEPARATE_REASONS: SeparateManagementReason[] = [
-  '지원 포기',
-  '인성 미응시',
-  '자사양식 미작성',
-  '면접 취소',
-  '지원 포기(인성 응시 후)',
-  '지원 포기(자사양식 작성 후)',
-  '지원 포기(면접 후)',
-];
 
 export const REGION_INTERVIEW_FEE: Record<string, string> = {
   '서울': '면접비 미지원',

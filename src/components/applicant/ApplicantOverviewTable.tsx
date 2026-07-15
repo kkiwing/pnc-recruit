@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Applicant, SEPARATE_REASONS, StageRecord, getCurrentStage, getSeparationStage, getStageRecordStatus } from '@/types/applicant';
+import { Applicant, StageRecord, getCurrentStage, getSeparationStage, getStageRecordStatus } from '@/types/applicant';
 import { useApplicants } from '@/context/ApplicantContext';
 import { useJobPostings } from '@/context/JobPostingContext';
 import { Stage, getStageColorHex } from '@/types/jobPosting';
@@ -19,10 +19,11 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Trash2, MoreHorizontal, MessageSquare, Clock, Eye, Undo2 } from 'lucide-react';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent } from '@/components/ui/dropdown-menu';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import CompletionDateModal from './CompletionDateModal';
 import MemoModal from './MemoModal';
 import FinalResultModal from './FinalResultModal';
+import SeparateManagementModal from './SeparateManagementModal';
 import SharedStatusSelect from '@/components/common/StatusSelect';
 import StatusBadge from '@/components/common/StatusBadge';
 
@@ -84,6 +85,7 @@ export default function ApplicantOverviewTable({ applicants, mode = 'active' }: 
   const [restoreTarget, setRestoreTarget] = useState<Applicant | null>(null);
   const [memoTarget, setMemoTarget] = useState<Applicant | null>(null);
   const [finalResultTarget, setFinalResultTarget] = useState<Applicant | null>(null);
+  const [separateModalTarget, setSeparateModalTarget] = useState<Applicant | null>(null);
 
   const postingsById = new Map(jobPostings.map(j => [j.id, j]));
 
@@ -104,14 +106,20 @@ export default function ApplicantOverviewTable({ applicants, mode = 'active' }: 
     return getCurrentStage(applicant.stageRecords, sortedStages) ?? sortedStages[0];
   };
 
-  const handleSeparateManagement = (applicant: Applicant, reason: typeof SEPARATE_REASONS[number]) => {
-    const posting = postingsById.get(applicant.jobPostingId);
+  const handleSaveSeparateReason = (reason: string) => {
+    if (!separateModalTarget) return;
+    if (separateModalTarget.isSeparateManagement) {
+      updateApplicant(separateModalTarget.id, { separateReason: reason });
+      return;
+    }
+    const posting = postingsById.get(separateModalTarget.jobPostingId);
     const sortedStages = posting ? [...posting.stages].sort((a, b) => a.order - b.order) : [];
-    const currentStage = getCurrentStage(applicant.stageRecords, sortedStages);
-    updateApplicant(applicant.id, {
+    const currentStage = getCurrentStage(separateModalTarget.stageRecords, sortedStages);
+    updateApplicant(separateModalTarget.id, {
       isSeparateManagement: true,
       separateReason: reason,
       separateStageId: currentStage?.id,
+      separatedAt: new Date().toISOString(),
     });
   };
 
@@ -252,7 +260,14 @@ export default function ApplicantOverviewTable({ applicants, mode = 'active' }: 
                     <>
                       <td>
                         {applicant.separateReason ? (
-                          <Badge variant="outline" className="text-xs whitespace-nowrap">{applicant.separateReason}</Badge>
+                          <button
+                            type="button"
+                            title={applicant.separateReason}
+                            className="max-w-[200px] truncate block text-xs text-left hover:underline"
+                            onClick={() => setSeparateModalTarget(applicant)}
+                          >
+                            {applicant.separateReason}
+                          </button>
                         ) : '-'}
                       </td>
                       <td>
@@ -314,16 +329,9 @@ export default function ApplicantOverviewTable({ applicants, mode = 'active' }: 
                           <Eye className="w-3.5 h-3.5 mr-2" /> 상세보기
                         </DropdownMenuItem>
                         {mode === 'active' ? (
-                          <DropdownMenuSub>
-                            <DropdownMenuSubTrigger>별도 관리 이동</DropdownMenuSubTrigger>
-                            <DropdownMenuSubContent>
-                              {SEPARATE_REASONS.map(reason => (
-                                <DropdownMenuItem key={reason} onClick={() => handleSeparateManagement(applicant, reason)}>
-                                  {reason}
-                                </DropdownMenuItem>
-                              ))}
-                            </DropdownMenuSubContent>
-                          </DropdownMenuSub>
+                          <DropdownMenuItem onClick={() => setSeparateModalTarget(applicant)}>
+                            별도 관리 이동
+                          </DropdownMenuItem>
                         ) : (
                           <DropdownMenuItem onClick={() => setRestoreTarget(applicant)}>
                             <Undo2 className="w-3.5 h-3.5 mr-2" /> 지원자 목록으로 복귀
@@ -370,6 +378,15 @@ export default function ApplicantOverviewTable({ applicants, mode = 'active' }: 
           applicantName={finalResultTarget.name}
           finalResult={finalResultTarget.finalResult}
           onSave={handleSaveFinalResult}
+        />
+      )}
+
+      {separateModalTarget && (
+        <SeparateManagementModal
+          open={!!separateModalTarget}
+          onClose={() => setSeparateModalTarget(null)}
+          applicant={separateModalTarget}
+          onSave={handleSaveSeparateReason}
         />
       )}
 
