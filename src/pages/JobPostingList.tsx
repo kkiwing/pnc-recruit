@@ -21,8 +21,9 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Users, UserX, ChevronRight, Plus, Pencil, Trash2, MoreVertical, Search, SlidersHorizontal } from 'lucide-react';
-import { JobPosting, JobPostingStatus, EmploymentType, getJobPostingStatus, getInterviewStage, getFinalStage } from '@/types/jobPosting';
-import { isStageDone, isStageCompleted, isStagePassed } from '@/types/applicant';
+import { JobPosting, JobPostingStatus, EmploymentType, getJobPostingStatus, getFinalStage } from '@/types/jobPosting';
+import { getInterviewInfo, isStagePassed } from '@/types/applicant';
+import { toDateStr } from '@/lib/utils';
 import JobPostingFormModal from '@/components/jobPosting/JobPostingFormModal';
 
 type SortOption = 'deadlineAsc' | 'createdDesc' | 'createdAsc' | 'updatedDesc' | 'applicantsDesc' | 'applicantsAsc' | 'statusFirst';
@@ -49,6 +50,7 @@ export default function JobPostingListPage() {
   const [employmentTypeFilter, setEmploymentTypeFilter] = useState<EmploymentType | 'all'>('all');
   const [departmentFilter, setDepartmentFilter] = useState<string>('all');
   const [sortBy, setSortBy] = useState<SortOption>('deadlineAsc');
+  const todayStr = toDateStr(new Date());
 
   const departments = useMemo(
     () => Array.from(new Set(jobPostings.map(j => j.department))).filter(Boolean),
@@ -185,11 +187,9 @@ export default function JobPostingListPage() {
           const jobApplicants = applicants.filter(a => a.jobPostingId === job.id);
           const activeCount = jobApplicants.filter(a => !a.isSeparateManagement).length;
           const separateCount = jobApplicants.filter(a => a.isSeparateManagement).length;
-          const interviewStage = getInterviewStage(job.stages);
           const finalStage = getFinalStage(job.stages);
           const interviewPending = jobApplicants.filter(a =>
-            !a.isSeparateManagement && interviewStage && finalStage &&
-            isStageCompleted(a.stageRecords, interviewStage) && !isStageDone(a.stageRecords, finalStage)
+            !a.isSeparateManagement && getInterviewInfo(a.stageRecords, job.stages, todayStr)?.bucket === 'upcoming'
           ).length;
           const passed = jobApplicants.filter(a =>
             !a.isSeparateManagement && !!finalStage && isStagePassed(a.stageRecords, finalStage)
