@@ -22,6 +22,7 @@ import { Trash2, MoreHorizontal, MessageSquare, Clock, Eye, Undo2 } from 'lucide
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent } from '@/components/ui/dropdown-menu';
 import CompletionDateModal from './CompletionDateModal';
 import MemoModal from './MemoModal';
+import FinalResultModal from './FinalResultModal';
 import SharedStatusSelect from '@/components/common/StatusSelect';
 import StatusBadge from '@/components/common/StatusBadge';
 
@@ -40,7 +41,7 @@ function StatusSelect({ stage, stageRecords, onChange, onEditMeta }: {
   const status = getStageRecordStatus(stageRecords, stage);
   const record = stageRecords.find(r => r.stageId === stage.id);
   const meta = record?.meta;
-  const hasMetaInfo = meta && (meta.startDate || meta.note);
+  const hasMetaInfo = !!meta && !!(meta.startDate || meta.time || meta.note);
 
   return (
     <div className="inline-flex items-center gap-1.5">
@@ -49,7 +50,7 @@ function StatusSelect({ stage, stageRecords, onChange, onEditMeta }: {
         options={stage.statuses.map(s => ({ id: s.id, name: s.name, color: getStageColorHex(s.color) }))}
         onChange={onChange}
       />
-      {hasMetaInfo && (
+      {status?.hasDateInput && (
         <Tooltip>
           <TooltipTrigger asChild>
             <button type="button" className="text-muted-foreground hover:text-foreground" onClick={onEditMeta}>
@@ -57,10 +58,16 @@ function StatusSelect({ stage, stageRecords, onChange, onEditMeta }: {
             </button>
           </TooltipTrigger>
           <TooltipContent side="top" className="text-xs space-y-1 max-w-xs">
-            {meta.startDate && meta.endDate && <p>기간: {meta.startDate} ~ {meta.endDate}</p>}
-            {meta.time && <p>시간: {meta.time}</p>}
-            {meta.note && <p>메모: {meta.note}</p>}
-            <p className="text-muted-foreground">클릭해서 일정 수정</p>
+            {hasMetaInfo ? (
+              <>
+                {meta?.startDate && meta?.endDate && <p>기간: {meta.startDate} ~ {meta.endDate}</p>}
+                {meta?.time && <p>시간: {meta.time}</p>}
+                {meta?.note && <p>메모: {meta.note}</p>}
+                <p className="text-muted-foreground">클릭해서 수정</p>
+              </>
+            ) : (
+              <p>클릭해서 날짜·시간·메모 입력</p>
+            )}
           </TooltipContent>
         </Tooltip>
       )}
@@ -76,12 +83,18 @@ export default function ApplicantOverviewTable({ applicants, mode = 'active' }: 
   const [completionModal, setCompletionModal] = useState<{ applicantId: string; stage: Stage; statusId: string; initialData?: StageRecord['meta'] } | null>(null);
   const [restoreTarget, setRestoreTarget] = useState<Applicant | null>(null);
   const [memoTarget, setMemoTarget] = useState<Applicant | null>(null);
+  const [finalResultTarget, setFinalResultTarget] = useState<Applicant | null>(null);
 
   const postingsById = new Map(jobPostings.map(j => [j.id, j]));
 
   const handleSaveMemo = (memo: string) => {
     if (!memoTarget) return;
     updateApplicant(memoTarget.id, { memo });
+  };
+
+  const handleSaveFinalResult = (finalResult: Applicant['finalResult']) => {
+    if (!finalResultTarget) return;
+    updateApplicant(finalResultTarget.id, { finalResult });
   };
 
   const getActiveStage = (applicant: Applicant, sortedStages: Stage[]): Stage | undefined => {
@@ -167,6 +180,7 @@ export default function ApplicantOverviewTable({ applicants, mode = 'active' }: 
                   <th className="w-48">당시 진행 단계</th>
                 </>
               )}
+              <th className="w-20 whitespace-nowrap">최종 결과</th>
               <th className="w-28">지원일</th>
               <th className="w-12 whitespace-nowrap">메모</th>
               <th className="w-16 whitespace-nowrap">관리</th>
@@ -175,7 +189,7 @@ export default function ApplicantOverviewTable({ applicants, mode = 'active' }: 
           <tbody>
             {applicants.length === 0 && (
               <tr>
-                <td colSpan={7} className="text-center py-8 text-muted-foreground">
+                <td colSpan={8} className="text-center py-8 text-muted-foreground">
                   등록된 지원자가 없습니다.
                 </td>
               </tr>
@@ -250,6 +264,33 @@ export default function ApplicantOverviewTable({ applicants, mode = 'active' }: 
                       </td>
                     </>
                   )}
+                  <td className="whitespace-nowrap">
+                    {applicant.finalResult ? (
+                      <div className="inline-flex items-center gap-1">
+                        <button type="button" onClick={() => setFinalResultTarget(applicant)}>
+                          <Badge variant={applicant.finalResult.result === '합격' ? 'success' : 'destructive'} className="text-xs cursor-pointer">
+                            {applicant.finalResult.result}
+                          </Badge>
+                        </button>
+                        {applicant.finalResult.note && (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <MessageSquare className="w-3 h-3 text-muted-foreground shrink-0" />
+                            </TooltipTrigger>
+                            <TooltipContent className="max-w-xs text-xs">{applicant.finalResult.note}</TooltipContent>
+                          </Tooltip>
+                        )}
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        className="text-xs text-muted-foreground/50 hover:text-muted-foreground underline"
+                        onClick={() => setFinalResultTarget(applicant)}
+                      >
+                        미정
+                      </button>
+                    )}
+                  </td>
                   <td className="text-xs whitespace-nowrap">{applicant.applicationDate}</td>
                   <td>
                     <button
@@ -319,6 +360,16 @@ export default function ApplicantOverviewTable({ applicants, mode = 'active' }: 
           applicantName={memoTarget.name}
           memo={memoTarget.memo}
           onSave={handleSaveMemo}
+        />
+      )}
+
+      {finalResultTarget && (
+        <FinalResultModal
+          open={!!finalResultTarget}
+          onClose={() => setFinalResultTarget(null)}
+          applicantName={finalResultTarget.name}
+          finalResult={finalResultTarget.finalResult}
+          onSave={handleSaveFinalResult}
         />
       )}
 

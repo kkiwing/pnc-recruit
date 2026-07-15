@@ -7,9 +7,9 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { FileAttachment, StageRecord, getStageRecordStatus } from '@/types/applicant';
+import { FileAttachment, StageRecord, getStageRecordStatus, getCurrentStage } from '@/types/applicant';
 import { Stage, getStageColorHex } from '@/types/jobPosting';
-import { ArrowLeft, FileText, Upload, Trash2, Clock } from 'lucide-react';
+import { ArrowLeft, FileText, Upload, Trash2, Clock, Check } from 'lucide-react';
 import CompletionDateModal from '@/components/applicant/CompletionDateModal';
 import StatusBadge from '@/components/common/StatusBadge';
 import { Badge } from '@/components/ui/badge';
@@ -18,20 +18,27 @@ function StageBadge({ stage, stageRecords, onEditMeta }: { stage: Stage; stageRe
   const status = getStageRecordStatus(stageRecords, stage);
   const record = stageRecords.find(r => r.stageId === stage.id);
   const meta = record?.meta;
+  const hasMetaInfo = !!meta && !!(meta.startDate || meta.time || meta.note);
   const badge = (
     <StatusBadge color={getStageColorHex(status?.color ?? 'gray')} className="px-2 py-1">
       {stage.name}: {status?.name ?? '-'}
     </StatusBadge>
   );
-  if (meta && (meta.startDate || meta.note)) {
+  if (status?.hasDateInput) {
     return (
       <div className="inline-flex items-center gap-1.5">
         <Tooltip>
           <TooltipTrigger asChild>{badge}</TooltipTrigger>
           <TooltipContent side="top" className="text-xs space-y-1 max-w-xs">
-            {meta.startDate && meta.endDate && <p>기간: {meta.startDate} ~ {meta.endDate}</p>}
-            {meta.time && <p>시간: {meta.time}</p>}
-            {meta.note && <p>메모: {meta.note}</p>}
+            {hasMetaInfo ? (
+              <>
+                {meta?.startDate && meta?.endDate && <p>기간: {meta.startDate} ~ {meta.endDate}</p>}
+                {meta?.time && <p>시간: {meta.time}</p>}
+                {meta?.note && <p>메모: {meta.note}</p>}
+              </>
+            ) : (
+              <p>날짜·시간·메모 미입력</p>
+            )}
           </TooltipContent>
         </Tooltip>
         <button type="button" className="text-muted-foreground hover:text-foreground" onClick={onEditMeta}>
@@ -41,6 +48,44 @@ function StageBadge({ stage, stageRecords, onEditMeta }: { stage: Stage; stageRe
     );
   }
   return badge;
+}
+
+/** 상단에 표시하는 전형 진행 스테퍼. 지나온 단계는 체크, 현재 단계는 강조 표시하고
+ * 현재 상태를 함께 보여주며, 남은 단계는 흐리게 표시한다. */
+function ProcessStepper({ stages, stageRecords }: { stages: Stage[]; stageRecords: StageRecord[] }) {
+  const sortedStages = [...stages].sort((a, b) => a.order - b.order);
+  const currentStage = getCurrentStage(stageRecords, sortedStages);
+  const currentIndex = sortedStages.findIndex(s => s.id === currentStage?.id);
+
+  return (
+    <div className="flex items-center flex-wrap">
+      {sortedStages.map((stage, i) => {
+        const isPast = i < currentIndex;
+        const isCurrent = i === currentIndex;
+        const status = getStageRecordStatus(stageRecords, stage);
+        return (
+          <div key={stage.id} className="flex items-center">
+            {i > 0 && <div className={`w-5 h-px shrink-0 ${isPast || isCurrent ? 'bg-primary/50' : 'bg-border'}`} />}
+            <div
+              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs ${
+                isCurrent ? 'bg-primary/10 text-primary font-medium' : isPast ? 'text-foreground' : 'text-muted-foreground/50'
+              }`}
+            >
+              {isPast ? (
+                <Check className="w-3.5 h-3.5 text-success shrink-0" />
+              ) : isCurrent ? (
+                <span className="w-2 h-2 rounded-full bg-primary shrink-0" />
+              ) : (
+                <span className="w-2 h-2 rounded-full border border-muted-foreground/30 shrink-0" />
+              )}
+              <span>{stage.name}</span>
+              {isCurrent && status && <span className="text-muted-foreground">· {status.name}</span>}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
 }
 
 export default function ApplicantDetailPage() {
@@ -116,6 +161,17 @@ export default function ApplicantDetailPage() {
           제출 {applicant.submissionStatus}
         </Badge>
       </div>
+
+      {jobPosting && (
+        <div className="flex items-center gap-3 flex-wrap mb-4">
+          <ProcessStepper stages={jobPosting.stages} stageRecords={applicant.stageRecords} />
+          {applicant.finalResult && (
+            <Badge variant={applicant.finalResult.result === '합격' ? 'success' : 'destructive'}>
+              최종 {applicant.finalResult.result}
+            </Badge>
+          )}
+        </div>
+      )}
 
       <div className="card-elevated p-5 mb-4">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm mb-4">
