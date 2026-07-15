@@ -299,21 +299,11 @@ export default function ApplicantOverviewTable({ applicants, mode = 'active' }: 
                   )}
                   <td className="whitespace-nowrap">
                     {applicant.finalResult ? (
-                      <div className="inline-flex items-center gap-1">
-                        <button type="button" onClick={() => setFinalResultTarget(applicant)}>
-                          <Badge variant={applicant.finalResult.result === '합격' ? 'success' : 'destructive'} className="text-xs cursor-pointer">
-                            {applicant.finalResult.result}
-                          </Badge>
-                        </button>
-                        {applicant.finalResult.note && (
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <MessageSquare className="w-3 h-3 text-muted-foreground shrink-0" />
-                            </TooltipTrigger>
-                            <TooltipContent className="max-w-xs text-xs">{applicant.finalResult.note}</TooltipContent>
-                          </Tooltip>
-                        )}
-                      </div>
+                      <button type="button" onClick={() => setFinalResultTarget(applicant)}>
+                        <Badge variant={applicant.finalResult.result === '합격' ? 'success' : 'destructive'} className="text-xs cursor-pointer">
+                          {applicant.finalResult.result}
+                        </Badge>
+                      </button>
                     ) : (
                       <button
                         type="button"
