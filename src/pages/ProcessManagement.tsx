@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -20,6 +21,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Stage, StageStatus, AutoSendConfig, getStageColorHex, progressStatuses } from '@/types/jobPosting';
+import { getCurrentStage } from '@/types/applicant';
 import StatusBadge from '@/components/common/StatusBadge';
 import { Plus, Trash2, ChevronUp, ChevronDown, Settings2, AlertTriangle, Info } from 'lucide-react';
 import StageStatusModal from '@/components/process/StageStatusModal';
@@ -50,7 +52,6 @@ export default function ProcessManagementPage() {
   const isPreset = selectedId === PRESET_ID;
   const posting = isPreset ? undefined : jobPostings.find(j => j.id === selectedId);
   const jobApplicants = posting ? applicants.filter(a => a.jobPostingId === posting.id) : [];
-  const applicantCount = jobApplicants.length;
 
   const sortedStages = isPreset
     ? [...presetStages].sort((a, b) => a.order - b.order)
@@ -100,8 +101,43 @@ export default function ProcessManagementPage() {
     persistStages(sortedStages.map(s => s.id === stageId ? { ...s, autoSend } : s));
   };
 
+  const deleteTargetIndex = deleteTarget ? sortedStages.findIndex(s => s.id === deleteTarget.id) : -1;
+  const deleteTargetIsFirst = deleteTargetIndex === 0;
+  const deleteDestStage = deleteTarget && deleteTargetIndex >= 0
+    ? (deleteTargetIsFirst ? sortedStages[deleteTargetIndex + 1] : sortedStages[deleteTargetIndex - 1])
+    : undefined;
+  const deleteImpactCount = deleteTarget && posting
+    ? jobApplicants.filter(a => getCurrentStage(a.stageRecords, sortedStages)?.id === deleteTarget.id).length
+    : 0;
+
+  /** 단계 삭제 확정: 그 단계가 현재 위치였던 지원자를(잠금 여부와 무관하게) 이웃
+   * 단계로 옮기고(뒤로 = 이전 단계의 마지막 상태, 앞으로 = 다음 단계의 시작 상태),
+   * 이 단계에서 입력했던 날짜/메모 기록은 이동 여부와 관계없이 함께 지운다.
+   * 프리셋 편집 중에는 지원자 개념이 없으므로 이동 로직 없이 단계만 제거한다. */
   const confirmDeleteStage = () => {
     if (!deleteTarget) return;
+
+    if (posting && deleteDestStage) {
+      const destStatus = deleteTargetIsFirst
+        ? (deleteDestStage.statuses.find(s => s.isDefault) ?? deleteDestStage.statuses[0])
+        : deleteDestStage.statuses[deleteDestStage.statuses.length - 1];
+      const now = new Date().toISOString();
+
+      jobApplicants.forEach(a => {
+        const hasRecord = a.stageRecords.some(r => r.stageId === deleteTarget.id);
+        if (!hasRecord) return;
+        const wasCurrent = getCurrentStage(a.stageRecords, sortedStages)?.id === deleteTarget.id;
+        let nextRecords = a.stageRecords.filter(r => r.stageId !== deleteTarget.id);
+        if (wasCurrent && destStatus) {
+          const exists = nextRecords.some(r => r.stageId === deleteDestStage.id);
+          nextRecords = exists
+            ? nextRecords.map(r => r.stageId === deleteDestStage.id ? { ...r, statusId: destStatus.id, updatedAt: now } : r)
+            : [...nextRecords, { stageId: deleteDestStage.id, statusId: destStatus.id, updatedAt: now }];
+        }
+        updateApplicant(a.id, { stageRecords: nextRecords });
+      });
+    }
+
     persistStages(sortedStages.filter(s => s.id !== deleteTarget.id).map((s, i) => ({ ...s, order: i + 1 })));
     setDeleteTarget(null);
   };
@@ -179,9 +215,20 @@ export default function ProcessManagementPage() {
                   <Button variant="outline" size="sm" onClick={() => setStatusModalStage(stage)}>
                     <Settings2 className="w-3.5 h-3.5 mr-1" /> 상태 관리
                   </Button>
-                  <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={() => setDeleteTarget(stage)}>
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </Button>
+                  {sortedStages.length <= 1 ? (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span className="text-muted-foreground/40 cursor-not-allowed p-2">
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </span>
+                      </TooltipTrigger>
+                      <TooltipContent>최소 1개의 단계가 필요합니다</TooltipContent>
+                    </Tooltip>
+                  ) : (
+                    <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={() => setDeleteTarget(stage)}>
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </Button>
+                  )}
                 </div>
               </div>
               <Accordion type="single" collapsible>
@@ -240,8 +287,15 @@ export default function ProcessManagementPage() {
             </AlertDialogTitle>
             <AlertDialogDescription>
               "{deleteTarget?.name}" 단계를 삭제합니다.
-              {applicantCount > 0 && (
-                <> 이 공고에는 지원자 {applicantCount}명이 있으며, 삭제 시 해당 지원자들의 이 단계 기록이 사라집니다.</>
+              {isPreset && <> 이후 생성되는 공고부터 적용됩니다.</>}
+              {!isPreset && deleteImpactCount > 0 && deleteDestStage && (
+                <>
+                  {' '}이 단계에는 지원자 {deleteImpactCount}명이 있으며, 해당 지원자는{' '}
+                  {deleteTargetIsFirst
+                    ? <>다음 단계 "{deleteDestStage.name}"의 시작 상태로 이동됩니다.</>
+                    : <>이전 단계 "{deleteDestStage.name}"의 마지막 상태로 이동됩니다.</>}
+                  {' '}이 단계에서 입력한 날짜/메모 기록도 함께 삭제됩니다.
+                </>
               )}
               {' '}이 작업은 되돌릴 수 없습니다.
             </AlertDialogDescription>
