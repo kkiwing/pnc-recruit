@@ -29,7 +29,7 @@ const PRESET_ID = '__preset__';
 
 export default function ProcessManagementPage() {
   const { jobPostings, updateJobPosting } = useJobPostings();
-  const { applicants } = useApplicants();
+  const { applicants, updateApplicant } = useApplicants();
   const { presetStages, setPresetStages } = useProcessPreset();
   const [searchParams, setSearchParams] = useSearchParams();
   const [selectedId, setSelectedIdState] = useState(() => searchParams.get('posting') || PRESET_ID);
@@ -49,7 +49,8 @@ export default function ProcessManagementPage() {
 
   const isPreset = selectedId === PRESET_ID;
   const posting = isPreset ? undefined : jobPostings.find(j => j.id === selectedId);
-  const applicantCount = posting ? applicants.filter(a => a.jobPostingId === posting.id).length : 0;
+  const jobApplicants = posting ? applicants.filter(a => a.jobPostingId === posting.id) : [];
+  const applicantCount = jobApplicants.length;
 
   const sortedStages = isPreset
     ? [...presetStages].sort((a, b) => a.order - b.order)
@@ -74,6 +75,25 @@ export default function ProcessManagementPage() {
 
   const saveStatuses = (stageId: string, statuses: StageStatus[]) => {
     persistStages(sortedStages.map(s => s.id === stageId ? { ...s, statuses } : s));
+  };
+
+  /** 상태값 삭제 확정 시 호출된다. 그 상태였던 지원자를 새 시작 상태로 옮긴 뒤(잠금
+   * 여부와 무관하게 전원 대상 — 잠금은 사용자 조작을 막는 것이지 시스템이 대신
+   * 처리하는 이동까지 막지는 않는다), 상태 목록을 즉시 저장한다. */
+  const handleDeleteStatus = (stageId: string, deletedStatusId: string, nextStatuses: StageStatus[]) => {
+    const newDefaultStatus = nextStatuses[0];
+    if (newDefaultStatus) {
+      jobApplicants.forEach(a => {
+        const record = a.stageRecords.find(r => r.stageId === stageId);
+        if (!record || record.statusId !== deletedStatusId) return;
+        const now = new Date().toISOString();
+        const nextRecords = a.stageRecords.map(r =>
+          r.stageId === stageId ? { ...r, statusId: newDefaultStatus.id, updatedAt: now } : r
+        );
+        updateApplicant(a.id, { stageRecords: nextRecords });
+      });
+    }
+    saveStatuses(stageId, nextStatuses);
   };
 
   const saveAutoSend = (stageId: string, autoSend: AutoSendConfig) => {
@@ -206,7 +226,9 @@ export default function ProcessManagementPage() {
           open={!!statusModalStage}
           onClose={() => setStatusModalStage(null)}
           stage={statusModalStage}
+          applicants={jobApplicants}
           onSave={statuses => saveStatuses(statusModalStage.id, statuses)}
+          onDeleteStatus={(deletedStatusId, nextStatuses) => handleDeleteStatus(statusModalStage.id, deletedStatusId, nextStatuses)}
         />
       )}
 
