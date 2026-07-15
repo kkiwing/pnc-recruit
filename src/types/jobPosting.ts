@@ -159,7 +159,7 @@ export function createDefaultCoverLetterQuestions(): CoverLetterQuestion[] {
   }));
 }
 
-function progressStatuses(): StageStatus[] {
+export function progressStatuses(): StageStatus[] {
   return [
     { id: crypto.randomUUID(), name: '대기', color: 'gray', isDefault: true },
     { id: crypto.randomUUID(), name: '필요', color: 'orange' },
@@ -167,7 +167,7 @@ function progressStatuses(): StageStatus[] {
   ];
 }
 
-function resultStatuses(): StageStatus[] {
+export function resultStatuses(): StageStatus[] {
   return [
     { id: crypto.randomUUID(), name: '대기', color: 'gray', isDefault: true },
     { id: crypto.randomUUID(), name: '합격', color: 'blue', isPass: true },

@@ -19,7 +19,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Stage, StageType, StageStatus, CompletionFormType, AutoSendConfig, getStageColorHex } from '@/types/jobPosting';
+import { Stage, StageType, StageStatus, CompletionFormType, AutoSendConfig, getStageColorHex, progressStatuses, resultStatuses } from '@/types/jobPosting';
 import StatusBadge from '@/components/common/StatusBadge';
 import { Plus, Trash2, ChevronUp, ChevronDown, Settings2, AlertTriangle, Info } from 'lucide-react';
 import StageStatusModal from '@/components/process/StageStatusModal';
@@ -109,13 +109,7 @@ export default function ProcessManagementPage() {
 
   const addStage = () => {
     if (!newStageName.trim() || !(posting || isPreset)) return;
-    const statuses: StageStatus[] = newStageType === 'result'
-      ? [
-          { id: crypto.randomUUID(), name: '대기', color: 'gray', isDefault: true },
-          { id: crypto.randomUUID(), name: '합격', color: 'blue', isPass: true },
-          { id: crypto.randomUUID(), name: '불합격', color: 'red', isFail: true },
-        ]
-      : [{ id: crypto.randomUUID(), name: '대기', color: 'gray', isDefault: true }];
+    const statuses: StageStatus[] = newStageType === 'result' ? resultStatuses() : progressStatuses();
     const newStage: Stage = {
       id: crypto.randomUUID(),
       name: newStageName.trim(),
