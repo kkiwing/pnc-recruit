@@ -21,8 +21,8 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Users, UserX, ChevronRight, Plus, Pencil, Trash2, MoreVertical, Search, SlidersHorizontal } from 'lucide-react';
-import { JobPosting, JobPostingStatus, EmploymentType, getJobPostingStatus, getFinalStage } from '@/types/jobPosting';
-import { getInterviewInfo, isStagePassed } from '@/types/applicant';
+import { JobPosting, JobPostingStatus, EmploymentType, getJobPostingStatus } from '@/types/jobPosting';
+import { getInterviewInfo } from '@/types/applicant';
 import { toDateStr } from '@/lib/utils';
 import JobPostingFormModal from '@/components/jobPosting/JobPostingFormModal';
 
@@ -187,12 +187,11 @@ export default function JobPostingListPage() {
           const jobApplicants = applicants.filter(a => a.jobPostingId === job.id);
           const activeCount = jobApplicants.filter(a => !a.isSeparateManagement).length;
           const separateCount = jobApplicants.filter(a => a.isSeparateManagement).length;
-          const finalStage = getFinalStage(job.stages);
           const interviewPending = jobApplicants.filter(a =>
-            !a.isSeparateManagement && getInterviewInfo(a.stageRecords, job.stages, todayStr)?.bucket === 'upcoming'
+            !a.isSeparateManagement && getInterviewInfo(a.stageRecords, job.stages, a.finalResult, todayStr)?.bucket === 'upcoming'
           ).length;
           const passed = jobApplicants.filter(a =>
-            !a.isSeparateManagement && !!finalStage && isStagePassed(a.stageRecords, finalStage)
+            !a.isSeparateManagement && a.finalResult?.result === '합격'
           ).length;
 
           const jobStatus = getJobPostingStatus(job);

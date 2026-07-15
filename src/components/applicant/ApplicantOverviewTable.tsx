@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Applicant, SEPARATE_REASONS, StageRecord, getCurrentStage, getSeparationStage, getStageRecordStatus } from '@/types/applicant';
 import { useApplicants } from '@/context/ApplicantContext';
 import { useJobPostings } from '@/context/JobPostingContext';
-import { Stage, getStageColorHex, getCompletionStatus } from '@/types/jobPosting';
+import { Stage, getStageColorHex } from '@/types/jobPosting';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -40,7 +40,7 @@ function StatusSelect({ stage, stageRecords, onChange, onEditMeta }: {
   const status = getStageRecordStatus(stageRecords, stage);
   const record = stageRecords.find(r => r.stageId === stage.id);
   const meta = record?.meta;
-  const hasMetaInfo = meta && (meta.startDate || meta.interviewer);
+  const hasMetaInfo = meta && (meta.startDate || meta.note);
 
   return (
     <div className="inline-flex items-center gap-1.5">
@@ -59,7 +59,7 @@ function StatusSelect({ stage, stageRecords, onChange, onEditMeta }: {
           <TooltipContent side="top" className="text-xs space-y-1 max-w-xs">
             {meta.startDate && meta.endDate && <p>기간: {meta.startDate} ~ {meta.endDate}</p>}
             {meta.time && <p>시간: {meta.time}</p>}
-            {meta.interviewer && <p>담당자: {meta.interviewer}</p>}
+            {meta.note && <p>메모: {meta.note}</p>}
             <p className="text-muted-foreground">클릭해서 일정 수정</p>
           </TooltipContent>
         </Tooltip>
@@ -121,9 +121,8 @@ export default function ApplicantOverviewTable({ applicants, mode = 'active' }: 
   };
 
   const handleStatusChange = (applicant: Applicant, stage: Stage, statusId: string) => {
-    const completionStatus = getCompletionStatus(stage);
-    const isCompletionTransition = stage.completionForm !== 'none' && completionStatus?.id === statusId;
-    if (isCompletionTransition) {
+    const targetStatus = stage.statuses.find(s => s.id === statusId);
+    if (targetStatus?.hasDateInput) {
       setCompletionModal({ applicantId: applicant.id, stage, statusId });
       return;
     }
@@ -137,7 +136,7 @@ export default function ApplicantOverviewTable({ applicants, mode = 'active' }: 
     setCompletionModal({ applicantId: applicant.id, stage, statusId: status.id, initialData: record?.meta });
   };
 
-  const handleCompletionSubmit = (data: { startDate: string; endDate: string; time?: string; interviewer?: string }) => {
+  const handleCompletionSubmit = (data: { startDate: string; endDate: string; time?: string; note?: string }) => {
     if (!completionModal) return;
     const applicant = applicants.find(a => a.id === completionModal.applicantId);
     if (!applicant) return;
@@ -145,7 +144,7 @@ export default function ApplicantOverviewTable({ applicants, mode = 'active' }: 
       startDate: data.startDate,
       endDate: data.endDate,
       time: data.time,
-      interviewer: data.interviewer,
+      note: data.note,
     });
   };
 
@@ -307,7 +306,6 @@ export default function ApplicantOverviewTable({ applicants, mode = 'active' }: 
           open={!!completionModal}
           onClose={() => setCompletionModal(null)}
           stepLabel={completionModal.stage.name}
-          isInterview={completionModal.stage.completionForm === 'interview'}
           initialData={completionModal.initialData}
           onSubmit={handleCompletionSubmit}
         />

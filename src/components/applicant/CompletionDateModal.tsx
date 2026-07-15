@@ -3,25 +3,26 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 
 interface Props {
   open: boolean;
   onClose: () => void;
   stepLabel: string;
-  isInterview?: boolean;
-  initialData?: { startDate?: string; endDate?: string; time?: string; interviewer?: string };
-  onSubmit: (data: { startDate: string; endDate: string; time?: string; interviewer?: string }) => void;
+  initialData?: { startDate?: string; endDate?: string; time?: string; note?: string };
+  onSubmit: (data: { startDate: string; endDate: string; time?: string; note?: string }) => void;
 }
 
-export default function CompletionDateModal({ open, onClose, stepLabel, isInterview, initialData, onSubmit }: Props) {
+/** 상태에 hasDateInput이 켜져 있을 때 뜨는 날짜(기간)+시간(선택)+메모 입력 모달. */
+export default function CompletionDateModal({ open, onClose, stepLabel, initialData, onSubmit }: Props) {
   const [startDate, setStartDate] = useState(initialData?.startDate || new Date().toISOString().split('T')[0]);
   const [endDate, setEndDate] = useState(initialData?.endDate || '');
   const [time, setTime] = useState(initialData?.time || '');
-  const [interviewer, setInterviewer] = useState(initialData?.interviewer || '');
+  const [note, setNote] = useState(initialData?.note || '');
 
   const handleSubmit = () => {
     if (!endDate) return;
-    onSubmit({ startDate, endDate, time: isInterview ? time : undefined, interviewer: isInterview ? interviewer : undefined });
+    onSubmit({ startDate, endDate, time: time || undefined, note: note || undefined });
     onClose();
   };
 
@@ -29,29 +30,25 @@ export default function CompletionDateModal({ open, onClose, stepLabel, isInterv
     <Dialog open={open} onOpenChange={() => onClose()}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>{stepLabel} - 완료 처리</DialogTitle>
+          <DialogTitle>{stepLabel} 정보 입력</DialogTitle>
         </DialogHeader>
         <div className="space-y-4 py-4">
           <div>
-            <Label>안내일 (시작일)</Label>
+            <Label>시작일</Label>
             <Input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} />
           </div>
           <div>
-            <Label>마감일</Label>
+            <Label>종료일</Label>
             <Input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} />
           </div>
-          {isInterview && (
-            <>
-              <div>
-                <Label>면접 시간</Label>
-                <Input type="time" value={time} onChange={e => setTime(e.target.value)} />
-              </div>
-              <div>
-                <Label>면접 담당자</Label>
-                <Input value={interviewer} onChange={e => setInterviewer(e.target.value)} placeholder="담당자명" />
-              </div>
-            </>
-          )}
+          <div>
+            <Label>시간 <span className="text-xs text-muted-foreground font-normal">(선택)</span></Label>
+            <Input type="time" value={time} onChange={e => setTime(e.target.value)} />
+          </div>
+          <div>
+            <Label>메모 <span className="text-xs text-muted-foreground font-normal">(선택)</span></Label>
+            <Textarea value={note} onChange={e => setNote(e.target.value)} placeholder="담당자, 특이사항 등을 남기세요" rows={2} />
+          </div>
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>취소</Button>

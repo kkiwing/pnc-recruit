@@ -1,4 +1,4 @@
-import { Stage, getCompletionStatus, getPassStatus, getInterviewStage, getFinalStage } from '@/types/jobPosting';
+import { Stage, getPassStatus } from '@/types/jobPosting';
 import { toDateStr } from '@/lib/utils';
 
 export type SeparateManagementReason =
@@ -14,7 +14,7 @@ export interface StageRecordMeta {
   startDate?: string;
   endDate?: string;
   time?: string;
-  interviewer?: string;
+  note?: string;
 }
 
 export interface StageRecord {
@@ -77,6 +77,18 @@ export interface CoverLetterAnswer {
 
 export type SubmissionStatus = '완료' | '미완료';
 
+/**
+ * 전형 단계와 무관하게 지정하는 최종 합불 판정. 특별 채용처럼 전형 구조를 다 거치지
+ * 않고도 최종 결과를 확정해야 하는 예외를 다루기 위해, 단계 진행 상황(stageRecords)과
+ * 완전히 분리된 필드로 둔다 — "구조는 단순하게, 예외는 메모로"라는 원칙에 따라 이런
+ * 예외는 별도 상태값을 늘리는 대신 note에 사유를 적어 남긴다.
+ */
+export interface FinalResult {
+  result: '합격' | '불합격';
+  note?: string;
+  decidedAt: string;
+}
+
 export interface Applicant {
   id: string;
   no: number;
@@ -102,6 +114,8 @@ export interface Applicant {
   memo: string;
   applicationDate: string;
   stageRecords: StageRecord[];
+  /** 전형 단계와 무관한 최종 합불 판정. 미정이면 null. */
+  finalResult: FinalResult | null;
   isSeparateManagement: boolean;
   separateReason?: SeparateManagementReason;
   /** 별도관리로 전환된 시점의 단계 id — 이후 stageRecords가 바뀌어도 "당시 진행 단계" 표시가 흔들리지 않도록 스냅샷 */
@@ -178,7 +192,7 @@ export function getStageRecordStatus(stageRecords: StageRecord[], stage: Stage) 
   return status ?? getDefaultStageStatus(stage);
 }
 
-/** 순서상 마지막으로 '대기(기본)'가 아닌 단계, 없으면 첫 단계를 현재 단계로 반환 */
+/** 순서상 마지막으로 시작 상태가 아닌 단계, 없으면 첫 단계를 현재 단계로 반환 */
 export function getCurrentStage(stageRecords: StageRecord[], stages: Stage[]): Stage | undefined {
   const sorted = [...stages].sort((a, b) => a.order - b.order);
   let current: Stage | undefined = sorted[0];
@@ -191,17 +205,18 @@ export function getCurrentStage(stageRecords: StageRecord[], stages: Stage[]): S
   return current;
 }
 
-/** 해당 단계가 기본(대기) 상태를 벗어나 처리되었는지 여부 (중간 상태 포함) */
+/** 해당 단계가 시작 상태를 벗어나 처리되었는지 여부 (중간 상태 포함) */
 export function isStageDone(stageRecords: StageRecord[], stage: Stage): boolean {
   const status = getStageRecordStatus(stageRecords, stage);
   return !!status && !status.isDefault;
 }
 
-/** 해당 단계가 "처리 완료"(isCompletion) 상태까지 도달했는지 여부 — '필요'처럼 중간 상태는 제외 */
+/** 해당 단계의 현재 상태가 "단계 종료"(isCompletion)인지 여부. 한 단계 안에 종료
+ * 상태가 여러 개일 수 있으므로(예: 합격/불합격 모두), 특정 하나의 "완료 상태"를
+ * 찾는 대신 현재 상태 자체의 플래그를 직접 확인한다. */
 export function isStageCompleted(stageRecords: StageRecord[], stage: Stage): boolean {
-  const completionStatus = getCompletionStatus(stage);
   const status = getStageRecordStatus(stageRecords, stage);
-  return !!completionStatus && status?.id === completionStatus.id;
+  return !!status?.isCompletion;
 }
 
 /** 해당 단계의 현재 상태가 "합격"(isPass)인지 여부 */
@@ -234,24 +249,35 @@ export type InterviewBucket = 'upcoming' | 'overdue' | 'completed';
 export interface InterviewInfo {
   bucket: InterviewBucket;
   date?: string;
+  time?: string;
+  note?: string;
 }
 
 /**
- * 지원자의 면접 일정 상태를 계산한다. 면접 안내 단계가 아직 완료(면접 일정 확정)되지
- * 않았으면 undefined를 반환한다(면접 자체가 잡히지 않은 지원자).
- * - completed: 면접 결과(최종 판정) 단계가 이미 처리됨(합격/불합격) — 면접일과 무관하게 우선
- * - overdue: 면접일이 오늘보다 이전인데 아직 결과가 입력되지 않음 ("지난 면접")
- * - upcoming: 면접일이 오늘 이후(또는 날짜 미상)이고 결과 미입력
+ * 지원자의 면접 일정 상태를 계산한다. 특정 단계를 "면접 단계"로 못박아두지 않고,
+ * 날짜 입력이 딸린 상태(hasDateInput) 중 실제로 시간(meta.time)까지 입력된 기록을
+ * 찾아 그것을 면접 일정으로 취급한다(단계 구조가 바뀌어도 깨지지 않도록).
+ * 그런 기록이 없으면 undefined(면접 자체가 잡히지 않은 지원자).
+ * - completed: 최종 결과(finalResult)가 이미 확정됨 — 면접일과 무관하게 우선
+ * - overdue: 면접일이 오늘보다 이전인데 최종 결과가 아직 없음 ("지난 면접")
+ * - upcoming: 면접일이 오늘 이후(또는 날짜 미상)이고 최종 결과 미정
  */
-export function getInterviewInfo(stageRecords: StageRecord[], stages: Stage[], todayStr: string = toDateStr(new Date())): InterviewInfo | undefined {
-  const interviewStage = getInterviewStage(stages);
-  if (!interviewStage || !isStageCompleted(stageRecords, interviewStage)) return undefined;
+export function getInterviewInfo(
+  stageRecords: StageRecord[],
+  stages: Stage[],
+  finalResult: FinalResult | null,
+  todayStr: string = toDateStr(new Date())
+): InterviewInfo | undefined {
+  const sorted = [...stages].sort((a, b) => a.order - b.order);
+  let record: StageRecord | undefined;
+  for (const stage of sorted) {
+    const candidate = stageRecords.find(r => r.stageId === stage.id);
+    if (candidate?.meta?.time) record = candidate;
+  }
+  if (!record) return undefined;
 
-  const record = stageRecords.find(r => r.stageId === interviewStage.id);
-  const date = record?.meta?.endDate;
-  const finalStage = getFinalStage(stages);
-
-  if (finalStage && isStageDone(stageRecords, finalStage)) return { bucket: 'completed', date };
-  if (date && date < todayStr) return { bucket: 'overdue', date };
-  return { bucket: 'upcoming', date };
+  const { endDate: date, time, note } = record.meta ?? {};
+  if (finalResult) return { bucket: 'completed', date, time, note };
+  if (date && date < todayStr) return { bucket: 'overdue', date, time, note };
+  return { bucket: 'upcoming', date, time, note };
 }

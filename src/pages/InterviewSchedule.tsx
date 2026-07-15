@@ -6,8 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Calendar } from '@/components/ui/calendar';
 import { Calendar as CalendarIcon, Clock, AlertTriangle } from 'lucide-react';
 import { cn, toDateStr } from '@/lib/utils';
-import { getFinalStage, getInterviewStage } from '@/types/jobPosting';
-import { getInterviewInfo, isStagePassed } from '@/types/applicant';
+import { getInterviewInfo } from '@/types/applicant';
 
 export default function InterviewSchedulePage() {
   const { applicants } = useApplicants();
@@ -23,14 +22,11 @@ export default function InterviewSchedulePage() {
       .map(a => {
         const job = postingsById.get(a.jobPostingId);
         if (!job) return null;
-        const info = getInterviewInfo(a.stageRecords, job.stages, todayStr);
+        const info = getInterviewInfo(a.stageRecords, job.stages, a.finalResult, todayStr);
         if (!info) return null;
-        const interviewStage = getInterviewStage(job.stages);
-        const meta = interviewStage ? a.stageRecords.find(r => r.stageId === interviewStage.id)?.meta : undefined;
-        const finalStage = getFinalStage(job.stages);
-        const result: 'pending' | 'pass' | 'fail' = info.bucket !== 'completed'
+        const result: 'pending' | 'pass' | 'fail' = !a.finalResult
           ? 'pending'
-          : finalStage && isStagePassed(a.stageRecords, finalStage) ? 'pass' : 'fail';
+          : a.finalResult.result === '합격' ? 'pass' : 'fail';
         return {
           id: a.id,
           name: a.name,
@@ -39,8 +35,8 @@ export default function InterviewSchedulePage() {
           email: a.email,
           region: `${a.region} ${a.regionDetail}`,
           date: info.date || '',
-          time: meta?.time || '',
-          interviewer: meta?.interviewer || '',
+          time: info.time || '',
+          note: info.note || '',
           bucket: info.bucket,
           result,
           jobTitle: job.title,
@@ -140,7 +136,7 @@ export default function InterviewSchedulePage() {
                             <span className="font-medium">{interview.name}</span>
                             <span className="text-xs text-muted-foreground">({interview.team})</span>
                             <span className="text-xs bg-accent px-1.5 py-0.5 rounded">{interview.jobTitle}</span>
-                            <span className="text-xs text-muted-foreground">담당: {interview.interviewer}</span>
+                            <span className="text-xs text-muted-foreground">담당: {interview.note}</span>
                             {interview.result !== 'pending' && (
                               <Badge variant={interview.result === 'pass' ? 'success' : 'destructive'} className="text-xs">
                                 {interview.result === 'pass' ? '합격' : '불합격'}
@@ -189,7 +185,7 @@ export default function InterviewSchedulePage() {
                     <td className="text-xs max-w-[200px] truncate">{item.jobTitle}</td>
                     <td className="whitespace-nowrap">{item.date}</td>
                     <td>{item.time}</td>
-                    <td>{item.interviewer}</td>
+                    <td>{item.note}</td>
                     <td className="text-xs">{item.phone}</td>
                     <td className="text-xs">{item.region}</td>
                   </tr>
@@ -231,7 +227,7 @@ export default function InterviewSchedulePage() {
                     <td className="text-xs max-w-[200px] truncate">{item.jobTitle}</td>
                     <td className="text-warning font-medium whitespace-nowrap">{item.date}</td>
                     <td>{item.time}</td>
-                    <td>{item.interviewer}</td>
+                    <td>{item.note}</td>
                     <td className="text-xs">{item.phone}</td>
                     <td className="text-xs">{item.region}</td>
                   </tr>
@@ -268,7 +264,7 @@ export default function InterviewSchedulePage() {
                     <td>{item.team}</td>
                     <td className="text-xs max-w-[200px] truncate">{item.jobTitle}</td>
                     <td className="whitespace-nowrap">{item.date}</td>
-                    <td>{item.interviewer}</td>
+                    <td>{item.note}</td>
                     <td>
                       <Badge variant={item.result === 'pass' ? 'success' : 'destructive'} className="text-xs">
                         {item.result === 'pass' ? '합격' : '불합격'}

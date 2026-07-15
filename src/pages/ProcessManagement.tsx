@@ -19,17 +19,11 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Stage, StageType, StageStatus, CompletionFormType, AutoSendConfig, getStageColorHex, progressStatuses, resultStatuses } from '@/types/jobPosting';
+import { Stage, StageType, StageStatus, AutoSendConfig, getStageColorHex, progressStatuses, resultStatuses } from '@/types/jobPosting';
 import StatusBadge from '@/components/common/StatusBadge';
 import { Plus, Trash2, ChevronUp, ChevronDown, Settings2, AlertTriangle, Info } from 'lucide-react';
 import StageStatusModal from '@/components/process/StageStatusModal';
 import AutoSendPanel from '@/components/process/AutoSendPanel';
-
-const COMPLETION_FORM_LABELS: Record<CompletionFormType, string> = {
-  none: '없음',
-  period: '기간(안내일/마감일)',
-  interview: '면접(기간+시간+담당자)',
-};
 
 const STAGE_TYPE_LABELS: Record<StageType, string> = {
   normal: '일반',
@@ -57,7 +51,6 @@ export default function ProcessManagementPage() {
   const [deleteTarget, setDeleteTarget] = useState<Stage | null>(null);
   const [showNewStage, setShowNewStage] = useState(false);
   const [newStageName, setNewStageName] = useState('');
-  const [newStageForm, setNewStageForm] = useState<CompletionFormType>('none');
   const [newStageType, setNewStageType] = useState<StageType>('normal');
 
   const isPreset = selectedId === PRESET_ID;
@@ -83,10 +76,6 @@ export default function ProcessManagementPage() {
 
   const renameStage = (stageId: string, name: string) => {
     persistStages(sortedStages.map(s => s.id === stageId ? { ...s, name } : s));
-  };
-
-  const changeCompletionForm = (stageId: string, completionForm: CompletionFormType) => {
-    persistStages(sortedStages.map(s => s.id === stageId ? { ...s, completionForm } : s));
   };
 
   const changeStageType = (stageId: string, stageType: StageType) => {
@@ -115,12 +104,10 @@ export default function ProcessManagementPage() {
       name: newStageName.trim(),
       order: sortedStages.length + 1,
       stageType: newStageType,
-      completionForm: newStageForm,
       statuses,
     };
     persistStages([...sortedStages, newStage]);
     setNewStageName('');
-    setNewStageForm('none');
     setNewStageType('normal');
     setShowNewStage(false);
   };
@@ -180,20 +167,12 @@ export default function ProcessManagementPage() {
                     ))}
                   </SelectContent>
                 </Select>
-                <Select value={stage.completionForm} onValueChange={v => changeCompletionForm(stage.id, v as CompletionFormType)}>
-                  <SelectTrigger className="w-auto h-9 text-xs"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {Object.entries(COMPLETION_FORM_LABELS).map(([value, label]) => (
-                      <SelectItem key={value} value={value}>완료 입력폼: {label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
                 <div className="flex items-center gap-1 flex-wrap">
                   {stage.statuses.map(status => (
                     <StatusBadge key={status.id} color={getStageColorHex(status.color)} className="text-[11px] px-1.5 py-0.5">
                       {status.name}
-                      {status.isDefault ? ' (기본)' : ''}
-                      {status.isCompletion ? ' (완료)' : ''}
+                      {status.isDefault ? ' (시작)' : ''}
+                      {status.isCompletion ? ' (단계종료)' : ''}
                       {status.isPass ? ' (합격)' : ''}
                       {status.isFail ? ' (불합격)' : ''}
                     </StatusBadge>
@@ -235,14 +214,6 @@ export default function ProcessManagementPage() {
                 <SelectContent>
                   {Object.entries(STAGE_TYPE_LABELS).map(([value, label]) => (
                     <SelectItem key={value} value={value}>구분: {label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Select value={newStageForm} onValueChange={v => setNewStageForm(v as CompletionFormType)}>
-                <SelectTrigger className="w-auto h-9 text-xs"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {Object.entries(COMPLETION_FORM_LABELS).map(([value, label]) => (
-                    <SelectItem key={value} value={value}>완료 입력폼: {label}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>

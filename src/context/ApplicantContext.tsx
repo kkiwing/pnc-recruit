@@ -4,7 +4,7 @@ import { dummyApplicants } from '@/data/dummyApplicants';
 
 interface ApplicantContextType {
   applicants: Applicant[];
-  addApplicant: (data: Omit<Applicant, 'id' | 'no' | 'isSeparateManagement' | 'files' | 'createdAt' | 'updatedAt'>) => void;
+  addApplicant: (data: Omit<Applicant, 'id' | 'no' | 'isSeparateManagement' | 'files' | 'createdAt' | 'updatedAt' | 'finalResult'>) => void;
   updateApplicant: (id: string, data: Partial<Applicant>) => void;
   deleteApplicant: (id: string) => void;
   deleteApplicantsByJobPostingId: (jobPostingId: string) => void;
@@ -16,7 +16,7 @@ const ApplicantContext = createContext<ApplicantContextType | null>(null);
 export function ApplicantProvider({ children }: { children: React.ReactNode }) {
   const [applicants, setApplicants] = useState<Applicant[]>(dummyApplicants);
 
-  const addApplicant = useCallback((data: Omit<Applicant, 'id' | 'no' | 'isSeparateManagement' | 'files' | 'createdAt' | 'updatedAt'>) => {
+  const addApplicant = useCallback((data: Omit<Applicant, 'id' | 'no' | 'isSeparateManagement' | 'files' | 'createdAt' | 'updatedAt' | 'finalResult'>) => {
     const now = new Date().toISOString();
     setApplicants(prev => {
       const maxNo = prev.reduce((max, a) => Math.max(max, a.no), 0);
@@ -25,6 +25,7 @@ export function ApplicantProvider({ children }: { children: React.ReactNode }) {
         id: crypto.randomUUID(),
         no: maxNo + 1,
         isSeparateManagement: false,
+        finalResult: null,
         files: [],
         createdAt: now,
         updatedAt: now,

@@ -23,7 +23,7 @@ function StageBadge({ stage, stageRecords, onEditMeta }: { stage: Stage; stageRe
       {stage.name}: {status?.name ?? '-'}
     </StatusBadge>
   );
-  if (meta && (meta.startDate || meta.interviewer)) {
+  if (meta && (meta.startDate || meta.note)) {
     return (
       <div className="inline-flex items-center gap-1.5">
         <Tooltip>
@@ -31,7 +31,7 @@ function StageBadge({ stage, stageRecords, onEditMeta }: { stage: Stage; stageRe
           <TooltipContent side="top" className="text-xs space-y-1 max-w-xs">
             {meta.startDate && meta.endDate && <p>기간: {meta.startDate} ~ {meta.endDate}</p>}
             {meta.time && <p>시간: {meta.time}</p>}
-            {meta.interviewer && <p>담당자: {meta.interviewer}</p>}
+            {meta.note && <p>메모: {meta.note}</p>}
           </TooltipContent>
         </Tooltip>
         <button type="button" className="text-muted-foreground hover:text-foreground" onClick={onEditMeta}>
@@ -87,12 +87,12 @@ export default function ApplicantDetailPage() {
     updateApplicant(applicant.id, { memo });
   };
 
-  const handleMetaSubmit = (data: { startDate: string; endDate: string; time?: string; interviewer?: string }) => {
+  const handleMetaSubmit = (data: { startDate: string; endDate: string; time?: string; note?: string }) => {
     if (!editingStage) return;
     const status = getStageRecordStatus(applicant.stageRecords, editingStage);
     if (!status) return;
     const now = new Date().toISOString();
-    const meta = { startDate: data.startDate, endDate: data.endDate, time: data.time, interviewer: data.interviewer };
+    const meta = { startDate: data.startDate, endDate: data.endDate, time: data.time, note: data.note };
     const exists = applicant.stageRecords.some(r => r.stageId === editingStage.id);
     const nextRecords = exists
       ? applicant.stageRecords.map(r => r.stageId === editingStage.id ? { stageId: editingStage.id, statusId: status.id, meta, updatedAt: now } : r)
@@ -316,7 +316,6 @@ export default function ApplicantDetailPage() {
           open={!!editingStage}
           onClose={() => setEditingStage(null)}
           stepLabel={editingStage.name}
-          isInterview={editingStage.completionForm === 'interview'}
           initialData={applicant.stageRecords.find(r => r.stageId === editingStage.id)?.meta}
           onSubmit={handleMetaSubmit}
         />

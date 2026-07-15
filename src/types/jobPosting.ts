@@ -7,12 +7,12 @@ export interface CoverLetterQuestion {
   maxLength?: number;
 }
 
-export type CompletionFormType = 'none' | 'period' | 'interview';
-
 /**
- * 단계의 성격. 'result'는 "합불을 판정하는 단계"(예: 인성검사 결과, 면접 결과)를
- * 명시적으로 나타낸다 — 순서상 마지막 단계라는 암묵적 가정 대신, 합불 집계
- * (getFinalStage 등)가 이 값을 근거로 판단한다.
+ * 단계의 성격. 'result'는 "이 단계 안에 합불 판정이 포함된다"를 나타낸다(예: 인성검사,
+ * 면접). 이 값 자체가 최종 합격 여부를 결정하지는 않는다 — 최종 판정은
+ * Applicant.finalResult로 전형 구조와 완전히 분리되어 있다. stageType은 프로세스
+ * 관리에서 "단계 추가" 시 기본 상태 세트(대기/진행중/완료 vs 대기/합격/불합격)를
+ * 고르는 용도로만 쓰인다.
  */
 export type StageType = 'normal' | 'result';
 
@@ -20,14 +20,20 @@ export interface StageStatus {
   id: string;
   name: string;
   color: string;
-  /** 아직 처리되지 않은 시작 상태 (예: 대기) */
+  /** 아직 처리되지 않은 시작 상태. statuses 배열의 첫 번째 항목과 항상 동기화되며
+   * (syncDefaultStatus 참고), 별도로 지정하는 UI는 없다 — 순서를 바꾸면 따라간다. */
   isDefault?: boolean;
-  /** normal 단계에서 "처리 완료" 의미의 상태 (예: 완료) — 완료 입력폼(모달) 트리거 기준 */
+  /** 이 상태가 되면 해당 단계가 끝난 것으로 집계된다("단계 종료"). normal/result
+   * 단계 모두에 적용 가능하며, 한 단계 안에 여러 개 있을 수 있다(예: 합격/불합격 둘 다). */
   isCompletion?: boolean;
-  /** result 단계에서 "합격" 의미의 상태 */
+  /** "합격" 의미의 상태 (보통 isCompletion과 함께 지정) */
   isPass?: boolean;
-  /** result 단계에서 "불합격" 의미의 상태 */
+  /** "불합격" 의미의 상태 (보통 isCompletion과 함께 지정) */
   isFail?: boolean;
+  /** 이 상태로 바꿀 때 날짜(기간)+시간(선택)+메모 입력 모달을 띄울지 여부. 예전에는
+   * 단계 속성(completionForm)이었으나, "안내" 성격의 상태만 날짜가 필요하다는 점을
+   * 더 정확히 표현하기 위해 상태 속성으로 옮겼다. */
+  hasDateInput?: boolean;
 }
 
 export interface AutoSendConfig {
@@ -42,7 +48,6 @@ export interface Stage {
   name: string;
   order: number;
   stageType: StageType;
-  completionForm: CompletionFormType;
   statuses: StageStatus[];
   autoSend?: AutoSendConfig;
 }
@@ -91,36 +96,6 @@ export function getStageColorHex(colorId: string): string {
   return STAGE_COLOR_PALETTE.find(c => c.id === colorId)?.hex ?? STAGE_COLOR_PALETTE[0].hex;
 }
 
-/** stageType이 'result'인 단계들을 순서대로 반환 (합불을 판정하는 단계들) */
-export function getResultStages(stages: Stage[]): Stage[] {
-  return stages.filter(s => s.stageType === 'result').sort((a, b) => a.order - b.order);
-}
-
-/**
- * 최종 합불 판정 단계. stageType === 'result'인 단계 중 순서상 가장 마지막 단계를
- * 반환한다 — "파이프라인의 마지막 단계"가 아니라 "합불을 판정하는 단계"를 명시적으로
- * 찾는다. 예를 들어 면접 결과 뒤에 처우 협의 단계가 추가되어도 면접 결과가 계속
- * 최종 판정 단계로 인식된다. result 타입 단계가 하나도 없으면(레거시 데이터 등)
- * 순서상 마지막 단계로 폴백한다.
- */
-export function getFinalStage(stages: Stage[]): Stage | undefined {
-  const resultStages = getResultStages(stages);
-  if (resultStages.length > 0) return resultStages[resultStages.length - 1];
-  return [...stages].sort((a, b) => b.order - a.order)[0];
-}
-
-export function getInterviewStage(stages: Stage[]): Stage | undefined {
-  return stages.find(s => s.completionForm === 'interview');
-}
-
-/** normal 단계에서 "처리 완료"를 의미하는 상태. isCompletion이 명시되지 않은
- * 레거시 단계는 목록의 마지막 상태로 폴백한다. */
-export function getCompletionStatus(stage: Stage): StageStatus | undefined {
-  const explicit = stage.statuses.find(s => s.isCompletion);
-  if (explicit) return explicit;
-  return stage.statuses[stage.statuses.length - 1];
-}
-
 /** result 단계에서 "합격"을 의미하는 상태. isPass가 명시되지 않은 레거시 단계는
  * 이름이 "합격"인 상태로 폴백한다. */
 export function getPassStatus(stage: Stage): StageStatus | undefined {
@@ -135,6 +110,14 @@ export function getFailStatus(stage: Stage): StageStatus | undefined {
   const explicit = stage.statuses.find(s => s.isFail);
   if (explicit) return explicit;
   return stage.statuses.find(s => s.name === '불합격');
+}
+
+/** statuses 배열의 첫 번째 항목을 isDefault=true로, 나머지를 false로 맞춘다.
+ * 상태 목록을 추가/삭제/순서 변경할 때마다 반드시 이 함수를 거쳐야 "시작 상태 =
+ * 목록 맨 위"라는 불변식이 유지된다(상태 관리 모달에서 별도로 "시작"을 지정하는
+ * UI는 없다 — 순서를 바꾸면 자동으로 따라간다). */
+export function syncDefaultStatus(statuses: StageStatus[]): StageStatus[] {
+  return statuses.map((s, i) => ({ ...s, isDefault: i === 0 }));
 }
 
 export type JobPostingStatus = '진행중' | '종료';
@@ -159,6 +142,7 @@ export function createDefaultCoverLetterQuestions(): CoverLetterQuestion[] {
   }));
 }
 
+/** "단계 추가"에서 일반 단계에 기본으로 적용하는 상태 세트. */
 export function progressStatuses(): StageStatus[] {
   return [
     { id: crypto.randomUUID(), name: '대기', color: 'gray', isDefault: true },
@@ -167,23 +151,16 @@ export function progressStatuses(): StageStatus[] {
   ];
 }
 
+/** "단계 추가"에서 합불 판정 단계에 기본으로 적용하는 상태 세트. */
 export function resultStatuses(): StageStatus[] {
   return [
     { id: crypto.randomUUID(), name: '대기', color: 'gray', isDefault: true },
-    { id: crypto.randomUUID(), name: '합격', color: 'blue', isPass: true },
-    { id: crypto.randomUUID(), name: '불합격', color: 'red', isFail: true },
+    { id: crypto.randomUUID(), name: '합격', color: 'blue', isPass: true, isCompletion: true },
+    { id: crypto.randomUUID(), name: '불합격', color: 'red', isFail: true, isCompletion: true },
   ];
 }
 
-export const DEFAULT_STAGE_NAMES = [
-  '인성검사 안내',
-  '인성검사 공고 등록',
-  '인성검사 결과',
-  '자사양식 안내',
-  '자사양식 제출',
-  '면접 안내',
-  '면접 결과',
-] as const;
+export const DEFAULT_STAGE_NAMES = ['인성검사', '자사양식', '면접', '최종'] as const;
 
 /** 단계 배열을 새 id로 깊은 복사한다. 프리셋을 새 공고에 스냅샷으로 복사할 때,
  * 이후 프리셋 수정이 이미 생성된 공고에 영향을 주지 않도록 참조를 완전히 분리한다. */
@@ -196,22 +173,43 @@ export function cloneStages(stages: Stage[]): Stage[] {
   }));
 }
 
+/**
+ * 기본 프로세스 프리셋(4단계): 인성검사 → 자사양식 → 면접 → 최종.
+ * 각 단계의 첫 상태가 시작 상태이며, 합격/불합격은 모두 단계 종료(isCompletion)로
+ * 집계된다. "안내" 상태만 hasDateInput으로 날짜+메모 입력을 받는다. 전형 단계
+ * 자체는 합불을 최종 결정하지 않는다 — 최종 합격/불합격은 Applicant.finalResult로
+ * 전형 구조와 무관하게 별도 지정한다(특별 채용 등 예외 대응).
+ */
 export function createDefaultStages(): Stage[] {
-  const defs: { name: string; completionForm: CompletionFormType; result?: boolean }[] = [
-    { name: '인성검사 안내', completionForm: 'period' },
-    { name: '인성검사 공고 등록', completionForm: 'none' },
-    { name: '인성검사 결과', completionForm: 'none', result: true },
-    { name: '자사양식 안내', completionForm: 'period' },
-    { name: '자사양식 제출', completionForm: 'none' },
-    { name: '면접 안내', completionForm: 'interview' },
-    { name: '면접 결과', completionForm: 'none', result: true },
+  const stage = (name: string, stageType: StageType, statuses: StageStatus[]): Omit<Stage, 'id' | 'order'> => ({
+    name,
+    stageType,
+    statuses,
+  });
+
+  const defs = [
+    stage('인성검사', 'result', [
+      { id: crypto.randomUUID(), name: '안내', color: 'gray', isDefault: true, hasDateInput: true },
+      { id: crypto.randomUUID(), name: '공고등록', color: 'orange' },
+      { id: crypto.randomUUID(), name: '진행완료', color: 'purple' },
+      { id: crypto.randomUUID(), name: '합격', color: 'blue', isPass: true, isCompletion: true },
+      { id: crypto.randomUUID(), name: '불합격', color: 'red', isFail: true, isCompletion: true },
+    ]),
+    stage('자사양식', 'normal', [
+      { id: crypto.randomUUID(), name: '안내', color: 'gray', isDefault: true, hasDateInput: true },
+      { id: crypto.randomUUID(), name: '작성완료', color: 'green', isCompletion: true },
+    ]),
+    stage('면접', 'result', [
+      { id: crypto.randomUUID(), name: '안내', color: 'gray', isDefault: true, hasDateInput: true },
+      { id: crypto.randomUUID(), name: '진행완료', color: 'purple' },
+      { id: crypto.randomUUID(), name: '합격', color: 'blue', isPass: true, isCompletion: true },
+      { id: crypto.randomUUID(), name: '불합격', color: 'red', isFail: true, isCompletion: true },
+    ]),
+    stage('최종', 'normal', [
+      { id: crypto.randomUUID(), name: '안내', color: 'gray', isDefault: true, hasDateInput: true },
+      { id: crypto.randomUUID(), name: '전형완료', color: 'green', isCompletion: true },
+    ]),
   ];
-  return defs.map((d, i) => ({
-    id: crypto.randomUUID(),
-    name: d.name,
-    order: i + 1,
-    stageType: d.result ? 'result' : 'normal',
-    completionForm: d.completionForm,
-    statuses: d.result ? resultStatuses() : progressStatuses(),
-  }));
+
+  return defs.map((d, i) => ({ ...d, id: crypto.randomUUID(), order: i + 1 }));
 }

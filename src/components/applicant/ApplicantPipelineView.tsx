@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Applicant, StageRecord, getCurrentStage, getStageRecordStatus } from '@/types/applicant';
 import { useApplicants } from '@/context/ApplicantContext';
-import { JobPosting, Stage, getStageColorHex, getCompletionStatus } from '@/types/jobPosting';
+import { JobPosting, Stage, getStageColorHex } from '@/types/jobPosting';
 import { Button } from '@/components/ui/button';
 import { MoreHorizontal, ArrowRightLeft } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent } from '@/components/ui/dropdown-menu';
@@ -37,9 +37,8 @@ export default function ApplicantPipelineView({ applicants, jobPosting }: Props)
   };
 
   const handleStatusChange = (applicant: Applicant, stage: Stage, statusId: string) => {
-    const completionStatus = getCompletionStatus(stage);
-    const isCompletionTransition = stage.completionForm !== 'none' && completionStatus?.id === statusId;
-    if (isCompletionTransition) {
+    const targetStatus = stage.statuses.find(s => s.id === statusId);
+    if (targetStatus?.hasDateInput) {
       setCompletionModal({ applicantId: applicant.id, stage, statusId });
       return;
     }
@@ -54,7 +53,7 @@ export default function ApplicantPipelineView({ applicants, jobPosting }: Props)
     handleStatusChange(applicant, targetStage, nextStatusId);
   };
 
-  const handleCompletionSubmit = (data: { startDate: string; endDate: string; time?: string; interviewer?: string }) => {
+  const handleCompletionSubmit = (data: { startDate: string; endDate: string; time?: string; note?: string }) => {
     if (!completionModal) return;
     const applicant = applicants.find(a => a.id === completionModal.applicantId);
     if (!applicant) return;
@@ -62,7 +61,7 @@ export default function ApplicantPipelineView({ applicants, jobPosting }: Props)
       startDate: data.startDate,
       endDate: data.endDate,
       time: data.time,
-      interviewer: data.interviewer,
+      note: data.note,
     });
   };
 
@@ -153,7 +152,6 @@ export default function ApplicantPipelineView({ applicants, jobPosting }: Props)
           open={!!completionModal}
           onClose={() => setCompletionModal(null)}
           stepLabel={completionModal.stage.name}
-          isInterview={completionModal.stage.completionForm === 'interview'}
           initialData={completionModal.initialData}
           onSubmit={handleCompletionSubmit}
         />

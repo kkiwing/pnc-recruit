@@ -957,7 +957,7 @@ function convertToStageRecords(raw: RawApplicant, stages: Stage[]): StageRecord[
       statusId: (matched ?? defaultStatus).id,
       meta: hasMeta ? {
         startDate: oldDetail!.startDate, endDate: oldDetail!.endDate,
-        time: oldDetail!.time, interviewer: oldDetail!.interviewer,
+        time: oldDetail!.time, note: oldDetail!.interviewer,
       } : undefined,
       updatedAt: oldDetail?.updatedAt || raw.updatedAt,
     };
@@ -996,6 +996,7 @@ function enrich(raw: RawApplicant): Applicant {
     memo: raw.memo,
     applicationDate: raw.applicationDate,
     stageRecords,
+    finalResult: null,
     isSeparateManagement: raw.isSeparateManagement,
     separateReason: raw.separateReason,
     files: [],

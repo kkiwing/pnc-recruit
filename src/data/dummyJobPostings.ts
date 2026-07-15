@@ -23,7 +23,7 @@ function resultStatusesFor(prefix: string) {
   ];
 }
 
-function buildStages(postingId: string, defs: { name: string; completionForm: Stage['completionForm']; result?: boolean }[]): Stage[] {
+function buildStages(postingId: string, defs: { name: string; result?: boolean }[]): Stage[] {
   return defs.map((d, i) => {
     const prefix = `${postingId}-stage${i + 1}`;
     return {
@@ -31,32 +31,31 @@ function buildStages(postingId: string, defs: { name: string; completionForm: St
       name: d.name,
       order: i + 1,
       stageType: d.result ? 'result' as const : 'normal' as const,
-      completionForm: d.completionForm,
       statuses: d.result ? resultStatusesFor(prefix) : progressStatusesFor(prefix),
     };
   });
 }
 
-/** 기본 템플릿: 기존 7단계 그대로 */
+/** 기본 템플릿: 기존 7단계 그대로 (신규 4단계 프리셋 구조는 커밋2에서 재구성 예정) */
 function defaultStagesFor(postingId: string): Stage[] {
   return buildStages(postingId, [
-    { name: '인성검사 안내', completionForm: 'period' },
-    { name: '인성검사 공고 등록', completionForm: 'none' },
-    { name: '인성검사 결과', completionForm: 'none', result: true },
-    { name: '자사양식 안내', completionForm: 'period' },
-    { name: '자사양식 제출', completionForm: 'none' },
-    { name: '면접 안내', completionForm: 'interview' },
-    { name: '면접 결과', completionForm: 'none', result: true },
+    { name: '인성검사 안내' },
+    { name: '인성검사 공고 등록' },
+    { name: '인성검사 결과', result: true },
+    { name: '자사양식 안내' },
+    { name: '자사양식 제출' },
+    { name: '면접 안내' },
+    { name: '면접 결과', result: true },
   ]);
 }
 
 /** 대체 템플릿 예시: 서류-인성검사-적성검사/면접-임원면접 흐름 */
 function executiveStagesFor(postingId: string): Stage[] {
   return buildStages(postingId, [
-    { name: '서류', completionForm: 'none' },
-    { name: '인성검사', completionForm: 'period', result: true },
-    { name: '적성검사 및 면접', completionForm: 'interview' },
-    { name: '최종 임원 면접', completionForm: 'none', result: true },
+    { name: '서류' },
+    { name: '인성검사', result: true },
+    { name: '적성검사 및 면접' },
+    { name: '최종 임원 면접', result: true },
   ]);
 }
 
