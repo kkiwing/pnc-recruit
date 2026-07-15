@@ -2,9 +2,9 @@ import {
   Applicant, SeparateManagementReason,
   Gender, EducationEntry, CertificateEntry, CareerEntry, ActivityEntry,
   StatisticsPackageEntry, ThesisInfo, CoverLetterAnswer, SubmissionStatus,
-  StageRecord,
+  StageRecord, StageRecordMeta, FinalResult,
 } from '@/types/applicant';
-import { Stage } from '@/types/jobPosting';
+import { JobPosting, Stage } from '@/types/jobPosting';
 import { dummyJobPostings } from './dummyJobPostings';
 
 // 더미 데이터 작성 편의를 위한 구(舊) 7단계 형식 — enrich() 단계에서 각 공고의
@@ -929,39 +929,117 @@ function buildCoverLetter(raw: RawApplicant): CoverLetterAnswer[] {
 
 const postingsById = new Map(dummyJobPostings.map(p => [p.id, p]));
 
-// 공고의 stage 구성 길이에 따라 구(舊) 7단계 값을 대응시킬 키 순서.
-// 4단계(대체 템플릿) 공고는 [안내, 결과, 면접안내, 면접결과]에 해당하는
-// 구 데이터 인덱스([0,2,5,6])만 뽑아 타입이 맞는 단계에 대응시킨다.
-const OLD_KEYS_7: (keyof RawRecruitmentStatus)[] = [
-  'personalityTestNotice', 'personalityTestRegistration', 'personalityTestResult',
-  'companyFormNotice', 'companyFormSubmission', 'interviewNotice', 'interviewResult',
-];
+// job-05만 예전 4단계 대체 템플릿(서류/인성검사/적성검사및면접/최종임원면접)을 쓰고,
+// 나머지는 모두 기본 프리셋(인성검사/자사양식/면접/최종)을 쓴다 — 공고별 커스터마이징
+// 시연용으로 하나만 다른 구성을 유지한다.
+const EXECUTIVE_TEMPLATE_JOB_ID = 'job-05';
+
 const OLD_KEYS_4: (keyof RawRecruitmentStatus)[] = [
   'personalityTestNotice', 'personalityTestResult', 'interviewNotice', 'interviewResult',
 ];
-
 const OLD_STATUS_TO_NAME: Partial<Record<RawStepStatus, string>> = {
   need: '필요', done: '완료', pass: '합격', fail: '불합격',
 };
 
-function convertToStageRecords(raw: RawApplicant, stages: Stage[]): StageRecord[] {
-  const oldKeys = stages.length === OLD_KEYS_4.length ? OLD_KEYS_4 : OLD_KEYS_7;
+/** job-05(대체 템플릿)용 변환 — 구 7단계 값 중 4개 인덱스만 뽑아 이름으로 매칭한다. */
+function convertToExecutiveStageRecords(raw: RawApplicant, stages: Stage[]): StageRecord[] {
   return stages.map((stage, i) => {
-    const oldDetail = oldKeys[i] ? raw.recruitmentStatus[oldKeys[i]] : undefined;
+    const oldDetail = raw.recruitmentStatus[OLD_KEYS_4[i]];
     const defaultStatus = stage.statuses.find(st => st.isDefault) ?? stage.statuses[0];
-    const wantedName = oldDetail ? OLD_STATUS_TO_NAME[oldDetail.status] : undefined;
+    const wantedName = OLD_STATUS_TO_NAME[oldDetail.status];
     const matched = wantedName ? stage.statuses.find(st => st.name === wantedName) : undefined;
-    const hasMeta = !!oldDetail && !!(oldDetail.startDate || oldDetail.endDate || oldDetail.time || oldDetail.interviewer);
+    const hasMeta = !!(oldDetail.startDate || oldDetail.endDate || oldDetail.time || oldDetail.interviewer);
     return {
       stageId: stage.id,
       statusId: (matched ?? defaultStatus).id,
       meta: hasMeta ? {
-        startDate: oldDetail!.startDate, endDate: oldDetail!.endDate,
-        time: oldDetail!.time, note: oldDetail!.interviewer,
+        startDate: oldDetail.startDate, endDate: oldDetail.endDate,
+        time: oldDetail.time, note: oldDetail.interviewer,
       } : undefined,
-      updatedAt: oldDetail?.updatedAt || raw.updatedAt,
+      updatedAt: oldDetail.updatedAt || raw.updatedAt,
     };
   });
+}
+
+function metaFrom(detail: RawStepDetail): StageRecordMeta | undefined {
+  if (!detail.startDate && !detail.endDate && !detail.time && !detail.interviewer) return undefined;
+  return { startDate: detail.startDate, endDate: detail.endDate, time: detail.time, note: detail.interviewer };
+}
+
+function findStatus(stage: Stage, name: string): string {
+  return (stage.statuses.find(s => s.name === name) ?? stage.statuses[0]).id;
+}
+
+/**
+ * 기본 프리셋(인성검사/자사양식/면접/최종)용 변환. 구 7단계 raw 값(안내/등록/결과
+ * 또는 안내/제출 또는 안내/결과)을 각 단계의 새 상태 이름으로 재해석한다 — 예를 들어
+ * 인성검사는 "안내 완료 + 등록 미완료"면 '공고등록', "등록 완료 + 결과 대기"면
+ * '진행완료'로 매핑한다. "최종" 단계는 구 데이터에 대응 항목이 없어 항상 시작
+ * 상태(안내)로 둔다(합격/불합격 여부와 무관하게 — 최종 판정은 finalResult가 따로 맡는다).
+ */
+function convertToPresetStageRecords(raw: RawApplicant, stages: Stage[]): StageRecord[] {
+  const [personality, form, interview, final] = stages;
+  const rs = raw.recruitmentStatus;
+  const now = raw.updatedAt;
+  const records: StageRecord[] = [];
+
+  {
+    const { personalityTestNotice: notice, personalityTestRegistration: registration, personalityTestResult: result } = rs;
+    const statusName = result.status === 'pass' ? '합격'
+      : result.status === 'fail' ? '불합격'
+      : registration.status === 'done' ? '진행완료'
+      : notice.status === 'done' ? '공고등록'
+      : '안내';
+    records.push({ stageId: personality.id, statusId: findStatus(personality, statusName), meta: metaFrom(notice), updatedAt: now });
+  }
+  {
+    const { companyFormNotice: notice, companyFormSubmission: submission } = rs;
+    const statusName = submission.status === 'done' ? '작성완료' : '안내';
+    records.push({ stageId: form.id, statusId: findStatus(form, statusName), meta: metaFrom(notice), updatedAt: now });
+  }
+  {
+    const { interviewNotice: notice, interviewResult: result } = rs;
+    const statusName = result.status === 'pass' ? '합격'
+      : result.status === 'fail' ? '불합격'
+      : notice.status === 'done' ? '진행완료'
+      : '안내';
+    records.push({ stageId: interview.id, statusId: findStatus(interview, statusName), meta: metaFrom(notice), updatedAt: now });
+  }
+  records.push({ stageId: final.id, statusId: findStatus(final, '안내'), updatedAt: now });
+
+  return records;
+}
+
+function convertToStageRecords(raw: RawApplicant, posting: JobPosting): StageRecord[] {
+  return posting.id === EXECUTIVE_TEMPLATE_JOB_ID
+    ? convertToExecutiveStageRecords(raw, posting.stages)
+    : convertToPresetStageRecords(raw, posting.stages);
+}
+
+/** 전형 단계와 무관하게 지정하는 최종 판정(일부 지원자만). d06-07은 인성검사조차
+ * 시작 전인 상태에서 finalResult만 합격으로 지정해, "구조는 단순하게, 예외는
+ * 메모로" 원칙에 따른 특별 채용 예외 케이스를 보여준다. */
+const FINAL_RESULTS: Record<string, FinalResult> = {
+  'd01-02': { result: '합격', decidedAt: '2026-04-13T10:00:00Z' },
+  'd02-02': { result: '합격', decidedAt: '2026-04-11T09:00:00Z' },
+  'd03-02': { result: '합격', decidedAt: '2026-04-13T09:00:00Z' },
+  'd01-03': { result: '불합격', decidedAt: '2026-04-12T09:00:00Z' },
+  'd02-08': { result: '불합격', decidedAt: '2026-04-02T09:00:00Z' },
+  'd06-07': { result: '합격', note: '임원 추천 특별 채용', decidedAt: '2026-04-11T09:00:00Z' },
+};
+
+/** 최종 판정이 합격/불합격으로 난 지원자는 "최종" 단계도 전형완료로 맞춰
+ * 보여준다 — 다만 특별 채용 케이스(d06-07)는 일부러 그대로 두어 "중간 단계인데
+ * 최종 결과만 확정된" 상태를 보여준다. */
+const SYNC_FINAL_STAGE_IDS = new Set(['d01-02', 'd02-02', 'd03-02', 'd01-03', 'd02-08']);
+
+function applyFinalResultOverlay(raw: RawApplicant, posting: JobPosting | undefined, stageRecords: StageRecord[]): StageRecord[] {
+  if (!posting || posting.id === EXECUTIVE_TEMPLATE_JOB_ID || !SYNC_FINAL_STAGE_IDS.has(raw.id)) return stageRecords;
+  const final = posting.stages.find(s => s.name === '최종');
+  if (!final) return stageRecords;
+  return stageRecords.map(r => r.stageId === final.id
+    ? { ...r, statusId: findStatus(final, '전형완료'), updatedAt: raw.updatedAt }
+    : r);
 }
 
 function enrich(raw: RawApplicant): Applicant {
@@ -969,7 +1047,7 @@ function enrich(raw: RawApplicant): Applicant {
   const allInitial = Object.values(raw.recruitmentStatus).every(step => step.status === 'pending');
   const submissionStatus: SubmissionStatus = allInitial ? '미완료' : '완료';
   const posting = postingsById.get(raw.jobPostingId);
-  const stageRecords = posting ? convertToStageRecords(raw, posting.stages) : [];
+  const stageRecords = applyFinalResultOverlay(raw, posting, posting ? convertToStageRecords(raw, posting) : []);
 
   return {
     id: raw.id,
@@ -996,7 +1074,7 @@ function enrich(raw: RawApplicant): Applicant {
     memo: raw.memo,
     applicationDate: raw.applicationDate,
     stageRecords,
-    finalResult: null,
+    finalResult: FINAL_RESULTS[raw.id] ?? null,
     isSeparateManagement: raw.isSeparateManagement,
     separateReason: raw.separateReason,
     files: [],

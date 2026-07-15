@@ -18,8 +18,8 @@ function progressStatusesFor(prefix: string) {
 function resultStatusesFor(prefix: string) {
   return [
     { id: `${prefix}-s1`, name: '대기', color: 'gray', isDefault: true },
-    { id: `${prefix}-s2`, name: '합격', color: 'blue', isPass: true },
-    { id: `${prefix}-s3`, name: '불합격', color: 'red', isFail: true },
+    { id: `${prefix}-s2`, name: '합격', color: 'blue', isPass: true, isCompletion: true },
+    { id: `${prefix}-s3`, name: '불합격', color: 'red', isFail: true, isCompletion: true },
   ];
 }
 
@@ -36,20 +36,56 @@ function buildStages(postingId: string, defs: { name: string; result?: boolean }
   });
 }
 
-/** 기본 템플릿: 기존 7단계 그대로 (신규 4단계 프리셋 구조는 커밋2에서 재구성 예정) */
+/**
+ * 기본 프로세스 프리셋(4단계: 인성검사→자사양식→면접→최종)과 동일한 구조를 안정적인
+ * id로 구현한다(더미 지원자 데이터가 이 id를 참조하므로 crypto.randomUUID 대신
+ * 고정 id를 쓴다). src/types/jobPosting.ts의 createDefaultStages()와 상태
+ * 구성이 같다 — 실제 신규 공고 생성 시 프리셋을 복사한 결과와 동일한 모양.
+ */
 function defaultStagesFor(postingId: string): Stage[] {
-  return buildStages(postingId, [
-    { name: '인성검사 안내' },
-    { name: '인성검사 공고 등록' },
-    { name: '인성검사 결과', result: true },
-    { name: '자사양식 안내' },
-    { name: '자사양식 제출' },
-    { name: '면접 안내' },
-    { name: '면접 결과', result: true },
-  ]);
+  const personality = `${postingId}-personality`;
+  const form = `${postingId}-form`;
+  const interview = `${postingId}-interview`;
+  const final = `${postingId}-final`;
+  return [
+    {
+      id: personality, name: '인성검사', order: 1, stageType: 'result',
+      statuses: [
+        { id: `${personality}-notice`, name: '안내', color: 'gray', isDefault: true, hasDateInput: true },
+        { id: `${personality}-registered`, name: '공고등록', color: 'orange' },
+        { id: `${personality}-inprogress`, name: '진행완료', color: 'purple' },
+        { id: `${personality}-pass`, name: '합격', color: 'blue', isPass: true, isCompletion: true },
+        { id: `${personality}-fail`, name: '불합격', color: 'red', isFail: true, isCompletion: true },
+      ],
+    },
+    {
+      id: form, name: '자사양식', order: 2, stageType: 'normal',
+      statuses: [
+        { id: `${form}-notice`, name: '안내', color: 'gray', isDefault: true, hasDateInput: true },
+        { id: `${form}-done`, name: '작성완료', color: 'green', isCompletion: true },
+      ],
+    },
+    {
+      id: interview, name: '면접', order: 3, stageType: 'result',
+      statuses: [
+        { id: `${interview}-notice`, name: '안내', color: 'gray', isDefault: true, hasDateInput: true },
+        { id: `${interview}-inprogress`, name: '진행완료', color: 'purple' },
+        { id: `${interview}-pass`, name: '합격', color: 'blue', isPass: true, isCompletion: true },
+        { id: `${interview}-fail`, name: '불합격', color: 'red', isFail: true, isCompletion: true },
+      ],
+    },
+    {
+      id: final, name: '최종', order: 4, stageType: 'normal',
+      statuses: [
+        { id: `${final}-notice`, name: '안내', color: 'gray', isDefault: true, hasDateInput: true },
+        { id: `${final}-done`, name: '전형완료', color: 'green', isCompletion: true },
+      ],
+    },
+  ];
 }
 
-/** 대체 템플릿 예시: 서류-인성검사-적성검사/면접-임원면접 흐름 */
+/** 대체 템플릿 예시: 서류-인성검사-적성검사/면접-임원면접 흐름. 기본 프리셋과 다른
+ * 구성도 공고별로 가능하다는 것을 보여주기 위해 한 공고(job-05)만 이 템플릿을 쓴다. */
 function executiveStagesFor(postingId: string): Stage[] {
   return buildStages(postingId, [
     { name: '서류' },
