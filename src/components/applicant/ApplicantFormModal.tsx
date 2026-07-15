@@ -5,9 +5,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import DatePicker from '@/components/common/DatePicker';
 import { useApplicants } from '@/context/ApplicantContext';
 import { useJobPostings } from '@/context/JobPostingContext';
 import { Gender, createDefaultStageRecords } from '@/types/applicant';
+import { toDateStr } from '@/lib/utils';
 
 interface Props {
   open: boolean;
@@ -36,7 +38,7 @@ export default function ApplicantFormModal({ open, onClose, editData, defaultJob
     school: editData?.educations?.[0]?.schoolName || '',
     major: editData?.educations?.[0]?.major || '',
     memo: editData?.memo || '',
-    applicationDate: editData?.applicationDate || new Date().toISOString().slice(0, 10),
+    applicationDate: editData?.applicationDate || toDateStr(new Date()),
   });
 
   const handleChange = (field: string, value: string) => {
@@ -127,11 +129,11 @@ export default function ApplicantFormModal({ open, onClose, editData, defaultJob
           </div>
           <div>
             <Label>생년월일</Label>
-            <Input type="date" value={form.birthDate} onChange={e => handleChange('birthDate', e.target.value)} />
+            <DatePicker value={form.birthDate} onChange={v => handleChange('birthDate', v)} />
           </div>
           <div>
             <Label>지원일</Label>
-            <Input type="date" value={form.applicationDate} onChange={e => handleChange('applicationDate', e.target.value)} />
+            <DatePicker value={form.applicationDate} onChange={v => handleChange('applicationDate', v)} />
           </div>
           <div>
             <Label>지원플랫폼</Label>

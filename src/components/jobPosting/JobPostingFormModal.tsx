@@ -6,12 +6,14 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import DateRangePicker from '@/components/common/DateRangePicker';
 import { useJobPostings } from '@/context/JobPostingContext';
 import { useProcessPreset } from '@/context/ProcessPresetContext';
 import {
   JobPosting, CareerType, EmploymentType, CoverLetterQuestion,
   createDefaultCoverLetterQuestions, cloneStages,
 } from '@/types/jobPosting';
+import { toDateStr } from '@/lib/utils';
 import { Plus, Trash2, ChevronUp, ChevronDown } from 'lucide-react';
 
 interface Props {
@@ -29,7 +31,7 @@ export default function JobPostingFormModal({ open, onClose, editData }: Props) 
     careerType: (editData?.careerType || '신입') as CareerType,
     employmentType: (editData?.employmentType || '정규직') as EmploymentType,
     position: editData?.position || '',
-    startDate: editData?.startDate || new Date().toISOString().slice(0, 10),
+    startDate: editData?.startDate || toDateStr(new Date()),
     endDate: editData?.endDate || '',
     isPublic: editData?.isPublic ?? true,
     description: editData?.description || '',
@@ -121,13 +123,13 @@ export default function JobPostingFormModal({ open, onClose, editData }: Props) 
             <Label>포지션 <span className="text-xs text-muted-foreground font-normal">(선택)</span></Label>
             <Input value={form.position} onChange={e => handleChange('position', e.target.value)} placeholder="예: 백엔드 개발자" />
           </div>
-          <div>
-            <Label>시작일</Label>
-            <Input type="date" value={form.startDate} onChange={e => handleChange('startDate', e.target.value)} />
-          </div>
-          <div>
-            <Label>마감일</Label>
-            <Input type="date" value={form.endDate} onChange={e => handleChange('endDate', e.target.value)} />
+          <div className="col-span-2">
+            <Label>게시기간</Label>
+            <DateRangePicker
+              startDate={form.startDate}
+              endDate={form.endDate}
+              onChange={(startDate, endDate) => setForm(prev => ({ ...prev, startDate, endDate }))}
+            />
           </div>
           <div className="col-span-2 flex items-center justify-between card-soft px-3 py-2">
             <div>
