@@ -15,7 +15,7 @@ export interface StageStatus {
    * (syncDefaultStatus 참고), 별도로 지정하는 UI는 없다 — 순서를 바꾸면 따라간다. */
   isDefault?: boolean;
   /** 이 상태가 되면 해당 단계가 끝난 것으로 집계된다("단계 종료"). 한 단계 안에
-   * 여러 상태가 동시에 이 플래그를 가질 수 있다(예: "합격"과 "불합격" 둘 다). */
+   * 항상 최대 1개 상태만 이 플래그를 가질 수 있다(완전 배타, 2026-07-15 결정). */
   isCompletion?: boolean;
   /** 이 상태로 바꿀 때 날짜(기간)+시간(선택)+메모 입력 모달을 띄울지 여부. 예전에는
    * 단계 속성(completionForm)이었으나, "안내" 성격의 상태만 날짜가 필요하다는 점을
@@ -145,11 +145,12 @@ export function cloneStages(stages: Stage[]): Stage[] {
 
 /**
  * 기본 프로세스 프리셋(4단계): 인성검사 → 자사양식 → 면접 → 최종.
- * 각 단계의 첫 상태가 시작 상태이다. "합격"/"불합격"은 이름·색만 있는 순수한
- * 일반 상태다(진행 상황을 보여주는 용도일 뿐 단계 종료·집계 어디에도 쓰이지
- * 않는다). "안내" 상태만 hasDateInput으로 날짜+메모 입력을 받는다. 최종
- * 합격/불합격은 Applicant.finalResult로 전형 구조와 무관하게 별도 지정한다
- * (특별 채용 등 예외 대응).
+ * 각 단계의 첫 상태가 시작 상태이고, 각 단계의 마지막 상태가 단계 종료(isCompletion)다.
+ * 단계 내 합격/불합격 상태값은 존재하지 않는다 — 단계 통과는 "다음 단계로의 이동"으로,
+ * 탈락은 Applicant.finalResult(불합격)로 표현하므로 경유지 성격의 합불 상태는 군더더기이자
+ * 단계종료 배타 규칙(2.12)을 깨는 원인이었다(2026-07-16 decision-log, "구조는 단순하게"
+ * 원칙의 마무리). "안내" 상태만 hasDateInput으로 날짜+메모 입력을 받는다. 최종 합격/불합격은
+ * Applicant.finalResult로 전형 구조와 무관하게 별도 지정한다(특별 채용 등 예외 대응).
  */
 export function createDefaultStages(): Stage[] {
   const stage = (name: string, statuses: StageStatus[]): Omit<Stage, 'id' | 'order'> => ({
@@ -161,9 +162,7 @@ export function createDefaultStages(): Stage[] {
     stage('인성검사', [
       { id: crypto.randomUUID(), name: '안내', color: 'gray', isDefault: true, hasDateInput: true },
       { id: crypto.randomUUID(), name: '공고등록', color: 'orange' },
-      { id: crypto.randomUUID(), name: '진행완료', color: 'purple' },
-      { id: crypto.randomUUID(), name: '합격', color: 'blue' },
-      { id: crypto.randomUUID(), name: '불합격', color: 'red' },
+      { id: crypto.randomUUID(), name: '진행완료', color: 'purple', isCompletion: true },
     ]),
     stage('자사양식', [
       { id: crypto.randomUUID(), name: '안내', color: 'gray', isDefault: true, hasDateInput: true },
@@ -171,9 +170,7 @@ export function createDefaultStages(): Stage[] {
     ]),
     stage('면접', [
       { id: crypto.randomUUID(), name: '안내', color: 'gray', isDefault: true, hasDateInput: true },
-      { id: crypto.randomUUID(), name: '진행완료', color: 'purple' },
-      { id: crypto.randomUUID(), name: '합격', color: 'blue' },
-      { id: crypto.randomUUID(), name: '불합격', color: 'red' },
+      { id: crypto.randomUUID(), name: '진행완료', color: 'purple', isCompletion: true },
     ]),
     stage('최종', [
       { id: crypto.randomUUID(), name: '안내', color: 'gray', isDefault: true, hasDateInput: true },
