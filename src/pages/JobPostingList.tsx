@@ -29,8 +29,8 @@ import JobPostingFormModal from '@/components/jobPosting/JobPostingFormModal';
 
 type SortOption = 'deadlineAsc' | 'createdDesc' | 'createdAsc' | 'updatedDesc' | 'applicantsDesc' | 'applicantsAsc' | 'statusFirst';
 
-/** 공고 카드의 지표 한 칸. 값이 0이어도 아이콘·자리는 그대로 유지하고 흐리게만
- * 표시해, 카드마다 지표 유무가 달라도 열이 어긋나지 않게 한다. */
+/** 공고 카드의 지표 한 칸. 값이 0이어도 아이콘·라벨·자리는 그대로 유지하고
+ * 흐리게+"-" 표시만 해서, 카드마다 지표 유무가 달라도 열이 어긋나지 않게 한다. */
 function StatItem({ icon: Icon, count, label, tone, onClick }: {
   icon: React.ComponentType<{ className?: string }>;
   count: number;
@@ -41,9 +41,10 @@ function StatItem({ icon: Icon, count, label, tone, onClick }: {
   const isZero = count === 0;
   const toneClass = isZero ? 'text-muted-foreground' : tone === 'destructive' ? 'text-destructive' : tone === 'success' ? 'text-success' : 'text-primary';
   const inner = (
-    <div className={`flex flex-col items-center gap-0.5 w-12 shrink-0 ${isZero ? 'opacity-40' : ''}`}>
+    <div className={`flex flex-col items-center gap-0.5 w-14 shrink-0 ${isZero ? 'opacity-40' : ''}`}>
       <Icon className={`w-4 h-4 ${toneClass}`} />
-      <span className={`text-xs font-medium ${isZero ? 'text-muted-foreground' : 'text-foreground'}`}>{count}</span>
+      <span className="text-[10px] text-muted-foreground leading-none">{label}</span>
+      <span className={`text-xs font-medium ${isZero ? 'text-muted-foreground' : 'text-foreground'}`}>{isZero ? '-' : count}</span>
     </div>
   );
   return (
@@ -238,8 +239,8 @@ export default function JobPostingListPage() {
             >
               <CardContent className="p-4">
                 <div className="grid grid-cols-[1fr_auto_auto] items-center gap-4">
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-1.5 mb-0.5 flex-wrap">
+                  <div className="min-w-0 space-y-1.5">
+                    <div className="flex items-center gap-1.5 flex-wrap">
                       <Badge variant={jobStatus === '진행중' ? 'success' : 'secondary'} className="text-xs">
                         {jobStatus}
                       </Badge>
@@ -250,7 +251,7 @@ export default function JobPostingListPage() {
                       </span>
                     </div>
                     <h3 className="font-semibold text-sm truncate">{job.title}</h3>
-                    <p className="text-xs text-muted-foreground">게시기간 {job.startDate} ~ {job.endDate}</p>
+                    <p className="text-xs text-muted-foreground">기간 {job.startDate} ~ {job.endDate}</p>
                   </div>
 
                   <div className="grid grid-cols-4 gap-1">
