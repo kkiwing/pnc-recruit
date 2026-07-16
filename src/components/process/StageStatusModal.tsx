@@ -38,6 +38,11 @@ export default function StageStatusModal({ open, onClose, stage, applicants, onS
    * draggable이 걸린 행 자신이다 — 그래서 "핸들에서 시작했는지"는 target을 검사해
    * 알 수 없고, 핸들의 mousedown을 별도로 추적해야 한다. */
   const isHandleMouseDownRef = useRef(false);
+  /** dragover/drop은 dragstart 직후 아주 빠르게 연달아 발생할 수 있어, setState로만
+   * 관리하면 아직 리렌더가 커밋되기 전이라 dragover/drop 핸들러가 오래된(null)
+   * draggingIndex를 참조해 preventDefault를 놓치는 경우가 있었다(실제로 겪은 문제).
+   * ref는 setState와 별개로 즉시 갱신되므로 dragover/drop 판단은 항상 이 ref를 쓴다. */
+  const draggingIndexRef = useRef<number | null>(null);
 
   const addStatus = () => {
     setStatuses(prev => [...prev, { id: crypto.randomUUID(), name: '', color: STAGE_COLOR_PALETTE[prev.length % STAGE_COLOR_PALETTE.length].id }]);
@@ -121,21 +126,25 @@ export default function StageStatusModal({ open, onClose, stage, applicants, onS
                     return;
                   }
                   e.dataTransfer.effectAllowed = 'move';
+                  draggingIndexRef.current = i;
                   setDraggingIndex(i);
                 }}
                 onDragEnd={() => {
                   isHandleMouseDownRef.current = false;
+                  draggingIndexRef.current = null;
                   setDraggingIndex(null);
                   setDragOverIndex(null);
                 }}
                 onDragOver={e => {
-                  if (draggingIndex === null) return;
+                  if (draggingIndexRef.current === null) return;
                   e.preventDefault();
-                  if (draggingIndex !== i) setDragOverIndex(i);
+                  if (draggingIndexRef.current !== i) setDragOverIndex(i);
                 }}
                 onDrop={e => {
                   e.preventDefault();
-                  if (draggingIndex !== null && draggingIndex !== i) reorderStatus(draggingIndex, i);
+                  const from = draggingIndexRef.current;
+                  if (from !== null && from !== i) reorderStatus(from, i);
+                  draggingIndexRef.current = null;
                   setDraggingIndex(null);
                   setDragOverIndex(null);
                 }}

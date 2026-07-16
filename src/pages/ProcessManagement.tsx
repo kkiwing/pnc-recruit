@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useJobPostings } from '@/context/JobPostingContext';
 import { useApplicants } from '@/context/ApplicantContext';
@@ -23,7 +23,7 @@ import {
 import { Stage, StageStatus, AutoSendConfig, getStageColorHex, progressStatuses } from '@/types/jobPosting';
 import { getCurrentStage } from '@/types/applicant';
 import StatusBadge from '@/components/common/StatusBadge';
-import { Plus, Trash2, ChevronUp, ChevronDown, Settings2, AlertTriangle, Info } from 'lucide-react';
+import { Plus, Trash2, GripVertical, Settings2, AlertTriangle, Info } from 'lucide-react';
 import StageStatusModal from '@/components/process/StageStatusModal';
 import AutoSendPanel from '@/components/process/AutoSendPanel';
 
@@ -48,6 +48,17 @@ export default function ProcessManagementPage() {
   const [deleteTarget, setDeleteTarget] = useState<Stage | null>(null);
   const [showNewStage, setShowNewStage] = useState(false);
   const [newStageName, setNewStageName] = useState('');
+  const [draggingIndex, setDraggingIndex] = useState<number | null>(null);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+  /** dragstart의 event.target은 실제 마우스가 눌린 하위 요소가 아니라 항상
+   * draggable이 걸린 카드 자신이므로, "핸들에서 시작했는지"는 핸들의 mousedown을
+   * 별도로 추적해 판단한다(StageStatusModal과 동일한 패턴, 2026-07-17 결정). */
+  const isHandleMouseDownRef = useRef(false);
+  /** dragover/drop은 dragstart 직후 아주 빠르게 연달아 발생할 수 있어, setState로만
+   * 관리하면 아직 리렌더가 커밋되기 전이라 dragover/drop 핸들러가 오래된(null)
+   * draggingIndex를 참조해 preventDefault를 놓치는 경우가 있었다(실제로 겪은 문제).
+   * ref는 setState와 별개로 즉시 갱신되므로 dragover/drop 판단은 항상 이 ref를 쓴다. */
+  const draggingIndexRef = useRef<number | null>(null);
 
   const isPreset = selectedId === PRESET_ID;
   const posting = isPreset ? undefined : jobPostings.find(j => j.id === selectedId);
@@ -62,11 +73,11 @@ export default function ProcessManagementPage() {
     else if (posting) updateJobPosting(posting.id, { stages });
   };
 
-  const moveStage = (index: number, dir: -1 | 1) => {
-    const target = index + dir;
-    if (target < 0 || target >= sortedStages.length) return;
+  /** from 위치의 단계를 to 위치로 옮긴다(react-beautiful-dnd의 표준 reorder 구현과 동일). */
+  const reorderStage = (from: number, to: number) => {
     const next = [...sortedStages];
-    [next[index], next[target]] = [next[target], next[index]];
+    const [item] = next.splice(from, 1);
+    next.splice(to, 0, item);
     persistStages(next.map((s, i) => ({ ...s, order: i + 1 })));
   };
 
@@ -185,16 +196,54 @@ export default function ProcessManagementPage() {
 
       {(posting || isPreset) && (
         <div className="space-y-3">
-          {sortedStages.map((stage, i) => (
-            <div key={stage.id} className="card-elevated">
+          {sortedStages.map((stage, i) => {
+            const showDropLineAbove = dragOverIndex === i && draggingIndex !== null && draggingIndex > i;
+            const showDropLineBelow = dragOverIndex === i && draggingIndex !== null && draggingIndex < i;
+            return (
+            <div
+              key={stage.id}
+              draggable
+              onDragStart={e => {
+                const startedFromHandle = isHandleMouseDownRef.current;
+                isHandleMouseDownRef.current = false;
+                if (!startedFromHandle) {
+                  e.preventDefault();
+                  return;
+                }
+                e.dataTransfer.effectAllowed = 'move';
+                draggingIndexRef.current = i;
+                setDraggingIndex(i);
+              }}
+              onDragEnd={() => {
+                isHandleMouseDownRef.current = false;
+                draggingIndexRef.current = null;
+                setDraggingIndex(null);
+                setDragOverIndex(null);
+              }}
+              onDragOver={e => {
+                if (draggingIndexRef.current === null) return;
+                e.preventDefault();
+                if (draggingIndexRef.current !== i) setDragOverIndex(i);
+              }}
+              onDrop={e => {
+                e.preventDefault();
+                const from = draggingIndexRef.current;
+                if (from !== null && from !== i) reorderStage(from, i);
+                draggingIndexRef.current = null;
+                setDraggingIndex(null);
+                setDragOverIndex(null);
+              }}
+              className={`card-elevated relative transition-opacity ${draggingIndex === i ? 'opacity-40' : ''}`}
+            >
+              {showDropLineAbove && <div className="absolute -top-1.5 inset-x-4 h-0.5 rounded-full bg-primary z-10" />}
+              {showDropLineBelow && <div className="absolute -bottom-1.5 inset-x-4 h-0.5 rounded-full bg-primary z-10" />}
               <div className="flex items-center gap-3 p-4">
-                <div className="flex flex-col gap-0.5">
-                  <button type="button" className="text-muted-foreground hover:text-foreground disabled:opacity-30" disabled={i === 0} onClick={() => moveStage(i, -1)}>
-                    <ChevronUp className="w-4 h-4" />
-                  </button>
-                  <button type="button" className="text-muted-foreground hover:text-foreground disabled:opacity-30" disabled={i === sortedStages.length - 1} onClick={() => moveStage(i, 1)}>
-                    <ChevronDown className="w-4 h-4" />
-                  </button>
+                <div
+                  onMouseDown={() => { isHandleMouseDownRef.current = true; }}
+                  onMouseUp={() => { isHandleMouseDownRef.current = false; }}
+                  className="flex items-center justify-center px-1 rounded text-muted-foreground hover:text-foreground hover:bg-muted shrink-0 cursor-grab active:cursor-grabbing"
+                >
+                  <GripVertical className="w-4 h-4" />
                 </div>
                 <span className="text-xs text-muted-foreground w-5 text-center">{i + 1}</span>
                 <Input
@@ -242,7 +291,8 @@ export default function ProcessManagementPage() {
                 </AccordionItem>
               </Accordion>
             </div>
-          ))}
+            );
+          })}
 
           {showNewStage ? (
             <div className="card-elevated p-4 flex items-center gap-2">
