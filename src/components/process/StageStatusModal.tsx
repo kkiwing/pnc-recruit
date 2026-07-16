@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -34,6 +34,10 @@ export default function StageStatusModal({ open, onClose, stage, applicants, onS
   const [deleteTarget, setDeleteTarget] = useState<StageStatus | null>(null);
   const [draggingIndex, setDraggingIndex] = useState<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+  /** dragstart의 event.target은 (실제 마우스가 눌린 하위 요소가 아니라) 항상
+   * draggable이 걸린 행 자신이다 — 그래서 "핸들에서 시작했는지"는 target을 검사해
+   * 알 수 없고, 핸들의 mousedown을 별도로 추적해야 한다. */
+  const isHandleMouseDownRef = useRef(false);
 
   const addStatus = () => {
     setStatuses(prev => [...prev, { id: crypto.randomUUID(), name: '', color: STAGE_COLOR_PALETTE[prev.length % STAGE_COLOR_PALETTE.length].id }]);
@@ -110,14 +114,20 @@ export default function StageStatusModal({ open, onClose, stage, applicants, onS
                 key={status.id}
                 draggable
                 onDragStart={e => {
-                  if (!(e.target as HTMLElement).closest('[data-drag-handle]')) {
+                  const startedFromHandle = isHandleMouseDownRef.current;
+                  isHandleMouseDownRef.current = false;
+                  if (!startedFromHandle) {
                     e.preventDefault();
                     return;
                   }
                   e.dataTransfer.effectAllowed = 'move';
                   setDraggingIndex(i);
                 }}
-                onDragEnd={() => { setDraggingIndex(null); setDragOverIndex(null); }}
+                onDragEnd={() => {
+                  isHandleMouseDownRef.current = false;
+                  setDraggingIndex(null);
+                  setDragOverIndex(null);
+                }}
                 onDragOver={e => {
                   if (draggingIndex === null) return;
                   e.preventDefault();
@@ -134,7 +144,8 @@ export default function StageStatusModal({ open, onClose, stage, applicants, onS
                 {showDropLineAbove && <div className="absolute -top-1.5 inset-x-2 h-0.5 rounded-full bg-primary" />}
                 {showDropLineBelow && <div className="absolute -bottom-1.5 inset-x-2 h-0.5 rounded-full bg-primary" />}
                 <div
-                  data-drag-handle
+                  onMouseDown={() => { isHandleMouseDownRef.current = true; }}
+                  onMouseUp={() => { isHandleMouseDownRef.current = false; }}
                   className="flex items-center justify-center px-1 rounded text-muted-foreground hover:text-foreground hover:bg-muted shrink-0 cursor-grab active:cursor-grabbing"
                 >
                   <GripVertical className="w-4 h-4" />
