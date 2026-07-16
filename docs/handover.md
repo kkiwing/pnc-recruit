@@ -67,10 +67,12 @@ docs/                프로젝트 문서 (본 문서 포함)
 ## 5. 주의할 점
 
 - **디자인 토큰을 반드시 따를 것**: 색상을 하드코딩(`bg-emerald-100` 같은 Tailwind 팔레트 클래스, 임의 hex 등)하지 말고 [DESIGN_SYSTEM.md](DESIGN_SYSTEM.md)에 정의된 시맨틱 토큰(`bg-background`, `text-muted-foreground`, `success`/`warning`/`destructive` 등)을 사용하세요. 카드는 `card-elevated`/`card-soft` 클래스를 사용합니다.
-- **전형 단계 판별은 명시적 플래그로**: "합불을 판정하는 단계"나 "완료/합격/불합격 상태"를 배열 순서나 이름 문자열로 추정하지 마세요. `Stage.stageType`, `StageStatus.isCompletion`/`isPass`/`isFail`을 사용하는 기존 헬퍼 함수(`getFinalStage`, `getCompletionStatus`, `getPassStatus`, `getFailStatus` 등, `src/types/jobPosting.ts`)를 재사용하세요. 과거 순서 기반 추정 방식에서 단계 재배치 시 오판정이 발생한 적이 있습니다 (`decision-log.md` 참고).
+- **전형 단계 판별은 명시적 플래그로, 하지만 "위치 기반 자동화"와는 구분할 것**: "이 단계는 끝났다"를 배열 순서나 이름 문자열로 그때그때 추정하지 말고, `StageStatus.isDefault`(시작 상태)/`isCompletion`(단계 종료) 같은 명시적 플래그와 이를 소비하는 기존 헬퍼(`getCurrentStage`, `getStageRecordStatus`, `isStageCompleted`, `getInterviewInfo` 등, `src/types/applicant.ts`)를 재사용하세요. 단, 이 두 플래그 자체는 2026-07-17부터 사용자가 직접 토글하지 않고 `syncStatusFlags`(`src/types/jobPosting.ts`)가 상태 배열의 첫/마지막 위치로부터 자동 계산합니다 — 이건 의도된 설계이니 "위치 기반 추정은 피하라"는 원칙과 혼동하지 마세요(순서를 바꿀 방법이 드래그뿐이라 위치와 의미가 항상 일치하도록 UI가 보장합니다). `Stage.stageType`/`isPass`/`isFail`/`getFinalStage`/`getCompletionStatus`/`getPassStatus`/`getFailStatus`는 2026-07-15에 완전히 제거된 개념이니 코드에서 찾지 마세요(`decision-log.md` 2026-07-15/07-17 항목 참고).
 - **같은 기능의 화면은 컴포넌트를 공유할 것**: 별도 관리 화면은 지원자 목록과 같은 테이블 컴포넌트(`ApplicantOverviewTable`)를 `mode` prop으로 분기해서 씁니다. 비슷한 화면을 추가할 때 복제하지 말고 이 패턴을 참고하세요.
 - **공고 선택이 필요한 화면은 `?posting=` 쿼리 규칙을 따를 것**: 지원자 목록/별도 관리/프로세스 관리는 URL 쿼리로 공고 컨텍스트를 유지합니다. 새 화면에서 공고 선택이 필요하면 같은 패턴(쿼리 읽기 → 상태 초기화, 선택 변경 시 `replace`로 쿼리 갱신)을 따르세요.
-- **인메모리 상태이므로 새로고침에 주의**: 데모/작업 중 새로고침하면 입력한 데이터가 모두 사라집니다.
+- **인메모리 상태이므로 새로고침에 주의**: 데모/작업 중 새로고침하면 입력한 데이터가 모두 사라지고 `src/data/`의 초기 시드 값으로 돌아갑니다. **브라우저 자동화로 화면을 검증할 때는 특히 주의하세요** — 자동화 도구의 "페이지 이동(navigate)"이 사이드바 링크 클릭이 아니라 실제 브라우저 새로고침/최상위 네비게이션으로 구현된 경우, 그 자체가 인메모리 상태를 리셋시켜 "방금 반영한 변경이 사라졌다"는 오탐을 만듭니다(실제로 이 프로젝트에서 상태 삭제 후 이동 로직을 검증하다가 이 때문에 "로직이 안 된다"고 잘못 판단한 사례가 있었습니다). 같은 세션 안에서 상태 변경을 확인할 때는 사이드바 링크 클릭 등 클라이언트 사이드 라우팅으로 이동하고, 새로고침 계열 동작은 피하세요.
+- **정책적 판단이 필요한 변경은 먼저 기록하고 진행할 것**: 기능 명세(`functional-spec.md`)에 없거나 명세와 다르게 동작하도록 바꾸는 작업은, 구현에 들어가기 전에 `docs/decision-log.md`에 배경·결정한 방향을 먼저 적고 시작하세요. 특히 이 프로젝트가 반복적으로 확인한 설계 원칙("구조는 단순하게, 예외는 메모로" — 새 상태값/플래그/분기를 늘리기보다 기존 필드로 흡수할 수 있는지 먼저 검토)과 상충하는 제안이라면, 코드를 먼저 바꾸지 말고 기획 담당자와 방향을 논의한 뒤 진행하세요.
+- **HTML5 드래그앤드롭은 자동화 도구로 검증할 때 특히 주의**: 상태값/단계 순서 변경 UI(도트 핸들 드래그)를 만들 때, 합성 `DragEvent`를 `element.dispatchEvent()`로 직접 쏘는 방식은 `dragstart`의 `target`이 실제 네이티브 동작(항상 `draggable` 조상 요소)과 다르게 나타나 검증 자체가 틀릴 수 있습니다(2026-07-17에 이 때문에 실제 버그를 못 잡을 뻔한 사례가 decision-log에 있습니다). 또한 이 저장소에서 쓰는 브라우저 자동화 툴은 `dragstart`는 잘 시뮬레이션하지만 그 이후 `dragover`/`drop`까지 안정적으로 이어가지 못하는 경우가 잦습니다(CDP 기반 툴의 일반적인 한계). 드래그앤드롭을 새로 만들거나 고칠 때는 실제 mousedown→mousemove→mouseup 시퀀스로(가능하면 실제 사람이 브라우저에서) 최종 확인하세요.
 
 ## 6. 다음 작업자가 이어서 해야 할 일
 
