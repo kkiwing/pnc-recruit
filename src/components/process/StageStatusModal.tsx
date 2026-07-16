@@ -4,7 +4,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -15,9 +14,9 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Stage, StageStatus, STAGE_COLOR_PALETTE, syncDefaultStatus } from '@/types/jobPosting';
+import { Stage, StageStatus, STAGE_COLOR_PALETTE, syncStatusFlags } from '@/types/jobPosting';
 import { Applicant } from '@/types/applicant';
-import { Plus, Trash2, GripVertical, ArrowUp, ArrowDown, Check, AlertTriangle } from 'lucide-react';
+import { Plus, Trash2, GripVertical, Check, AlertTriangle } from 'lucide-react';
 
 interface Props {
   open: boolean;
@@ -33,7 +32,8 @@ interface Props {
 export default function StageStatusModal({ open, onClose, stage, applicants, onSave, onDeleteStatus }: Props) {
   const [statuses, setStatuses] = useState<StageStatus[]>(stage.statuses);
   const [deleteTarget, setDeleteTarget] = useState<StageStatus | null>(null);
-  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [draggingIndex, setDraggingIndex] = useState<number | null>(null);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
 
   const addStatus = () => {
     setStatuses(prev => [...prev, { id: crypto.randomUUID(), name: '', color: STAGE_COLOR_PALETTE[prev.length % STAGE_COLOR_PALETTE.length].id }]);
@@ -47,32 +47,16 @@ export default function StageStatusModal({ open, onClose, stage, applicants, onS
     setStatuses(prev => prev.map(s => s.id === id ? { ...s, color } : s));
   };
 
-  /** "단계 종료" 체크: 체크한 상태를 목록 맨 아래로 옮기고, 다른 상태의 종료
-   * 체크는 자동으로 해제한다 — 한 단계에서 "종료"는 항상 하나만 유지된다. */
-  const toggleCompletion = (id: string) => {
-    setStatuses(prev => {
-      const target = prev.find(s => s.id === id);
-      if (!target) return prev;
-      const turningOn = !target.isCompletion;
-      const next = prev.map(s => ({ ...s, isCompletion: s.id === id ? turningOn : false }));
-      if (!turningOn) return next;
-      const idx = next.findIndex(s => s.id === id);
-      const [item] = next.splice(idx, 1);
-      next.push(item);
-      return next;
-    });
-  };
-
   const toggleDateInput = (id: string) => {
     setStatuses(prev => prev.map(s => s.id === id ? { ...s, hasDateInput: !s.hasDateInput } : s));
   };
 
-  const moveStatus = (index: number, dir: -1 | 1) => {
+  /** from 위치의 상태를 to 위치로 옮긴다(react-beautiful-dnd의 표준 reorder 구현과 동일). */
+  const reorderStatus = (from: number, to: number) => {
     setStatuses(prev => {
       const next = [...prev];
-      const target = index + dir;
-      if (target < 0 || target >= next.length) return prev;
-      [next[index], next[target]] = [next[target], next[index]];
+      const [item] = next.splice(from, 1);
+      next.splice(to, 0, item);
       return next;
     });
   };
@@ -85,7 +69,7 @@ export default function StageStatusModal({ open, onClose, stage, applicants, onS
    * "저장" 버튼을 기다리지 않고 확인 즉시 반영한다. */
   const confirmDeleteStatus = () => {
     if (!deleteTarget) return;
-    const nextStatuses = syncDefaultStatus(statuses.filter(s => s.id !== deleteTarget.id));
+    const nextStatuses = syncStatusFlags(statuses.filter(s => s.id !== deleteTarget.id));
     setStatuses(nextStatuses);
     onDeleteStatus(deleteTarget.id, nextStatuses);
     setDeleteTarget(null);
@@ -94,13 +78,16 @@ export default function StageStatusModal({ open, onClose, stage, applicants, onS
   const handleSave = () => {
     const cleaned = statuses.filter(s => s.name.trim());
     if (cleaned.length === 0) return;
-    onSave(syncDefaultStatus(cleaned));
+    onSave(syncStatusFlags(cleaned));
     onClose();
   };
 
   const deleteImpactCount = deleteTarget ? applicantCountFor(deleteTarget.id) : 0;
   const deleteTargetIsDefault = deleteTarget ? statuses[0]?.id === deleteTarget.id : false;
   const nextDefaultName = deleteTarget ? statuses.find(s => s.id !== deleteTarget.id)?.name : undefined;
+  const deleteTargetIsCompletion = deleteTarget ? statuses[statuses.length - 1]?.id === deleteTarget.id : false;
+  const remainingStatuses = deleteTarget ? statuses.filter(s => s.id !== deleteTarget.id) : statuses;
+  const nextCompletionName = remainingStatuses[remainingStatuses.length - 1]?.name;
 
   return (
     <Dialog open={open} onOpenChange={() => onClose()}>
@@ -109,109 +96,118 @@ export default function StageStatusModal({ open, onClose, stage, applicants, onS
           <DialogTitle>"{stage.name}" 상태값 관리</DialogTitle>
         </DialogHeader>
         <p className="text-xs text-muted-foreground -mt-2">
-          목록 맨 위 상태가 시작 상태입니다. 좌측 핸들을 눌러 순서를 바꾸면 시작 상태도 함께 바뀝니다.
+          맨 위 상태가 시작, 맨 아래 상태가 단계 종료입니다. 드래그로 순서를 바꿀 수 있습니다.
         </p>
         <div className="space-y-2 py-2">
-          {statuses.map((status, i) => (
-            <div key={status.id} className="flex items-stretch gap-2 bg-muted/40 rounded-md p-2">
-              <Popover open={openMenuId === status.id} onOpenChange={o => setOpenMenuId(o ? status.id : null)}>
-                <PopoverTrigger asChild>
-                  <button
-                    type="button"
-                    className="flex items-center justify-center px-1 rounded text-muted-foreground hover:text-foreground hover:bg-muted shrink-0 cursor-pointer"
-                    aria-label="순서 변경"
-                  >
-                    <GripVertical className="w-4 h-4" />
-                  </button>
-                </PopoverTrigger>
-                <PopoverContent align="start" className="w-36 p-1">
-                  <button
-                    type="button"
-                    disabled={i === 0}
-                    onClick={() => { moveStatus(i, -1); setOpenMenuId(null); }}
-                    className="w-full flex items-center gap-1.5 text-left text-xs px-2 py-1.5 rounded hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed"
-                  >
-                    <ArrowUp className="w-3.5 h-3.5" /> 위로 이동
-                  </button>
-                  <button
-                    type="button"
-                    disabled={i === statuses.length - 1}
-                    onClick={() => { moveStatus(i, 1); setOpenMenuId(null); }}
-                    className="w-full flex items-center gap-1.5 text-left text-xs px-2 py-1.5 rounded hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed"
-                  >
-                    <ArrowDown className="w-3.5 h-3.5" /> 아래로 이동
-                  </button>
-                </PopoverContent>
-              </Popover>
-
-              <div className="flex-1 min-w-0 space-y-1.5">
-                <div className="flex items-center gap-2">
-                  <Input
-                    className="h-8 flex-1 min-w-[100px]"
-                    value={status.name}
-                    onChange={e => renameStatus(status.id, e.target.value)}
-                    placeholder="상태 이름"
-                  />
-                  {i === 0 && (
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Badge variant="outline" className="text-[10px] shrink-0">시작</Badge>
-                      </TooltipTrigger>
-                      <TooltipContent>지원자가 이 단계에 도착하면 자동으로 갖는 상태</TooltipContent>
-                    </Tooltip>
-                  )}
+          {statuses.map((status, i) => {
+            const isStart = i === 0;
+            const isEnd = i === statuses.length - 1;
+            const isDragging = draggingIndex === i;
+            const showDropLineAbove = dragOverIndex === i && draggingIndex !== null && draggingIndex > i;
+            const showDropLineBelow = dragOverIndex === i && draggingIndex !== null && draggingIndex < i;
+            return (
+              <div
+                key={status.id}
+                draggable
+                onDragStart={e => {
+                  if (!(e.target as HTMLElement).closest('[data-drag-handle]')) {
+                    e.preventDefault();
+                    return;
+                  }
+                  e.dataTransfer.effectAllowed = 'move';
+                  setDraggingIndex(i);
+                }}
+                onDragEnd={() => { setDraggingIndex(null); setDragOverIndex(null); }}
+                onDragOver={e => {
+                  if (draggingIndex === null) return;
+                  e.preventDefault();
+                  if (draggingIndex !== i) setDragOverIndex(i);
+                }}
+                onDrop={e => {
+                  e.preventDefault();
+                  if (draggingIndex !== null && draggingIndex !== i) reorderStatus(draggingIndex, i);
+                  setDraggingIndex(null);
+                  setDragOverIndex(null);
+                }}
+                className={`relative flex items-stretch gap-2 bg-muted/40 rounded-md p-2 transition-opacity ${isDragging ? 'opacity-40' : ''}`}
+              >
+                {showDropLineAbove && <div className="absolute -top-1.5 inset-x-2 h-0.5 rounded-full bg-primary" />}
+                {showDropLineBelow && <div className="absolute -bottom-1.5 inset-x-2 h-0.5 rounded-full bg-primary" />}
+                <div
+                  data-drag-handle
+                  className="flex items-center justify-center px-1 rounded text-muted-foreground hover:text-foreground hover:bg-muted shrink-0 cursor-grab active:cursor-grabbing"
+                >
+                  <GripVertical className="w-4 h-4" />
                 </div>
-                <div className="flex items-center gap-3">
-                  <div className="flex items-center gap-1 shrink-0">
-                    {STAGE_COLOR_PALETTE.map(swatch => (
-                      <button
-                        key={swatch.id}
-                        type="button"
-                        title={swatch.label}
-                        onClick={() => recolorStatus(status.id, swatch.id)}
-                        style={{ backgroundColor: swatch.hex }}
-                        className={`w-5 h-5 rounded-full border-2 ${status.color === swatch.id ? 'border-foreground' : 'border-transparent'}`}
-                      />
-                    ))}
-                  </div>
-                  <div className="flex items-center gap-3 ml-auto">
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <label className="flex items-center gap-1 text-[10px] text-muted-foreground shrink-0 cursor-pointer">
-                          <input type="checkbox" checked={!!status.isCompletion} onChange={() => toggleCompletion(status.id)} />
-                          단계종료
-                        </label>
-                      </TooltipTrigger>
-                      <TooltipContent>이 상태가 되면 단계 종료로 집계</TooltipContent>
-                    </Tooltip>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <label className="flex items-center gap-1 text-[10px] text-muted-foreground shrink-0 cursor-pointer">
-                          <input type="checkbox" checked={!!status.hasDateInput} onChange={() => toggleDateInput(status.id)} />
-                          날짜+메모
-                        </label>
-                      </TooltipTrigger>
-                      <TooltipContent>이 상태로 바꿀 때 날짜(기간)+시간+메모 입력 모달을 띄움</TooltipContent>
-                    </Tooltip>
-                    {statuses.length <= 1 ? (
+
+                <div className="flex-1 min-w-0 space-y-1.5">
+                  <div className="flex items-center gap-2">
+                    <Input
+                      className="h-8 flex-1 min-w-[100px]"
+                      value={status.name}
+                      onChange={e => renameStatus(status.id, e.target.value)}
+                      placeholder="상태 이름"
+                    />
+                    {isStart && (
                       <Tooltip>
                         <TooltipTrigger asChild>
-                          <span className="text-destructive/40 shrink-0 cursor-not-allowed">
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </span>
+                          <Badge variant="outline" className="text-[10px] shrink-0">시작</Badge>
                         </TooltipTrigger>
-                        <TooltipContent>최소 1개의 상태가 필요합니다</TooltipContent>
+                        <TooltipContent>지원자가 이 단계에 도착하면 자동으로 갖는 상태</TooltipContent>
                       </Tooltip>
-                    ) : (
-                      <button type="button" className="text-destructive hover:text-destructive/80 shrink-0" onClick={() => setDeleteTarget(status)}>
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
                     )}
+                    {isEnd && (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Badge variant="outline" className="text-[10px] shrink-0">종료</Badge>
+                        </TooltipTrigger>
+                        <TooltipContent>이 상태가 되면 단계 종료로 집계</TooltipContent>
+                      </Tooltip>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-1 shrink-0">
+                      {STAGE_COLOR_PALETTE.map(swatch => (
+                        <button
+                          key={swatch.id}
+                          type="button"
+                          title={swatch.label}
+                          onClick={() => recolorStatus(status.id, swatch.id)}
+                          style={{ backgroundColor: swatch.hex }}
+                          className={`w-5 h-5 rounded-full border-2 ${status.color === swatch.id ? 'border-foreground' : 'border-transparent'}`}
+                        />
+                      ))}
+                    </div>
+                    <div className="flex items-center gap-3 ml-auto">
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <label className="flex items-center gap-1 text-[10px] text-muted-foreground shrink-0 cursor-pointer">
+                            <input type="checkbox" checked={!!status.hasDateInput} onChange={() => toggleDateInput(status.id)} />
+                            날짜+메모
+                          </label>
+                        </TooltipTrigger>
+                        <TooltipContent>이 상태로 바꿀 때 날짜(기간)+시간+메모 입력 모달을 띄움</TooltipContent>
+                      </Tooltip>
+                      {statuses.length <= 1 ? (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span className="text-destructive/40 shrink-0 cursor-not-allowed">
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </span>
+                          </TooltipTrigger>
+                          <TooltipContent>최소 1개의 상태가 필요합니다</TooltipContent>
+                        </Tooltip>
+                      ) : (
+                        <button type="button" className="text-destructive hover:text-destructive/80 shrink-0" onClick={() => setDeleteTarget(status)}>
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
           <Button type="button" variant="outline" size="sm" onClick={addStatus} className="w-full">
             <Plus className="w-3.5 h-3.5 mr-1" /> 상태 추가
           </Button>
@@ -234,6 +230,9 @@ export default function StageStatusModal({ open, onClose, stage, applicants, onS
               )}
               {deleteTargetIsDefault && nextDefaultName && (
                 <> 삭제 후 "{nextDefaultName}"이(가) 시작 상태가 됩니다.</>
+              )}
+              {deleteTargetIsCompletion && nextCompletionName && (
+                <> 삭제 후 "{nextCompletionName}"이(가) 단계 종료 상태가 됩니다.</>
               )}
               {' '}이 작업은 되돌릴 수 없습니다.
             </AlertDialogDescription>

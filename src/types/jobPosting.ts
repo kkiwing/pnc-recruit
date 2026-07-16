@@ -12,10 +12,11 @@ export interface StageStatus {
   name: string;
   color: string;
   /** 아직 처리되지 않은 시작 상태. statuses 배열의 첫 번째 항목과 항상 동기화되며
-   * (syncDefaultStatus 참고), 별도로 지정하는 UI는 없다 — 순서를 바꾸면 따라간다. */
+   * (syncStatusFlags 참고), 별도로 지정하는 UI는 없다 — 순서를 바꾸면 따라간다. */
   isDefault?: boolean;
-  /** 이 상태가 되면 해당 단계가 끝난 것으로 집계된다("단계 종료"). 한 단계 안에
-   * 항상 최대 1개 상태만 이 플래그를 가질 수 있다(완전 배타, 2026-07-15 결정). */
+  /** 이 상태가 되면 해당 단계가 끝난 것으로 집계된다("단계 종료"). statuses 배열의
+   * 마지막 항목과 항상 동기화되며(syncStatusFlags 참고), isDefault와 대칭으로
+   * 위치 기반 자동 결정이다 — 별도로 지정하는 UI는 없다(2026-07-17 결정). */
   isCompletion?: boolean;
   /** 이 상태로 바꿀 때 날짜(기간)+시간(선택)+메모 입력 모달을 띄울지 여부. 예전에는
    * 단계 속성(completionForm)이었으나, "안내" 성격의 상태만 날짜가 필요하다는 점을
@@ -91,12 +92,17 @@ export function getStageColorHex(colorId: string): string {
   return STAGE_COLOR_PALETTE.find(c => c.id === colorId)?.hex ?? STAGE_COLOR_PALETTE[0].hex;
 }
 
-/** statuses 배열의 첫 번째 항목을 isDefault=true로, 나머지를 false로 맞춘다.
- * 상태 목록을 추가/삭제/순서 변경할 때마다 반드시 이 함수를 거쳐야 "시작 상태 =
- * 목록 맨 위"라는 불변식이 유지된다(상태 관리 모달에서 별도로 "시작"을 지정하는
- * UI는 없다 — 순서를 바꾸면 자동으로 따라간다). */
-export function syncDefaultStatus(statuses: StageStatus[]): StageStatus[] {
-  return statuses.map((s, i) => ({ ...s, isDefault: i === 0 }));
+/** statuses 배열의 첫 번째 항목을 isDefault=true로, 마지막 항목을 isCompletion=true로
+ * 맞추고 나머지는 모두 false로 되돌린다. 상태 목록을 추가/삭제/순서 변경할 때마다
+ * 반드시 이 함수를 거쳐야 "시작 상태 = 목록 맨 위", "단계 종료 = 목록 맨 아래"라는
+ * 불변식이 유지된다(상태 관리 모달에서 별도로 지정하는 UI는 없다 — 순서를 바꾸면
+ * 자동으로 따라간다). 상태가 1개뿐이면 그 상태가 시작이자 단계 종료가 된다. */
+export function syncStatusFlags(statuses: StageStatus[]): StageStatus[] {
+  return statuses.map((s, i) => ({
+    ...s,
+    isDefault: i === 0,
+    isCompletion: i === statuses.length - 1,
+  }));
 }
 
 export type JobPostingStatus = '진행중' | '종료';
