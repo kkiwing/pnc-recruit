@@ -159,9 +159,10 @@ export function cloneStages(stages: Stage[]): Stage[] {
  * Applicant.finalResult로 전형 구조와 무관하게 별도 지정한다(특별 채용 등 예외 대응).
  */
 export function createDefaultStages(): Stage[] {
-  const stage = (name: string, statuses: StageStatus[]): Omit<Stage, 'id' | 'order'> => ({
+  const stage = (name: string, statuses: StageStatus[], autoSend: AutoSendConfig): Omit<Stage, 'id' | 'order'> => ({
     name,
     statuses,
+    autoSend,
   });
 
   const defs = [
@@ -169,19 +170,39 @@ export function createDefaultStages(): Stage[] {
       { id: crypto.randomUUID(), name: '안내', color: 'gray', isDefault: true, hasDateInput: true },
       { id: crypto.randomUUID(), name: '공고등록', color: 'orange' },
       { id: crypto.randomUUID(), name: '진행완료', color: 'purple', isCompletion: true },
-    ]),
+    ], {
+      enabled: true,
+      channels: ['email'],
+      title: '[{{회사명}}] 인성검사 안내',
+      body: '안녕하세요, {{지원자명}}님.\n{{회사명}} {{포지션명}} 채용 인성검사 안내드립니다.\n아래 링크를 통해 진행해 주시기 바랍니다.\n\n{{링크}}',
+    }),
     stage('자사양식', [
       { id: crypto.randomUUID(), name: '안내', color: 'gray', isDefault: true, hasDateInput: true },
       { id: crypto.randomUUID(), name: '작성완료', color: 'green', isCompletion: true },
-    ]),
+    ], {
+      enabled: true,
+      channels: ['email'],
+      title: '[{{회사명}}] 자사양식 작성 안내',
+      body: '안녕하세요, {{지원자명}}님.\n{{회사명}} {{포지션명}} 채용 자사 지원서 작성을 안내드립니다.\n아래 링크에서 작성해 주시기 바랍니다.\n\n{{링크}}',
+    }),
     stage('면접', [
       { id: crypto.randomUUID(), name: '안내', color: 'gray', isDefault: true, hasDateInput: true },
       { id: crypto.randomUUID(), name: '진행완료', color: 'purple', isCompletion: true },
-    ]),
+    ], {
+      enabled: true,
+      channels: ['email', 'sms'],
+      title: '[{{회사명}}] 면접 안내',
+      body: '안녕하세요, {{지원자명}}님.\n{{회사명}} {{포지션명}} 면접 일정을 안내드립니다.\n일시: {{면접일시}}\n장소: {{면접장소}}',
+    }),
     stage('최종', [
       { id: crypto.randomUUID(), name: '안내', color: 'gray', isDefault: true, hasDateInput: true },
       { id: crypto.randomUUID(), name: '전형완료', color: 'green', isCompletion: true },
-    ]),
+    ], {
+      enabled: true,
+      channels: ['email'],
+      title: '[{{회사명}}] 최종 전형 안내',
+      body: '안녕하세요, {{지원자명}}님.\n{{회사명}} {{포지션명}} 최종 전형 안내드립니다.\n\n{{링크}}',
+    }),
   ];
 
   return defs.map((d, i) => ({ ...d, id: crypto.randomUUID(), order: i + 1 }));
