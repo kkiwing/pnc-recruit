@@ -15,24 +15,14 @@ function progressStatusesFor(prefix: string) {
   ];
 }
 
-/** 합불형 단계(서류·인성검사 등)에서 쓰는 상태 세트. "합격"/"불합격"은 이름·색만
- * 있는 일반 상태다 — 단계 종료·집계 어디에도 쓰이지 않는다(진행 표시 전용). */
-function resultStatusesFor(prefix: string) {
-  return [
-    { id: `${prefix}-s1`, name: '대기', color: 'gray', isDefault: true },
-    { id: `${prefix}-s2`, name: '합격', color: 'blue' },
-    { id: `${prefix}-s3`, name: '불합격', color: 'red' },
-  ];
-}
-
-function buildStages(postingId: string, defs: { name: string; result?: boolean }[]): Stage[] {
+function buildStages(postingId: string, defs: { name: string }[]): Stage[] {
   return defs.map((d, i) => {
     const prefix = `${postingId}-stage${i + 1}`;
     return {
       id: prefix,
       name: d.name,
       order: i + 1,
-      statuses: d.result ? resultStatusesFor(prefix) : progressStatusesFor(prefix),
+      statuses: progressStatusesFor(prefix),
     };
   });
 }
@@ -41,7 +31,9 @@ function buildStages(postingId: string, defs: { name: string; result?: boolean }
  * 기본 프로세스 프리셋(4단계: 인성검사→자사양식→면접→최종)과 동일한 구조를 안정적인
  * id로 구현한다(더미 지원자 데이터가 이 id를 참조하므로 crypto.randomUUID 대신
  * 고정 id를 쓴다). src/types/jobPosting.ts의 createDefaultStages()와 상태
- * 구성이 같다 — 실제 신규 공고 생성 시 프리셋을 복사한 결과와 동일한 모양.
+ * 구성이 같다 — 실제 신규 공고 생성 시 프리셋을 복사한 결과와 동일한 모양. 단계 내
+ * 합격/불합격 상태값은 없다 — 단계 통과는 다음 단계로의 이동으로, 탈락은
+ * Applicant.finalResult(불합격)로 표현한다(2026-07-16 decision-log).
  */
 function defaultStagesFor(postingId: string): Stage[] {
   const personality = `${postingId}-personality`;
@@ -54,9 +46,7 @@ function defaultStagesFor(postingId: string): Stage[] {
       statuses: [
         { id: `${personality}-notice`, name: '안내', color: 'gray', isDefault: true, hasDateInput: true },
         { id: `${personality}-registered`, name: '공고등록', color: 'orange' },
-        { id: `${personality}-inprogress`, name: '진행완료', color: 'purple' },
-        { id: `${personality}-pass`, name: '합격', color: 'blue' },
-        { id: `${personality}-fail`, name: '불합격', color: 'red' },
+        { id: `${personality}-inprogress`, name: '진행완료', color: 'purple', isCompletion: true },
       ],
     },
     {
@@ -70,9 +60,7 @@ function defaultStagesFor(postingId: string): Stage[] {
       id: interview, name: '면접', order: 3,
       statuses: [
         { id: `${interview}-notice`, name: '안내', color: 'gray', isDefault: true, hasDateInput: true },
-        { id: `${interview}-inprogress`, name: '진행완료', color: 'purple' },
-        { id: `${interview}-pass`, name: '합격', color: 'blue' },
-        { id: `${interview}-fail`, name: '불합격', color: 'red' },
+        { id: `${interview}-inprogress`, name: '진행완료', color: 'purple', isCompletion: true },
       ],
     },
     {
@@ -86,13 +74,14 @@ function defaultStagesFor(postingId: string): Stage[] {
 }
 
 /** 대체 템플릿 예시: 서류-인성검사-적성검사/면접-임원면접 흐름. 기본 프리셋과 다른
- * 구성도 공고별로 가능하다는 것을 보여주기 위해 한 공고(job-05)만 이 템플릿을 쓴다. */
+ * 단계 구성도 공고별로 가능하다는 것을 보여주기 위해 한 공고(job-05)만 이 템플릿을
+ * 쓴다. 상태 세트는 다른 일반 단계와 동일하게 대기(시작)/진행중/완료(단계종료)다. */
 function executiveStagesFor(postingId: string): Stage[] {
   return buildStages(postingId, [
     { name: '서류' },
-    { name: '인성검사', result: true },
+    { name: '인성검사' },
     { name: '적성검사 및 면접' },
-    { name: '최종 임원 면접', result: true },
+    { name: '최종 임원 면접' },
   ]);
 }
 

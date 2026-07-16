@@ -7,42 +7,18 @@ import {
 import { JobPosting, Stage } from '@/types/jobPosting';
 import { dummyJobPostings } from './dummyJobPostings';
 
-// 더미 데이터 작성 편의를 위한 구(舊) 7단계 형식 — enrich() 단계에서 각 공고의
-// stages 구조에 맞는 StageRecord[]로 변환된다 (신규 Applicant 타입에는 없음).
-type RawStepStatus = 'pending' | 'need' | 'done' | 'pass' | 'fail';
-interface RawStepDetail {
-  status: RawStepStatus;
-  startDate?: string;
-  endDate?: string;
-  time?: string;
-  interviewer?: string;
-  updatedAt?: string;
-}
-interface RawRecruitmentStatus {
-  personalityTestNotice: RawStepDetail;
-  personalityTestRegistration: RawStepDetail;
-  personalityTestResult: RawStepDetail;
-  companyFormNotice: RawStepDetail;
-  companyFormSubmission: RawStepDetail;
-  interviewNotice: RawStepDetail;
-  interviewResult: RawStepDetail;
+/** 각 단계에서 지원자가 현재 어느 상태인지를 상태 이름으로 직접 지정한다. 예전에는
+ * 구(舊) 7단계 pass/fail 원시값을 상태 이름으로 재해석하는 변환 레이어가 있었지만,
+ * 단계 내 합불 상태값 자체가 폐지되면서(2026-07-16 decision-log) 그 변환이 더 이상
+ * 필요 없어졌다 — 각 지원자가 각 단계의 상태를 직접 명시하는 편이 더 단순하고 명확하다. */
+interface StageProgress {
+  status: string;
+  meta?: StageRecordMeta;
 }
 
-const s = (status: RawStepStatus, extra?: Partial<RawStepDetail>): RawStepDetail => ({
-  status,
-  ...extra,
-});
-
-const pending = (): RawStepDetail => s('pending');
-const allPending = (): RawRecruitmentStatus => ({
-  personalityTestNotice: pending(),
-  personalityTestRegistration: pending(),
-  personalityTestResult: pending(),
-  companyFormNotice: pending(),
-  companyFormSubmission: pending(),
-  interviewNotice: pending(),
-  interviewResult: pending(),
-});
+function prog(status: string, meta?: StageRecordMeta): StageProgress {
+  return meta ? { status, meta } : { status };
+}
 
 // ── 원본 지원자 데이터 (기본정보 + 전형현황) ────────────────────────────
 // school/major/career는 신규 구조화 필드(educations/careers 등)를 만들기 위한 생성 입력으로 사용됨.
@@ -50,7 +26,13 @@ interface RawApplicant {
   id: string; no: number; jobPostingId: string; team: string; name: string; platform: string;
   birthYear: string; email: string; phone: string; region: string; regionDetail: string;
   school: string; major: string; career: string; memo: string; applicationDate: string;
-  recruitmentStatus: RawRecruitmentStatus; isSeparateManagement: boolean; separateReason?: string; separatedAt?: string;
+  /** 공고의 stages 순서대로 각 단계의 현재 상태. 기본 프리셋(인성검사/자사양식/면접/최종)
+   * 공고는 4개, job-05(서류/인성검사/적성검사및면접/최종임원면접)도 4개. */
+  progress: [StageProgress, StageProgress, StageProgress, StageProgress];
+  /** 지원서(자기소개서 등) 제출 완료 여부 — 전형 진행 상황과는 별개다. 특별 채용 케이스
+   * (d06-07)만 아직 지원서조차 없는 예외로 미완료를 쓴다. */
+  submitted: boolean;
+  isSeparateManagement: boolean; separateReason?: string; separatedAt?: string;
   createdAt: string; updatedAt: string;
 }
 
@@ -58,686 +40,328 @@ const rawApplicants: RawApplicant[] = [
   // ===== job-01: 개발팀 (12명, 별도관리 2명 포함) =====
   {
     id: 'd01-01', no: 1, jobPostingId: 'job-01', team: '프론트엔드', name: '김민준', platform: '사람인', birthYear: '1995', email: 'minjun.kim@gmail.com', phone: '010-1234-5678', region: '서울', regionDetail: '강남구', school: '서울대학교', major: '컴퓨터공학', career: '경력 3년', memo: 'React/TypeScript 능숙', applicationDate: '2026-03-05',
-    recruitmentStatus: {
-      personalityTestNotice: s('done', { startDate: '2026-03-10', endDate: '2026-03-20' }),
-      personalityTestRegistration: s('done'),
-      personalityTestResult: s('pass'),
-      companyFormNotice: s('done', { startDate: '2026-03-22', endDate: '2026-03-28' }),
-      companyFormSubmission: s('done'),
-      interviewNotice: s('done', { startDate: '2026-07-08', endDate: '2026-07-08', time: '10:00', interviewer: '박과장' }),
-      interviewResult: s('pending'),
-    },
-    isSeparateManagement: false, createdAt: '2026-03-05T09:00:00Z', updatedAt: '2026-04-10T10:00:00Z',
+    progress: [
+      prog('진행완료'),
+      prog('작성완료'),
+      prog('안내', { startDate: '2026-07-08', endDate: '2026-07-08', time: '10:00', note: '박과장' }),
+      prog('안내'),
+    ],
+    submitted: true, isSeparateManagement: false, createdAt: '2026-03-05T09:00:00Z', updatedAt: '2026-04-10T10:00:00Z',
   },
   {
     id: 'd01-02', no: 2, jobPostingId: 'job-01', team: '백엔드', name: '이서준', platform: '잡코리아', birthYear: '1993', email: 'seojun.lee@naver.com', phone: '010-2345-6789', region: '경기', regionDetail: '성남시 분당구', school: '카이스트', major: '전산학', career: '경력 5년', memo: 'Java/Spring 전문', applicationDate: '2026-03-06',
-    recruitmentStatus: {
-      personalityTestNotice: s('done', { startDate: '2026-03-10', endDate: '2026-03-20' }),
-      personalityTestRegistration: s('done'),
-      personalityTestResult: s('pass'),
-      companyFormNotice: s('done', { startDate: '2026-03-22', endDate: '2026-03-28' }),
-      companyFormSubmission: s('done'),
-      interviewNotice: s('done', { startDate: '2026-04-12', endDate: '2026-04-12', time: '14:00', interviewer: '김부장' }),
-      interviewResult: s('pass'),
-    },
-    isSeparateManagement: false, createdAt: '2026-03-06T09:00:00Z', updatedAt: '2026-04-12T16:00:00Z',
+    progress: [
+      prog('진행완료'),
+      prog('작성완료'),
+      prog('진행완료', { startDate: '2026-04-12', endDate: '2026-04-12', time: '14:00', note: '김부장' }),
+      prog('전형완료'),
+    ],
+    submitted: true, isSeparateManagement: false, createdAt: '2026-03-06T09:00:00Z', updatedAt: '2026-04-12T16:00:00Z',
   },
   {
     id: 'd01-03', no: 3, jobPostingId: 'job-01', team: '프론트엔드', name: '박지호', platform: '링크드인', birthYear: '1997', email: 'jiho.park@gmail.com', phone: '010-3456-7890', region: '서울', regionDetail: '마포구', school: '연세대학교', major: '소프트웨어학', career: '경력 2년', memo: '', applicationDate: '2026-03-07',
-    recruitmentStatus: {
-      personalityTestNotice: s('done', { startDate: '2026-03-10', endDate: '2026-03-20' }),
-      personalityTestRegistration: s('done'),
-      personalityTestResult: s('pass'),
-      companyFormNotice: s('done', { startDate: '2026-03-22', endDate: '2026-03-28' }),
-      companyFormSubmission: s('done'),
-      interviewNotice: s('done', { startDate: '2026-04-11', endDate: '2026-04-11', time: '11:00', interviewer: '박과장' }),
-      interviewResult: s('fail'),
-    },
-    isSeparateManagement: false, createdAt: '2026-03-07T09:00:00Z', updatedAt: '2026-04-11T15:00:00Z',
+    progress: [
+      prog('진행완료'),
+      prog('작성완료'),
+      prog('진행완료', { startDate: '2026-04-11', endDate: '2026-04-11', time: '11:00', note: '박과장' }),
+      prog('안내'),
+    ],
+    submitted: true, isSeparateManagement: false, createdAt: '2026-03-07T09:00:00Z', updatedAt: '2026-04-11T15:00:00Z',
   },
   {
     id: 'd01-04', no: 4, jobPostingId: 'job-01', team: '백엔드', name: '최예진', platform: '사람인', birthYear: '1998', email: 'yejin.choi@hanmail.net', phone: '010-4567-8901', region: '부산', regionDetail: '해운대구', school: '부산대학교', major: '정보컴퓨터공학', career: '신입', memo: '인턴 경험 있음', applicationDate: '2026-03-08',
-    recruitmentStatus: {
-      personalityTestNotice: s('done', { startDate: '2026-03-12', endDate: '2026-03-22' }),
-      personalityTestRegistration: s('done'),
-      personalityTestResult: s('pass'),
-      companyFormNotice: s('done', { startDate: '2026-03-25', endDate: '2026-03-31' }),
-      companyFormSubmission: s('done'),
-      interviewNotice: s('need'),
-      interviewResult: s('pending'),
-    },
-    isSeparateManagement: false, createdAt: '2026-03-08T09:00:00Z', updatedAt: '2026-04-02T10:00:00Z',
+    progress: [prog('진행완료'), prog('작성완료'), prog('안내'), prog('안내')],
+    submitted: true, isSeparateManagement: false, createdAt: '2026-03-08T09:00:00Z', updatedAt: '2026-04-02T10:00:00Z',
   },
   {
     id: 'd01-05', no: 5, jobPostingId: 'job-01', team: '프론트엔드', name: '정하은', platform: '워크넷', birthYear: '1999', email: 'haeun.jung@gmail.com', phone: '010-5678-9012', region: '인천', regionDetail: '연수구', school: '인하대학교', major: '컴퓨터공학', career: '신입', memo: '', applicationDate: '2026-03-10',
-    recruitmentStatus: {
-      personalityTestNotice: s('done', { startDate: '2026-03-15', endDate: '2026-03-25' }),
-      personalityTestRegistration: s('done'),
-      personalityTestResult: s('pass'),
-      companyFormNotice: s('need'),
-      companyFormSubmission: s('pending'),
-      interviewNotice: s('pending'),
-      interviewResult: s('pending'),
-    },
-    isSeparateManagement: false, createdAt: '2026-03-10T09:00:00Z', updatedAt: '2026-03-30T10:00:00Z',
+    progress: [prog('진행완료'), prog('안내'), prog('안내'), prog('안내')],
+    submitted: true, isSeparateManagement: false, createdAt: '2026-03-10T09:00:00Z', updatedAt: '2026-03-30T10:00:00Z',
   },
   {
     id: 'd01-06', no: 6, jobPostingId: 'job-01', team: '백엔드', name: '강도윤', platform: '잡코리아', birthYear: '1994', email: 'doyun.kang@daum.net', phone: '010-6789-0123', region: '대전', regionDetail: '유성구', school: '충남대학교', major: '전자공학', career: '경력 4년', memo: 'AWS 자격증 보유', applicationDate: '2026-03-11',
-    recruitmentStatus: {
-      personalityTestNotice: s('done', { startDate: '2026-03-15', endDate: '2026-03-25' }),
-      personalityTestRegistration: s('done'),
-      personalityTestResult: s('pass'),
-      companyFormNotice: s('done', { startDate: '2026-03-27', endDate: '2026-04-02' }),
-      companyFormSubmission: s('need'),
-      interviewNotice: s('pending'),
-      interviewResult: s('pending'),
-    },
-    isSeparateManagement: false, createdAt: '2026-03-11T09:00:00Z', updatedAt: '2026-03-28T10:00:00Z',
+    progress: [prog('진행완료'), prog('안내', { startDate: '2026-03-27', endDate: '2026-04-02' }), prog('안내'), prog('안내')],
+    submitted: true, isSeparateManagement: false, createdAt: '2026-03-11T09:00:00Z', updatedAt: '2026-03-28T10:00:00Z',
   },
   {
     id: 'd01-07', no: 7, jobPostingId: 'job-01', team: '프론트엔드', name: '윤시우', platform: '직접지원', birthYear: '1992', email: 'siwoo.yoon@gmail.com', phone: '010-7890-1234', region: '경기', regionDetail: '수원시 영통구', school: '성균관대학교', major: '소프트웨어학', career: '경력 6년', memo: '시니어급, 팀리드 경험', applicationDate: '2026-03-12',
-    recruitmentStatus: {
-      personalityTestNotice: s('done', { startDate: '2026-03-15', endDate: '2026-03-25' }),
-      personalityTestRegistration: s('done'),
-      personalityTestResult: s('fail'),
-      companyFormNotice: s('pending'),
-      companyFormSubmission: s('pending'),
-      interviewNotice: s('pending'),
-      interviewResult: s('pending'),
-    },
-    isSeparateManagement: false, createdAt: '2026-03-12T09:00:00Z', updatedAt: '2026-03-26T10:00:00Z',
+    progress: [prog('진행완료'), prog('안내'), prog('안내'), prog('안내')],
+    submitted: true, isSeparateManagement: false, createdAt: '2026-03-12T09:00:00Z', updatedAt: '2026-03-26T10:00:00Z',
   },
   {
     id: 'd01-08', no: 8, jobPostingId: 'job-01', team: '백엔드', name: '한수민', platform: '인크루트', birthYear: '2000', email: 'sumin.han@naver.com', phone: '010-8901-2345', region: '서울', regionDetail: '동작구', school: '숭실대학교', major: '컴퓨터학부', career: '신입', memo: '', applicationDate: '2026-03-14',
-    recruitmentStatus: {
-      personalityTestNotice: s('done', { startDate: '2026-03-18', endDate: '2026-03-28' }),
-      personalityTestRegistration: s('need'),
-      personalityTestResult: s('pending'),
-      companyFormNotice: s('pending'),
-      companyFormSubmission: s('pending'),
-      interviewNotice: s('pending'),
-      interviewResult: s('pending'),
-    },
-    isSeparateManagement: false, createdAt: '2026-03-14T09:00:00Z', updatedAt: '2026-03-20T10:00:00Z',
+    progress: [prog('공고등록'), prog('안내'), prog('안내'), prog('안내')],
+    submitted: true, isSeparateManagement: false, createdAt: '2026-03-14T09:00:00Z', updatedAt: '2026-03-20T10:00:00Z',
   },
   {
     id: 'd01-09', no: 9, jobPostingId: 'job-01', team: '프론트엔드', name: '오태현', platform: '사람인', birthYear: '1996', email: 'taehyun.oh@gmail.com', phone: '010-9012-3456', region: '서울', regionDetail: '관악구', school: '서울시립대학교', major: '컴퓨터과학', career: '경력 2년', memo: '', applicationDate: '2026-03-15',
-    recruitmentStatus: {
-      personalityTestNotice: s('need'),
-      personalityTestRegistration: s('pending'),
-      personalityTestResult: s('pending'),
-      companyFormNotice: s('pending'),
-      companyFormSubmission: s('pending'),
-      interviewNotice: s('pending'),
-      interviewResult: s('pending'),
-    },
-    isSeparateManagement: false, createdAt: '2026-03-15T09:00:00Z', updatedAt: '2026-03-15T10:00:00Z',
+    progress: [prog('안내'), prog('안내'), prog('안내'), prog('안내')],
+    submitted: true, isSeparateManagement: false, createdAt: '2026-03-15T09:00:00Z', updatedAt: '2026-03-15T10:00:00Z',
   },
   {
     id: 'd01-10', no: 10, jobPostingId: 'job-01', team: '백엔드', name: '임채원', platform: '잡코리아', birthYear: '2001', email: 'chaewon.lim@naver.com', phone: '010-0123-4567', region: '강원', regionDetail: '원주시', school: '강원대학교', major: '정보통신', career: '신입', memo: '', applicationDate: '2026-03-18',
-    recruitmentStatus: { ...allPending(), personalityTestNotice: s('need') },
-    isSeparateManagement: false, createdAt: '2026-03-18T09:00:00Z', updatedAt: '2026-03-18T10:00:00Z',
+    progress: [prog('안내'), prog('안내'), prog('안내'), prog('안내')],
+    submitted: true, isSeparateManagement: false, createdAt: '2026-03-18T09:00:00Z', updatedAt: '2026-03-18T10:00:00Z',
   },
   {
     id: 'd01-11', no: 11, jobPostingId: 'job-01', team: '프론트엔드', name: '서유빈', platform: '링크드인', birthYear: '1998', email: 'yubin.seo@gmail.com', phone: '010-1122-3344', region: '경기', regionDetail: '고양시 일산동구', school: '한양대학교', major: '컴퓨터공학', career: '경력 1년', memo: '인성검사 미응시', applicationDate: '2026-03-06',
-    recruitmentStatus: {
-      personalityTestNotice: s('done', { startDate: '2026-03-10', endDate: '2026-03-20' }),
-      personalityTestRegistration: s('pending'),
-      personalityTestResult: s('pending'),
-      companyFormNotice: s('pending'),
-      companyFormSubmission: s('pending'),
-      interviewNotice: s('pending'),
-      interviewResult: s('pending'),
-    },
-    isSeparateManagement: true, separateReason: '인성검사 안내 발송 후 응시 기한(3/20)까지 연락이 닿지 않아 미응시 처리함.', separatedAt: '2026-03-22T10:00:00Z', createdAt: '2026-03-06T09:00:00Z', updatedAt: '2026-03-22T10:00:00Z',
+    progress: [prog('안내', { startDate: '2026-03-10', endDate: '2026-03-20' }), prog('안내'), prog('안내'), prog('안내')],
+    submitted: true, isSeparateManagement: true, separateReason: '인성검사 안내 발송 후 응시 기한(3/20)까지 연락이 닿지 않아 미응시 처리함.', separatedAt: '2026-03-22T10:00:00Z', createdAt: '2026-03-06T09:00:00Z', updatedAt: '2026-03-22T10:00:00Z',
   },
   {
     id: 'd01-12', no: 12, jobPostingId: 'job-01', team: '백엔드', name: '조현서', platform: '워크넷', birthYear: '1997', email: 'hyunseo.jo@naver.com', phone: '010-2233-4455', region: '서울', regionDetail: '송파구', school: '건국대학교', major: '소프트웨어학', career: '경력 2년', memo: '개인 사유로 포기', applicationDate: '2026-03-07',
-    recruitmentStatus: {
-      personalityTestNotice: s('done', { startDate: '2026-03-10', endDate: '2026-03-20' }),
-      personalityTestRegistration: s('done'),
-      personalityTestResult: s('pass'),
-      companyFormNotice: s('pending'),
-      companyFormSubmission: s('pending'),
-      interviewNotice: s('pending'),
-      interviewResult: s('pending'),
-    },
-    isSeparateManagement: true, separateReason: '인성검사까지는 응시했으나 이후 연락 두절, 개인 사정으로 전형 포기 의사 확인.', separatedAt: '2026-03-25T10:00:00Z', createdAt: '2026-03-07T09:00:00Z', updatedAt: '2026-03-25T10:00:00Z',
+    progress: [prog('진행완료'), prog('안내'), prog('안내'), prog('안내')],
+    submitted: true, isSeparateManagement: true, separateReason: '인성검사까지는 응시했으나 이후 연락 두절, 개인 사정으로 전형 포기 의사 확인.', separatedAt: '2026-03-25T10:00:00Z', createdAt: '2026-03-07T09:00:00Z', updatedAt: '2026-03-25T10:00:00Z',
   },
 
   // ===== job-02: 마케팅팀 (9명, 별도관리 1명 포함) =====
   {
     id: 'd02-01', no: 13, jobPostingId: 'job-02', team: '콘텐츠마케팅', name: '이서연', platform: '잡코리아', birthYear: '1997', email: 'seoyeon.lee@naver.com', phone: '010-3344-5566', region: '서울', regionDetail: '강서구', school: '고려대학교', major: '미디어학', career: '경력 2년', memo: '영어 능통', applicationDate: '2026-03-12',
-    recruitmentStatus: {
-      personalityTestNotice: s('done', { startDate: '2026-03-16', endDate: '2026-03-26' }),
-      personalityTestRegistration: s('done'),
-      personalityTestResult: s('pass'),
-      companyFormNotice: s('done', { startDate: '2026-03-28', endDate: '2026-04-03' }),
-      companyFormSubmission: s('done'),
-      interviewNotice: s('done', { startDate: '2026-07-18', endDate: '2026-07-18', time: '14:00', interviewer: '이차장' }),
-      interviewResult: s('pending'),
-    },
-    isSeparateManagement: false, createdAt: '2026-03-12T09:00:00Z', updatedAt: '2026-04-10T10:00:00Z',
+    progress: [
+      prog('진행완료'),
+      prog('작성완료'),
+      prog('안내', { startDate: '2026-07-18', endDate: '2026-07-18', time: '14:00', note: '이차장' }),
+      prog('안내'),
+    ],
+    submitted: true, isSeparateManagement: false, createdAt: '2026-03-12T09:00:00Z', updatedAt: '2026-04-10T10:00:00Z',
   },
   {
     id: 'd02-02', no: 14, jobPostingId: 'job-02', team: '퍼포먼스마케팅', name: '박채린', platform: '사람인', birthYear: '1996', email: 'chaerin.park@gmail.com', phone: '010-4455-6677', region: '경기', regionDetail: '안양시 동안구', school: '이화여자대학교', major: '경영학', career: '경력 3년', memo: 'Google Ads 전문', applicationDate: '2026-03-13',
-    recruitmentStatus: {
-      personalityTestNotice: s('done', { startDate: '2026-03-16', endDate: '2026-03-26' }),
-      personalityTestRegistration: s('done'),
-      personalityTestResult: s('pass'),
-      companyFormNotice: s('done', { startDate: '2026-03-28', endDate: '2026-04-03' }),
-      companyFormSubmission: s('done'),
-      interviewNotice: s('done', { startDate: '2026-04-10', endDate: '2026-04-10', time: '15:00', interviewer: '이차장' }),
-      interviewResult: s('pass'),
-    },
-    isSeparateManagement: false, createdAt: '2026-03-13T09:00:00Z', updatedAt: '2026-04-10T17:00:00Z',
+    progress: [
+      prog('진행완료'),
+      prog('작성완료'),
+      prog('진행완료', { startDate: '2026-04-10', endDate: '2026-04-10', time: '15:00', note: '이차장' }),
+      prog('전형완료'),
+    ],
+    submitted: true, isSeparateManagement: false, createdAt: '2026-03-13T09:00:00Z', updatedAt: '2026-04-10T17:00:00Z',
   },
   {
     id: 'd02-03', no: 15, jobPostingId: 'job-02', team: '콘텐츠마케팅', name: '신유진', platform: '인크루트', birthYear: '1998', email: 'yujin.shin@gmail.com', phone: '010-5566-7788', region: '서울', regionDetail: '서대문구', school: '중앙대학교', major: '광고홍보', career: '경력 1년', memo: '콘텐츠 제작 경험', applicationDate: '2026-03-14',
-    recruitmentStatus: {
-      personalityTestNotice: s('done', { startDate: '2026-03-18', endDate: '2026-03-28' }),
-      personalityTestRegistration: s('done'),
-      personalityTestResult: s('pass'),
-      companyFormNotice: s('need'),
-      companyFormSubmission: s('pending'),
-      interviewNotice: s('pending'),
-      interviewResult: s('pending'),
-    },
-    isSeparateManagement: false, createdAt: '2026-03-14T09:00:00Z', updatedAt: '2026-03-30T10:00:00Z',
+    progress: [prog('진행완료'), prog('안내'), prog('안내'), prog('안내')],
+    submitted: true, isSeparateManagement: false, createdAt: '2026-03-14T09:00:00Z', updatedAt: '2026-03-30T10:00:00Z',
   },
   {
     id: 'd02-04', no: 16, jobPostingId: 'job-02', team: '브랜드마케팅', name: '강하은', platform: '워크넷', birthYear: '1999', email: 'haeun.kang@naver.com', phone: '010-6677-8899', region: '광주', regionDetail: '서구', school: '전남대학교', major: '국어국문', career: '신입', memo: '', applicationDate: '2026-03-15',
-    recruitmentStatus: {
-      personalityTestNotice: s('done', { startDate: '2026-03-20', endDate: '2026-03-30' }),
-      personalityTestRegistration: s('done'),
-      personalityTestResult: s('pass'),
-      companyFormNotice: s('done', { startDate: '2026-04-01', endDate: '2026-04-07' }),
-      companyFormSubmission: s('need'),
-      interviewNotice: s('pending'),
-      interviewResult: s('pending'),
-    },
-    isSeparateManagement: false, createdAt: '2026-03-15T09:00:00Z', updatedAt: '2026-04-02T10:00:00Z',
+    progress: [prog('진행완료'), prog('안내', { startDate: '2026-04-01', endDate: '2026-04-07' }), prog('안내'), prog('안내')],
+    submitted: true, isSeparateManagement: false, createdAt: '2026-03-15T09:00:00Z', updatedAt: '2026-04-02T10:00:00Z',
   },
   {
     id: 'd02-05', no: 17, jobPostingId: 'job-02', team: '퍼포먼스마케팅', name: '홍채원', platform: '잡코리아', birthYear: '2001', email: 'chaewon.hong@naver.com', phone: '010-7788-9900', region: '강원', regionDetail: '춘천시', school: '강원대학교', major: '언론정보', career: '신입', memo: '', applicationDate: '2026-03-18',
-    recruitmentStatus: {
-      personalityTestNotice: s('done', { startDate: '2026-03-22', endDate: '2026-04-01' }),
-      personalityTestRegistration: s('need'),
-      personalityTestResult: s('pending'),
-      companyFormNotice: s('pending'),
-      companyFormSubmission: s('pending'),
-      interviewNotice: s('pending'),
-      interviewResult: s('pending'),
-    },
-    isSeparateManagement: false, createdAt: '2026-03-18T09:00:00Z', updatedAt: '2026-03-24T10:00:00Z',
+    progress: [prog('공고등록'), prog('안내'), prog('안내'), prog('안내')],
+    submitted: true, isSeparateManagement: false, createdAt: '2026-03-18T09:00:00Z', updatedAt: '2026-03-24T10:00:00Z',
   },
   {
     id: 'd02-06', no: 18, jobPostingId: 'job-02', team: '브랜드마케팅', name: '문서현', platform: '사람인', birthYear: '1997', email: 'seohyun.moon@gmail.com', phone: '010-8899-0011', region: '서울', regionDetail: '종로구', school: '숙명여자대학교', major: '홍보광고', career: '경력 1년', memo: '', applicationDate: '2026-03-20',
-    recruitmentStatus: {
-      personalityTestNotice: s('need'),
-      personalityTestRegistration: s('pending'),
-      personalityTestResult: s('pending'),
-      companyFormNotice: s('pending'),
-      companyFormSubmission: s('pending'),
-      interviewNotice: s('pending'),
-      interviewResult: s('pending'),
-    },
-    isSeparateManagement: false, createdAt: '2026-03-20T09:00:00Z', updatedAt: '2026-03-20T10:00:00Z',
+    progress: [prog('안내'), prog('안내'), prog('안내'), prog('안내')],
+    submitted: true, isSeparateManagement: false, createdAt: '2026-03-20T09:00:00Z', updatedAt: '2026-03-20T10:00:00Z',
   },
   {
     id: 'd02-07', no: 19, jobPostingId: 'job-02', team: '콘텐츠마케팅', name: '남지원', platform: '링크드인', birthYear: '2000', email: 'jiwon.nam@gmail.com', phone: '010-9900-1122', region: '경기', regionDetail: '파주시', school: '한국외국어대학교', major: '영어학', career: '신입', memo: '영문 콘텐츠 가능', applicationDate: '2026-03-22',
-    recruitmentStatus: {
-      personalityTestNotice: s('need'),
-      personalityTestRegistration: s('pending'),
-      personalityTestResult: s('pending'),
-      companyFormNotice: s('pending'),
-      companyFormSubmission: s('pending'),
-      interviewNotice: s('pending'),
-      interviewResult: s('pending'),
-    },
-    isSeparateManagement: false, createdAt: '2026-03-22T09:00:00Z', updatedAt: '2026-03-22T10:00:00Z',
+    progress: [prog('안내'), prog('안내'), prog('안내'), prog('안내')],
+    submitted: true, isSeparateManagement: false, createdAt: '2026-03-22T09:00:00Z', updatedAt: '2026-03-22T10:00:00Z',
   },
   {
     id: 'd02-08', no: 20, jobPostingId: 'job-02', team: '퍼포먼스마케팅', name: '배수아', platform: '직접지원', birthYear: '1995', email: 'sua.bae@naver.com', phone: '010-0011-2233', region: '서울', regionDetail: '영등포구', school: '서강대학교', major: '경제학', career: '경력 4년', memo: 'Meta Ads 경험', applicationDate: '2026-03-16',
-    recruitmentStatus: {
-      personalityTestNotice: s('done', { startDate: '2026-03-20', endDate: '2026-03-30' }),
-      personalityTestRegistration: s('done'),
-      personalityTestResult: s('fail'),
-      companyFormNotice: s('pending'),
-      companyFormSubmission: s('pending'),
-      interviewNotice: s('pending'),
-      interviewResult: s('pending'),
-    },
-    isSeparateManagement: false, createdAt: '2026-03-16T09:00:00Z', updatedAt: '2026-04-01T10:00:00Z',
+    progress: [prog('진행완료'), prog('안내'), prog('안내'), prog('안내')],
+    submitted: true, isSeparateManagement: false, createdAt: '2026-03-16T09:00:00Z', updatedAt: '2026-04-01T10:00:00Z',
   },
   {
     id: 'd02-09', no: 21, jobPostingId: 'job-02', team: '브랜드마케팅', name: '김나현', platform: '사람인', birthYear: '1998', email: 'nahyun.kim@hanmail.net', phone: '010-1133-2244', region: '인천', regionDetail: '남동구', school: '인천대학교', major: '신문방송', career: '신입', memo: '타사 합격으로 포기', applicationDate: '2026-03-13',
-    recruitmentStatus: {
-      personalityTestNotice: s('done', { startDate: '2026-03-16', endDate: '2026-03-26' }),
-      personalityTestRegistration: s('done'),
-      personalityTestResult: s('pass'),
-      companyFormNotice: s('done', { startDate: '2026-03-28', endDate: '2026-04-03' }),
-      companyFormSubmission: s('done'),
-      interviewNotice: s('pending'),
-      interviewResult: s('pending'),
-    },
-    isSeparateManagement: true, separateReason: '자사양식 제출까지 완료했으나 타사 합격으로 최종 포기 의사를 전달받음.', separatedAt: '2026-04-04T10:00:00Z', createdAt: '2026-03-13T09:00:00Z', updatedAt: '2026-04-04T10:00:00Z',
+    progress: [prog('진행완료'), prog('작성완료'), prog('안내'), prog('안내')],
+    submitted: true, isSeparateManagement: true, separateReason: '자사양식 제출까지 완료했으나 타사 합격으로 최종 포기 의사를 전달받음.', separatedAt: '2026-04-04T10:00:00Z', createdAt: '2026-03-13T09:00:00Z', updatedAt: '2026-04-04T10:00:00Z',
   },
 
   // ===== job-03: 디자인팀 (8명, 별도관리 1명 포함) =====
   {
     id: 'd03-01', no: 22, jobPostingId: 'job-03', team: 'UX디자인', name: '임나연', platform: '사람인', birthYear: '1997', email: 'nayeon.lim@gmail.com', phone: '010-2244-3355', region: '서울', regionDetail: '용산구', school: '이화여자대학교', major: '디자인학', career: '경력 3년', memo: '포트폴리오 우수', applicationDate: '2026-03-17',
-    recruitmentStatus: {
-      personalityTestNotice: s('done', { startDate: '2026-03-20', endDate: '2026-03-30' }),
-      personalityTestRegistration: s('done'),
-      personalityTestResult: s('pass'),
-      companyFormNotice: s('done', { startDate: '2026-04-01', endDate: '2026-04-07' }),
-      companyFormSubmission: s('done'),
-      interviewNotice: s('done', { startDate: '2026-07-11', endDate: '2026-07-11', time: '11:00', interviewer: '최팀장' }),
-      interviewResult: s('pending'),
-    },
-    isSeparateManagement: false, createdAt: '2026-03-17T09:00:00Z', updatedAt: '2026-04-10T10:00:00Z',
+    progress: [
+      prog('진행완료'),
+      prog('작성완료'),
+      prog('안내', { startDate: '2026-07-11', endDate: '2026-07-11', time: '11:00', note: '최팀장' }),
+      prog('안내'),
+    ],
+    submitted: true, isSeparateManagement: false, createdAt: '2026-03-17T09:00:00Z', updatedAt: '2026-04-10T10:00:00Z',
   },
   {
     id: 'd03-02', no: 23, jobPostingId: 'job-03', team: 'UI디자인', name: '배현우', platform: '잡코리아', birthYear: '1994', email: 'hyunwoo.bae@naver.com', phone: '010-3355-4466', region: '서울', regionDetail: '서초구', school: '국민대학교', major: '시각디자인', career: '경력 5년', memo: 'Figma 전문', applicationDate: '2026-03-18',
-    recruitmentStatus: {
-      personalityTestNotice: s('done', { startDate: '2026-03-22', endDate: '2026-04-01' }),
-      personalityTestRegistration: s('done'),
-      personalityTestResult: s('pass'),
-      companyFormNotice: s('done', { startDate: '2026-04-03', endDate: '2026-04-09' }),
-      companyFormSubmission: s('done'),
-      interviewNotice: s('done', { startDate: '2026-04-12', endDate: '2026-04-12', time: '13:00', interviewer: '최팀장' }),
-      interviewResult: s('pass'),
-    },
-    isSeparateManagement: false, createdAt: '2026-03-18T09:00:00Z', updatedAt: '2026-04-12T15:00:00Z',
+    progress: [
+      prog('진행완료'),
+      prog('작성완료'),
+      prog('진행완료', { startDate: '2026-04-12', endDate: '2026-04-12', time: '13:00', note: '최팀장' }),
+      prog('전형완료'),
+    ],
+    submitted: true, isSeparateManagement: false, createdAt: '2026-03-18T09:00:00Z', updatedAt: '2026-04-12T15:00:00Z',
   },
   {
     id: 'd03-03', no: 24, jobPostingId: 'job-03', team: '영상디자인', name: '류건우', platform: '링크드인', birthYear: '1996', email: 'gunwoo.ryu@gmail.com', phone: '010-4466-5577', region: '경기', regionDetail: '용인시 수지구', school: '건국대학교', major: '영상디자인', career: '경력 2년', memo: '영상 편집 가능', applicationDate: '2026-03-19',
-    recruitmentStatus: {
-      personalityTestNotice: s('done', { startDate: '2026-03-22', endDate: '2026-04-01' }),
-      personalityTestRegistration: s('done'),
-      personalityTestResult: s('pass'),
-      companyFormNotice: s('done', { startDate: '2026-04-03', endDate: '2026-04-09' }),
-      companyFormSubmission: s('need'),
-      interviewNotice: s('pending'),
-      interviewResult: s('pending'),
-    },
-    isSeparateManagement: false, createdAt: '2026-03-19T09:00:00Z', updatedAt: '2026-04-05T10:00:00Z',
+    progress: [prog('진행완료'), prog('안내', { startDate: '2026-04-03', endDate: '2026-04-09' }), prog('안내'), prog('안내')],
+    submitted: true, isSeparateManagement: false, createdAt: '2026-03-19T09:00:00Z', updatedAt: '2026-04-05T10:00:00Z',
   },
   {
     id: 'd03-04', no: 25, jobPostingId: 'job-03', team: 'UX디자인', name: '양소연', platform: '사람인', birthYear: '1999', email: 'soyeon.yang@naver.com', phone: '010-5577-6688', region: '서울', regionDetail: '마포구', school: '홍익대학교', major: 'UX디자인', career: '신입', memo: '', applicationDate: '2026-03-20',
-    recruitmentStatus: {
-      personalityTestNotice: s('done', { startDate: '2026-03-24', endDate: '2026-04-03' }),
-      personalityTestRegistration: s('done'),
-      personalityTestResult: s('pass'),
-      companyFormNotice: s('need'),
-      companyFormSubmission: s('pending'),
-      interviewNotice: s('pending'),
-      interviewResult: s('pending'),
-    },
-    isSeparateManagement: false, createdAt: '2026-03-20T09:00:00Z', updatedAt: '2026-04-04T10:00:00Z',
+    progress: [prog('진행완료'), prog('안내'), prog('안내'), prog('안내')],
+    submitted: true, isSeparateManagement: false, createdAt: '2026-03-20T09:00:00Z', updatedAt: '2026-04-04T10:00:00Z',
   },
   {
     id: 'd03-05', no: 26, jobPostingId: 'job-03', team: 'UI디자인', name: '정민서', platform: '인크루트', birthYear: '2000', email: 'minseo.jung@gmail.com', phone: '010-6688-7799', region: '충북', regionDetail: '청주시 흥덕구', school: '충북대학교', major: '산업디자인', career: '신입', memo: '', applicationDate: '2026-03-22',
-    recruitmentStatus: {
-      personalityTestNotice: s('done', { startDate: '2026-03-26', endDate: '2026-04-05' }),
-      personalityTestRegistration: s('done'),
-      personalityTestResult: s('fail'),
-      companyFormNotice: s('pending'),
-      companyFormSubmission: s('pending'),
-      interviewNotice: s('pending'),
-      interviewResult: s('pending'),
-    },
-    isSeparateManagement: false, createdAt: '2026-03-22T09:00:00Z', updatedAt: '2026-04-06T10:00:00Z',
+    progress: [prog('진행완료'), prog('안내'), prog('안내'), prog('안내')],
+    submitted: true, isSeparateManagement: false, createdAt: '2026-03-22T09:00:00Z', updatedAt: '2026-04-06T10:00:00Z',
   },
   {
     id: 'd03-06', no: 27, jobPostingId: 'job-03', team: '영상디자인', name: '노유찬', platform: '워크넷', birthYear: '1998', email: 'yuchan.noh@naver.com', phone: '010-7799-8800', region: '대구', regionDetail: '달서구', school: '계명대학교', major: '멀티미디어', career: '경력 1년', memo: '', applicationDate: '2026-03-24',
-    recruitmentStatus: {
-      personalityTestNotice: s('done', { startDate: '2026-03-28', endDate: '2026-04-07' }),
-      personalityTestRegistration: s('need'),
-      personalityTestResult: s('pending'),
-      companyFormNotice: s('pending'),
-      companyFormSubmission: s('pending'),
-      interviewNotice: s('pending'),
-      interviewResult: s('pending'),
-    },
-    isSeparateManagement: false, createdAt: '2026-03-24T09:00:00Z', updatedAt: '2026-03-30T10:00:00Z',
+    progress: [prog('공고등록'), prog('안내'), prog('안내'), prog('안내')],
+    submitted: true, isSeparateManagement: false, createdAt: '2026-03-24T09:00:00Z', updatedAt: '2026-03-30T10:00:00Z',
   },
   {
     id: 'd03-07', no: 28, jobPostingId: 'job-03', team: 'UX디자인', name: '황지유', platform: '사람인', birthYear: '2001', email: 'jiyu.hwang@gmail.com', phone: '010-8800-9911', region: '서울', regionDetail: '성동구', school: '동국대학교', major: '시각디자인', career: '신입', memo: '', applicationDate: '2026-03-26',
-    recruitmentStatus: {
-      personalityTestNotice: s('need'),
-      personalityTestRegistration: s('pending'),
-      personalityTestResult: s('pending'),
-      companyFormNotice: s('pending'),
-      companyFormSubmission: s('pending'),
-      interviewNotice: s('pending'),
-      interviewResult: s('pending'),
-    },
-    isSeparateManagement: false, createdAt: '2026-03-26T09:00:00Z', updatedAt: '2026-03-26T10:00:00Z',
+    progress: [prog('안내'), prog('안내'), prog('안내'), prog('안내')],
+    submitted: true, isSeparateManagement: false, createdAt: '2026-03-26T09:00:00Z', updatedAt: '2026-03-26T10:00:00Z',
   },
   {
     id: 'd03-08', no: 29, jobPostingId: 'job-03', team: 'UI디자인', name: '송다은', platform: '잡코리아', birthYear: '1995', email: 'daeun.song@naver.com', phone: '010-9911-0022', region: '경기', regionDetail: '성남시 중원구', school: '세종대학교', major: '디자인이노베이션', career: '경력 3년', memo: '면접 후 타사 입사로 포기', applicationDate: '2026-03-17',
-    recruitmentStatus: {
-      personalityTestNotice: s('done', { startDate: '2026-03-20', endDate: '2026-03-30' }),
-      personalityTestRegistration: s('done'),
-      personalityTestResult: s('pass'),
-      companyFormNotice: s('done', { startDate: '2026-04-01', endDate: '2026-04-07' }),
-      companyFormSubmission: s('done'),
-      interviewNotice: s('done', { startDate: '2026-04-10', endDate: '2026-04-10', time: '10:00', interviewer: '최팀장' }),
-      interviewResult: s('pending'),
-    },
-    isSeparateManagement: true, separateReason: '면접 완료 후 타사 입사를 이유로 전형 포기 의사를 전달받음.', separatedAt: '2026-04-11T10:00:00Z', createdAt: '2026-03-17T09:00:00Z', updatedAt: '2026-04-11T10:00:00Z',
+    progress: [
+      prog('진행완료'),
+      prog('작성완료'),
+      prog('진행완료', { startDate: '2026-04-10', endDate: '2026-04-10', time: '10:00', note: '최팀장' }),
+      prog('안내'),
+    ],
+    submitted: true, isSeparateManagement: true, separateReason: '면접 완료 후 타사 입사를 이유로 전형 포기 의사를 전달받음.', separatedAt: '2026-04-11T10:00:00Z', createdAt: '2026-03-17T09:00:00Z', updatedAt: '2026-04-11T10:00:00Z',
   },
 
   // ===== job-04: 기획/인사팀 (9명, 별도관리 2명 포함) =====
   {
     id: 'd04-01', no: 30, jobPostingId: 'job-04', team: '서비스기획', name: '서지민', platform: '링크드인', birthYear: '1996', email: 'jimin.seo@gmail.com', phone: '010-1010-2020', region: '서울', regionDetail: '송파구', school: '연세대학교', major: '경제학', career: '경력 3년', memo: '', applicationDate: '2026-03-22',
-    recruitmentStatus: {
-      personalityTestNotice: s('done', { startDate: '2026-03-26', endDate: '2026-04-05' }),
-      personalityTestRegistration: s('done'),
-      personalityTestResult: s('pass'),
-      companyFormNotice: s('done', { startDate: '2026-04-07', endDate: '2026-04-11' }),
-      companyFormSubmission: s('done'),
-      interviewNotice: s('done', { startDate: '2026-07-21', endDate: '2026-07-21', time: '15:30', interviewer: '정과장' }),
-      interviewResult: s('pending'),
-    },
-    isSeparateManagement: false, createdAt: '2026-03-22T09:00:00Z', updatedAt: '2026-04-12T10:00:00Z',
+    progress: [
+      prog('진행완료'),
+      prog('작성완료'),
+      prog('안내', { startDate: '2026-07-21', endDate: '2026-07-21', time: '15:30', note: '정과장' }),
+      prog('안내'),
+    ],
+    submitted: true, isSeparateManagement: false, createdAt: '2026-03-22T09:00:00Z', updatedAt: '2026-04-12T10:00:00Z',
   },
   {
     id: 'd04-02', no: 31, jobPostingId: 'job-04', team: '인사', name: '최수빈', platform: '사람인', birthYear: '1996', email: 'subin.choi@hanmail.net', phone: '010-2020-3030', region: '인천', regionDetail: '연수구', school: '인하대학교', major: '심리학', career: '경력 2년', memo: '', applicationDate: '2026-03-23',
-    recruitmentStatus: {
-      personalityTestNotice: s('done', { startDate: '2026-03-27', endDate: '2026-04-06' }),
-      personalityTestRegistration: s('done'),
-      personalityTestResult: s('pass'),
-      companyFormNotice: s('done', { startDate: '2026-04-08', endDate: '2026-04-12' }),
-      companyFormSubmission: s('done'),
-      interviewNotice: s('need'),
-      interviewResult: s('pending'),
-    },
-    isSeparateManagement: false, createdAt: '2026-03-23T09:00:00Z', updatedAt: '2026-04-09T10:00:00Z',
+    progress: [prog('진행완료'), prog('작성완료'), prog('안내'), prog('안내')],
+    submitted: true, isSeparateManagement: false, createdAt: '2026-03-23T09:00:00Z', updatedAt: '2026-04-09T10:00:00Z',
   },
   {
     id: 'd04-03', no: 32, jobPostingId: 'job-04', team: '서비스기획', name: '한도윤', platform: '잡코리아', birthYear: '1994', email: 'doyun.han@daum.net', phone: '010-3030-4040', region: '대전', regionDetail: '유성구', school: '한국과학기술원', major: '산업공학', career: '경력 4년', memo: '전 직장 추천서 있음', applicationDate: '2026-03-24',
-    recruitmentStatus: {
-      personalityTestNotice: s('done', { startDate: '2026-03-28', endDate: '2026-04-07' }),
-      personalityTestRegistration: s('done'),
-      personalityTestResult: s('pass'),
-      companyFormNotice: s('done', { startDate: '2026-04-09', endDate: '2026-04-13' }),
-      companyFormSubmission: s('need'),
-      interviewNotice: s('pending'),
-      interviewResult: s('pending'),
-    },
-    isSeparateManagement: false, createdAt: '2026-03-24T09:00:00Z', updatedAt: '2026-04-10T10:00:00Z',
+    progress: [prog('진행완료'), prog('안내', { startDate: '2026-04-09', endDate: '2026-04-13' }), prog('안내'), prog('안내')],
+    submitted: true, isSeparateManagement: false, createdAt: '2026-03-24T09:00:00Z', updatedAt: '2026-04-10T10:00:00Z',
   },
   {
     id: 'd04-04', no: 33, jobPostingId: 'job-04', team: '인사', name: '오준혁', platform: '인크루트', birthYear: '1995', email: 'junhyuk.oh@naver.com', phone: '010-4040-5050', region: '대구', regionDetail: '수성구', school: '경북대학교', major: '행정학', career: '경력 3년', memo: '대구 거주, 서울 이전 가능', applicationDate: '2026-03-25',
-    recruitmentStatus: {
-      personalityTestNotice: s('done', { startDate: '2026-03-29', endDate: '2026-04-08' }),
-      personalityTestRegistration: s('done'),
-      personalityTestResult: s('pass'),
-      companyFormNotice: s('need'),
-      companyFormSubmission: s('pending'),
-      interviewNotice: s('pending'),
-      interviewResult: s('pending'),
-    },
-    isSeparateManagement: false, createdAt: '2026-03-25T09:00:00Z', updatedAt: '2026-04-09T10:00:00Z',
+    progress: [prog('진행완료'), prog('안내'), prog('안내'), prog('안내')],
+    submitted: true, isSeparateManagement: false, createdAt: '2026-03-25T09:00:00Z', updatedAt: '2026-04-09T10:00:00Z',
   },
   {
     id: 'd04-05', no: 34, jobPostingId: 'job-04', team: '서비스기획', name: '권태현', platform: '직접지원', birthYear: '1993', email: 'taehyun.kwon@daum.net', phone: '010-5050-6060', region: '경남', regionDetail: '창원시 성산구', school: '부산대학교', major: '경영정보', career: '경력 5년', memo: '기획서 우수', applicationDate: '2026-03-26',
-    recruitmentStatus: {
-      personalityTestNotice: s('done', { startDate: '2026-03-30', endDate: '2026-04-09' }),
-      personalityTestRegistration: s('done'),
-      personalityTestResult: s('fail'),
-      companyFormNotice: s('pending'),
-      companyFormSubmission: s('pending'),
-      interviewNotice: s('pending'),
-      interviewResult: s('pending'),
-    },
-    isSeparateManagement: false, createdAt: '2026-03-26T09:00:00Z', updatedAt: '2026-04-10T10:00:00Z',
+    progress: [prog('진행완료'), prog('안내'), prog('안내'), prog('안내')],
+    submitted: true, isSeparateManagement: false, createdAt: '2026-03-26T09:00:00Z', updatedAt: '2026-04-10T10:00:00Z',
   },
   {
     id: 'd04-06', no: 35, jobPostingId: 'job-04', team: '인사', name: '문서현', platform: '사람인', birthYear: '1997', email: 'seohyun2.moon@naver.com', phone: '010-6060-7070', region: '울산', regionDetail: '남구', school: '울산대학교', major: '사회학', career: '경력 1년', memo: '', applicationDate: '2026-03-28',
-    recruitmentStatus: {
-      personalityTestNotice: s('done', { startDate: '2026-04-01', endDate: '2026-04-11' }),
-      personalityTestRegistration: s('need'),
-      personalityTestResult: s('pending'),
-      companyFormNotice: s('pending'),
-      companyFormSubmission: s('pending'),
-      interviewNotice: s('pending'),
-      interviewResult: s('pending'),
-    },
-    isSeparateManagement: false, createdAt: '2026-03-28T09:00:00Z', updatedAt: '2026-04-02T10:00:00Z',
+    progress: [prog('공고등록'), prog('안내'), prog('안내'), prog('안내')],
+    submitted: true, isSeparateManagement: false, createdAt: '2026-03-28T09:00:00Z', updatedAt: '2026-04-02T10:00:00Z',
   },
   {
     id: 'd04-07', no: 36, jobPostingId: 'job-04', team: '서비스기획', name: '유하진', platform: '워크넷', birthYear: '2000', email: 'hajin.yoo@gmail.com', phone: '010-7070-8080', region: '서울', regionDetail: '노원구', school: '광운대학교', major: '경영학', career: '신입', memo: '', applicationDate: '2026-03-30',
-    recruitmentStatus: {
-      personalityTestNotice: s('need'),
-      personalityTestRegistration: s('pending'),
-      personalityTestResult: s('pending'),
-      companyFormNotice: s('pending'),
-      companyFormSubmission: s('pending'),
-      interviewNotice: s('pending'),
-      interviewResult: s('pending'),
-    },
-    isSeparateManagement: false, createdAt: '2026-03-30T09:00:00Z', updatedAt: '2026-03-30T10:00:00Z',
+    progress: [prog('안내'), prog('안내'), prog('안내'), prog('안내')],
+    submitted: true, isSeparateManagement: false, createdAt: '2026-03-30T09:00:00Z', updatedAt: '2026-03-30T10:00:00Z',
   },
   {
     id: 'd04-08', no: 37, jobPostingId: 'job-04', team: '인사', name: '백지안', platform: '잡코리아', birthYear: '1998', email: 'jian.baek@naver.com', phone: '010-8080-9090', region: '경기', regionDetail: '화성시', school: '아주대학교', major: '행정학', career: '경력 1년', memo: '자사양식 미제출', applicationDate: '2026-03-23',
-    recruitmentStatus: {
-      personalityTestNotice: s('done', { startDate: '2026-03-27', endDate: '2026-04-06' }),
-      personalityTestRegistration: s('done'),
-      personalityTestResult: s('pass'),
-      companyFormNotice: s('done', { startDate: '2026-04-08', endDate: '2026-04-12' }),
-      companyFormSubmission: s('pending'),
-      interviewNotice: s('pending'),
-      interviewResult: s('pending'),
-    },
-    isSeparateManagement: true, separateReason: '자사양식 안내 후 제출 기한(4/12)까지 미제출, 이후 연락도 닿지 않음.', separatedAt: '2026-04-13T10:00:00Z', createdAt: '2026-03-23T09:00:00Z', updatedAt: '2026-04-13T10:00:00Z',
+    progress: [prog('진행완료'), prog('안내', { startDate: '2026-04-08', endDate: '2026-04-12' }), prog('안내'), prog('안내')],
+    submitted: true, isSeparateManagement: true, separateReason: '자사양식 안내 후 제출 기한(4/12)까지 미제출, 이후 연락도 닿지 않음.', separatedAt: '2026-04-13T10:00:00Z', createdAt: '2026-03-23T09:00:00Z', updatedAt: '2026-04-13T10:00:00Z',
   },
   {
     id: 'd04-09', no: 38, jobPostingId: 'job-04', team: '서비스기획', name: '고은채', platform: '사람인', birthYear: '1999', email: 'eunchae.go@gmail.com', phone: '010-9090-0101', region: '서울', regionDetail: '강동구', school: '동덕여자대학교', major: '국제경영', career: '신입', memo: '개인 사유로 포기', applicationDate: '2026-03-24',
-    recruitmentStatus: {
-      personalityTestNotice: s('done', { startDate: '2026-03-28', endDate: '2026-04-07' }),
-      personalityTestRegistration: s('done'),
-      personalityTestResult: s('pass'),
-      companyFormNotice: s('pending'),
-      companyFormSubmission: s('pending'),
-      interviewNotice: s('pending'),
-      interviewResult: s('pending'),
-    },
-    isSeparateManagement: true, separateReason: '인성검사 응시는 완료했으나 개인 사정으로 전형을 포기함.', separatedAt: '2026-04-08T10:00:00Z', createdAt: '2026-03-24T09:00:00Z', updatedAt: '2026-04-08T10:00:00Z',
+    progress: [prog('진행완료'), prog('안내'), prog('안내'), prog('안내')],
+    submitted: true, isSeparateManagement: true, separateReason: '인성검사 응시는 완료했으나 개인 사정으로 전형을 포기함.', separatedAt: '2026-04-08T10:00:00Z', createdAt: '2026-03-24T09:00:00Z', updatedAt: '2026-04-08T10:00:00Z',
   },
 
-  // ===== job-05: 재무/회계팀 (7명, 별도관리 1명 포함) =====
+  // ===== job-05: 재무/회계팀 (7명, 별도관리 1명 포함) — 대체 템플릿(서류/인성검사/적성검사및면접/최종임원면접) =====
   {
     id: 'd05-01', no: 39, jobPostingId: 'job-05', team: '재무분석', name: '장윤호', platform: '사람인', birthYear: '1994', email: 'yunho.jang@gmail.com', phone: '010-1212-3434', region: '서울', regionDetail: '여의도동', school: '서울대학교', major: '경영학', career: '경력 4년', memo: 'CPA 자격증 보유', applicationDate: '2026-03-27',
-    recruitmentStatus: {
-      personalityTestNotice: s('done', { startDate: '2026-03-31', endDate: '2026-04-10' }),
-      personalityTestRegistration: s('done'),
-      personalityTestResult: s('pass'),
-      companyFormNotice: s('done', { startDate: '2026-04-12', endDate: '2026-04-16' }),
-      companyFormSubmission: s('done'),
-      interviewNotice: s('need'),
-      interviewResult: s('pending'),
-    },
-    isSeparateManagement: false, createdAt: '2026-03-27T09:00:00Z', updatedAt: '2026-04-13T10:00:00Z',
+    progress: [prog('완료'), prog('완료'), prog('진행중'), prog('대기')],
+    submitted: true, isSeparateManagement: false, createdAt: '2026-03-27T09:00:00Z', updatedAt: '2026-04-13T10:00:00Z',
   },
   {
     id: 'd05-02', no: 40, jobPostingId: 'job-05', team: '회계', name: '민소희', platform: '잡코리아', birthYear: '1996', email: 'sohee.min@naver.com', phone: '010-3434-5656', region: '경기', regionDetail: '의정부시', school: '고려대학교', major: '회계학', career: '경력 2년', memo: '', applicationDate: '2026-03-28',
-    recruitmentStatus: {
-      personalityTestNotice: s('done', { startDate: '2026-04-01', endDate: '2026-04-11' }),
-      personalityTestRegistration: s('done'),
-      personalityTestResult: s('pass'),
-      companyFormNotice: s('need'),
-      companyFormSubmission: s('pending'),
-      interviewNotice: s('pending'),
-      interviewResult: s('pending'),
-    },
-    isSeparateManagement: false, createdAt: '2026-03-28T09:00:00Z', updatedAt: '2026-04-12T10:00:00Z',
+    progress: [prog('완료'), prog('완료'), prog('진행중'), prog('대기')],
+    submitted: true, isSeparateManagement: false, createdAt: '2026-03-28T09:00:00Z', updatedAt: '2026-04-12T10:00:00Z',
   },
   {
     id: 'd05-03', no: 41, jobPostingId: 'job-05', team: '재무분석', name: '차준영', platform: '링크드인', birthYear: '1995', email: 'junyoung.cha@gmail.com', phone: '010-5656-7878', region: '서울', regionDetail: '강남구', school: '성균관대학교', major: '경제학', career: '경력 3년', memo: '재무모델링 경험', applicationDate: '2026-03-29',
-    recruitmentStatus: {
-      personalityTestNotice: s('done', { startDate: '2026-04-02', endDate: '2026-04-12' }),
-      personalityTestRegistration: s('done'),
-      personalityTestResult: s('pass'),
-      companyFormNotice: s('done', { startDate: '2026-04-14', endDate: '2026-04-18' }),
-      companyFormSubmission: s('need'),
-      interviewNotice: s('pending'),
-      interviewResult: s('pending'),
-    },
-    isSeparateManagement: false, createdAt: '2026-03-29T09:00:00Z', updatedAt: '2026-04-14T10:00:00Z',
+    progress: [prog('완료'), prog('완료'), prog('대기'), prog('대기')],
+    submitted: true, isSeparateManagement: false, createdAt: '2026-03-29T09:00:00Z', updatedAt: '2026-04-14T10:00:00Z',
   },
   {
     id: 'd05-04', no: 42, jobPostingId: 'job-05', team: '회계', name: '표지혜', platform: '사람인', birthYear: '1998', email: 'jihye.pyo@naver.com', phone: '010-7878-9090', region: '충남', regionDetail: '천안시 동남구', school: '단국대학교', major: '세무회계', career: '신입', memo: '', applicationDate: '2026-03-31',
-    recruitmentStatus: {
-      personalityTestNotice: s('done', { startDate: '2026-04-04', endDate: '2026-04-14' }),
-      personalityTestRegistration: s('need'),
-      personalityTestResult: s('pending'),
-      companyFormNotice: s('pending'),
-      companyFormSubmission: s('pending'),
-      interviewNotice: s('pending'),
-      interviewResult: s('pending'),
-    },
-    isSeparateManagement: false, createdAt: '2026-03-31T09:00:00Z', updatedAt: '2026-04-05T10:00:00Z',
+    progress: [prog('완료'), prog('진행중'), prog('대기'), prog('대기')],
+    submitted: true, isSeparateManagement: false, createdAt: '2026-03-31T09:00:00Z', updatedAt: '2026-04-05T10:00:00Z',
   },
   {
     id: 'd05-05', no: 43, jobPostingId: 'job-05', team: '재무분석', name: '김다인', platform: '직접지원', birthYear: '2000', email: 'dain.kim@gmail.com', phone: '010-9090-1212', region: '서울', regionDetail: '광진구', school: '한양대학교', major: '파이낸스', career: '신입', memo: '', applicationDate: '2026-04-02',
-    recruitmentStatus: {
-      personalityTestNotice: s('need'),
-      personalityTestRegistration: s('pending'),
-      personalityTestResult: s('pending'),
-      companyFormNotice: s('pending'),
-      companyFormSubmission: s('pending'),
-      interviewNotice: s('pending'),
-      interviewResult: s('pending'),
-    },
-    isSeparateManagement: false, createdAt: '2026-04-02T09:00:00Z', updatedAt: '2026-04-02T10:00:00Z',
+    progress: [prog('대기'), prog('대기'), prog('대기'), prog('대기')],
+    submitted: true, isSeparateManagement: false, createdAt: '2026-04-02T09:00:00Z', updatedAt: '2026-04-02T10:00:00Z',
   },
   {
     id: 'd05-06', no: 44, jobPostingId: 'job-05', team: '회계', name: '윤재민', platform: '워크넷', birthYear: '1997', email: 'jaemin.yoon@naver.com', phone: '010-1313-2424', region: '경기', regionDetail: '부천시', school: '가톨릭대학교', major: '회계학', career: '경력 1년', memo: '', applicationDate: '2026-04-03',
-    recruitmentStatus: {
-      personalityTestNotice: s('need'),
-      personalityTestRegistration: s('pending'),
-      personalityTestResult: s('pending'),
-      companyFormNotice: s('pending'),
-      companyFormSubmission: s('pending'),
-      interviewNotice: s('pending'),
-      interviewResult: s('pending'),
-    },
-    isSeparateManagement: false, createdAt: '2026-04-03T09:00:00Z', updatedAt: '2026-04-03T10:00:00Z',
+    progress: [prog('대기'), prog('대기'), prog('대기'), prog('대기')],
+    submitted: true, isSeparateManagement: false, createdAt: '2026-04-03T09:00:00Z', updatedAt: '2026-04-03T10:00:00Z',
   },
   {
     id: 'd05-07', no: 45, jobPostingId: 'job-05', team: '재무분석', name: '성하람', platform: '잡코리아', birthYear: '1996', email: 'haram.sung@gmail.com', phone: '010-2424-3535', region: '서울', regionDetail: '중구', school: '서울시립대학교', major: '세무학', career: '경력 2년', memo: '면접 당일 취소', applicationDate: '2026-03-27',
-    recruitmentStatus: {
-      personalityTestNotice: s('done', { startDate: '2026-03-31', endDate: '2026-04-10' }),
-      personalityTestRegistration: s('done'),
-      personalityTestResult: s('pass'),
-      companyFormNotice: s('done', { startDate: '2026-04-12', endDate: '2026-04-16' }),
-      companyFormSubmission: s('done'),
-      interviewNotice: s('done', { startDate: '2026-04-18', endDate: '2026-04-18', time: '10:00', interviewer: '한부장' }),
-      interviewResult: s('pending'),
-    },
-    isSeparateManagement: true, separateReason: '면접 당일 개인 사정으로 참석이 어렵다는 연락을 받아 취소 처리함.', separatedAt: '2026-04-18T09:00:00Z', createdAt: '2026-03-27T09:00:00Z', updatedAt: '2026-04-18T09:00:00Z',
+    progress: [
+      prog('완료'),
+      prog('완료'),
+      prog('완료', { startDate: '2026-04-18', endDate: '2026-04-18', time: '10:00', note: '한부장' }),
+      prog('대기'),
+    ],
+    submitted: true, isSeparateManagement: true, separateReason: '면접 당일 개인 사정으로 참석이 어렵다는 연락을 받아 취소 처리함.', separatedAt: '2026-04-18T09:00:00Z', createdAt: '2026-03-27T09:00:00Z', updatedAt: '2026-04-18T09:00:00Z',
   },
 
   // ===== job-06: 데이터팀 (8명, 별도관리 1명 포함) =====
   {
     id: 'd06-01', no: 46, jobPostingId: 'job-06', team: '데이터분석', name: '양지수', platform: '링크드인', birthYear: '1991', email: 'jisoo.yang@gmail.com', phone: '010-3535-4646', region: '서울', regionDetail: '강서구', school: '서울대학교', major: '통계학', career: '경력 5년', memo: 'Python/SQL 전문', applicationDate: '2026-04-02',
-    recruitmentStatus: {
-      personalityTestNotice: s('done', { startDate: '2026-04-05', endDate: '2026-04-13' }),
-      personalityTestRegistration: s('done'),
-      personalityTestResult: s('pass'),
-      companyFormNotice: s('done', { startDate: '2026-04-14', endDate: '2026-04-18' }),
-      companyFormSubmission: s('done'),
-      interviewNotice: s('need'),
-      interviewResult: s('pending'),
-    },
-    isSeparateManagement: false, createdAt: '2026-04-02T09:00:00Z', updatedAt: '2026-04-14T10:00:00Z',
+    progress: [prog('진행완료'), prog('작성완료'), prog('안내'), prog('안내')],
+    submitted: true, isSeparateManagement: false, createdAt: '2026-04-02T09:00:00Z', updatedAt: '2026-04-14T10:00:00Z',
   },
   {
     id: 'd06-02', no: 47, jobPostingId: 'job-06', team: '데이터엔지니어링', name: '조은서', platform: '사람인', birthYear: '1997', email: 'eunseo.jo@naver.com', phone: '010-4646-5757', region: '경기', regionDetail: '안산시 상록구', school: '한양대학교', major: '데이터사이언스', career: '경력 2년', memo: 'Spark 경험', applicationDate: '2026-04-03',
-    recruitmentStatus: {
-      personalityTestNotice: s('done', { startDate: '2026-04-07', endDate: '2026-04-14' }),
-      personalityTestRegistration: s('done'),
-      personalityTestResult: s('pass'),
-      companyFormNotice: s('need'),
-      companyFormSubmission: s('pending'),
-      interviewNotice: s('pending'),
-      interviewResult: s('pending'),
-    },
-    isSeparateManagement: false, createdAt: '2026-04-03T09:00:00Z', updatedAt: '2026-04-14T10:00:00Z',
+    progress: [prog('진행완료'), prog('안내'), prog('안내'), prog('안내')],
+    submitted: true, isSeparateManagement: false, createdAt: '2026-04-03T09:00:00Z', updatedAt: '2026-04-14T10:00:00Z',
   },
   {
     id: 'd06-03', no: 48, jobPostingId: 'job-06', team: '데이터분석', name: '이하율', platform: '잡코리아', birthYear: '1999', email: 'hayul.lee@gmail.com', phone: '010-5757-6868', region: '서울', regionDetail: '관악구', school: '서울대학교', major: '수학', career: '신입', memo: '석사 졸업', applicationDate: '2026-04-04',
-    recruitmentStatus: {
-      personalityTestNotice: s('done', { startDate: '2026-04-08', endDate: '2026-04-14' }),
-      personalityTestRegistration: s('done'),
-      personalityTestResult: s('pass'),
-      companyFormNotice: s('pending'),
-      companyFormSubmission: s('pending'),
-      interviewNotice: s('pending'),
-      interviewResult: s('pending'),
-    },
-    isSeparateManagement: false, createdAt: '2026-04-04T09:00:00Z', updatedAt: '2026-04-14T10:00:00Z',
+    progress: [prog('진행완료'), prog('안내'), prog('안내'), prog('안내')],
+    submitted: true, isSeparateManagement: false, createdAt: '2026-04-04T09:00:00Z', updatedAt: '2026-04-14T10:00:00Z',
   },
   {
     id: 'd06-04', no: 49, jobPostingId: 'job-06', team: '데이터엔지니어링', name: '박준서', platform: '워크넷', birthYear: '1998', email: 'junseo.park@naver.com', phone: '010-6868-7979', region: '세종', regionDetail: '한솔동', school: '충북대학교', major: '정보통신공학', career: '경력 1년', memo: '', applicationDate: '2026-04-05',
-    recruitmentStatus: {
-      personalityTestNotice: s('done', { startDate: '2026-04-09', endDate: '2026-04-14' }),
-      personalityTestRegistration: s('need'),
-      personalityTestResult: s('pending'),
-      companyFormNotice: s('pending'),
-      companyFormSubmission: s('pending'),
-      interviewNotice: s('pending'),
-      interviewResult: s('pending'),
-    },
-    isSeparateManagement: false, createdAt: '2026-04-05T09:00:00Z', updatedAt: '2026-04-10T10:00:00Z',
+    progress: [prog('공고등록'), prog('안내'), prog('안내'), prog('안내')],
+    submitted: true, isSeparateManagement: false, createdAt: '2026-04-05T09:00:00Z', updatedAt: '2026-04-10T10:00:00Z',
   },
   {
     id: 'd06-05', no: 50, jobPostingId: 'job-06', team: '데이터분석', name: '김서윤', platform: '사람인', birthYear: '2001', email: 'seoyun.kim2@gmail.com', phone: '010-7979-8080', region: '서울', regionDetail: '중랑구', school: '국민대학교', major: '빅데이터', career: '신입', memo: '', applicationDate: '2026-04-07',
-    recruitmentStatus: {
-      personalityTestNotice: s('need'),
-      personalityTestRegistration: s('pending'),
-      personalityTestResult: s('pending'),
-      companyFormNotice: s('pending'),
-      companyFormSubmission: s('pending'),
-      interviewNotice: s('pending'),
-      interviewResult: s('pending'),
-    },
-    isSeparateManagement: false, createdAt: '2026-04-07T09:00:00Z', updatedAt: '2026-04-07T10:00:00Z',
+    progress: [prog('안내'), prog('안내'), prog('안내'), prog('안내')],
+    submitted: true, isSeparateManagement: false, createdAt: '2026-04-07T09:00:00Z', updatedAt: '2026-04-07T10:00:00Z',
   },
   {
     id: 'd06-06', no: 51, jobPostingId: 'job-06', team: '데이터엔지니어링', name: '정우진', platform: '인크루트', birthYear: '1996', email: 'woojin.jung@daum.net', phone: '010-8080-9191', region: '전북', regionDetail: '전주시 덕진구', school: '전북대학교', major: '컴퓨터공학', career: '경력 2년', memo: 'ETL 파이프라인 경험', applicationDate: '2026-04-08',
-    recruitmentStatus: {
-      personalityTestNotice: s('need'),
-      personalityTestRegistration: s('pending'),
-      personalityTestResult: s('pending'),
-      companyFormNotice: s('pending'),
-      companyFormSubmission: s('pending'),
-      interviewNotice: s('pending'),
-      interviewResult: s('pending'),
-    },
-    isSeparateManagement: false, createdAt: '2026-04-08T09:00:00Z', updatedAt: '2026-04-08T10:00:00Z',
+    progress: [prog('안내'), prog('안내'), prog('안내'), prog('안내')],
+    submitted: true, isSeparateManagement: false, createdAt: '2026-04-08T09:00:00Z', updatedAt: '2026-04-08T10:00:00Z',
   },
   {
     id: 'd06-07', no: 52, jobPostingId: 'job-06', team: '데이터분석', name: '안서현', platform: '직접지원', birthYear: '2000', email: 'seohyun.ahn@gmail.com', phone: '010-9191-0202', region: '경기', regionDetail: '하남시', school: '경희대학교', major: '응용통계', career: '신입', memo: '', applicationDate: '2026-04-10',
-    recruitmentStatus: allPending(),
-    isSeparateManagement: false, createdAt: '2026-04-10T09:00:00Z', updatedAt: '2026-04-10T10:00:00Z',
+    progress: [prog('안내'), prog('안내'), prog('안내'), prog('안내')],
+    submitted: false, isSeparateManagement: false, createdAt: '2026-04-10T09:00:00Z', updatedAt: '2026-04-10T10:00:00Z',
   },
   {
     id: 'd06-08', no: 53, jobPostingId: 'job-06', team: '데이터분석', name: '구민재', platform: '잡코리아', birthYear: '1998', email: 'minjae.gu@naver.com', phone: '010-0202-1313', region: '서울', regionDetail: '동대문구', school: '세종대학교', major: '데이터사이언스', career: '경력 1년', memo: '지원 포기 연락', applicationDate: '2026-04-03',
-    recruitmentStatus: {
-      personalityTestNotice: s('done', { startDate: '2026-04-07', endDate: '2026-04-14' }),
-      personalityTestRegistration: s('pending'),
-      personalityTestResult: s('pending'),
-      companyFormNotice: s('pending'),
-      companyFormSubmission: s('pending'),
-      interviewNotice: s('pending'),
-      interviewResult: s('pending'),
-    },
-    isSeparateManagement: true, separateReason: '지원 직후 전화로 지원 포기 의사를 전달받음.', separatedAt: '2026-04-10T10:00:00Z', createdAt: '2026-04-03T09:00:00Z', updatedAt: '2026-04-10T10:00:00Z',
+    progress: [prog('안내', { startDate: '2026-04-07', endDate: '2026-04-14' }), prog('안내'), prog('안내'), prog('안내')],
+    submitted: true, isSeparateManagement: true, separateReason: '지원 직후 전화로 지원 포기 의사를 전달받음.', separatedAt: '2026-04-10T10:00:00Z', createdAt: '2026-04-03T09:00:00Z', updatedAt: '2026-04-10T10:00:00Z',
   },
 ];
 
@@ -929,91 +553,15 @@ function buildCoverLetter(raw: RawApplicant): CoverLetterAnswer[] {
 
 const postingsById = new Map(dummyJobPostings.map(p => [p.id, p]));
 
-// job-05만 예전 4단계 대체 템플릿(서류/인성검사/적성검사및면접/최종임원면접)을 쓰고,
-// 나머지는 모두 기본 프리셋(인성검사/자사양식/면접/최종)을 쓴다 — 공고별 커스터마이징
-// 시연용으로 하나만 다른 구성을 유지한다.
-const EXECUTIVE_TEMPLATE_JOB_ID = 'job-05';
-
-const OLD_KEYS_4: (keyof RawRecruitmentStatus)[] = [
-  'personalityTestNotice', 'personalityTestResult', 'interviewNotice', 'interviewResult',
-];
-const OLD_STATUS_TO_NAME: Partial<Record<RawStepStatus, string>> = {
-  need: '필요', done: '완료', pass: '합격', fail: '불합격',
-};
-
-/** job-05(대체 템플릿)용 변환 — 구 7단계 값 중 4개 인덱스만 뽑아 이름으로 매칭한다. */
-function convertToExecutiveStageRecords(raw: RawApplicant, stages: Stage[]): StageRecord[] {
+/** raw.progress를 공고의 실제 stages 순서에 맞춰 StageRecord[]로 변환한다. 각 단계의
+ * 상태는 이름으로 조회하므로(공고마다 상태 id는 다르지만 이름 체계는 공고 유형별로
+ * 고정) 어떤 공고의 stages든 동일하게 동작한다. */
+function toStageRecords(raw: RawApplicant, stages: Stage[]): StageRecord[] {
   return stages.map((stage, i) => {
-    const oldDetail = raw.recruitmentStatus[OLD_KEYS_4[i]];
-    const defaultStatus = stage.statuses.find(st => st.isDefault) ?? stage.statuses[0];
-    const wantedName = OLD_STATUS_TO_NAME[oldDetail.status];
-    const matched = wantedName ? stage.statuses.find(st => st.name === wantedName) : undefined;
-    const hasMeta = !!(oldDetail.startDate || oldDetail.endDate || oldDetail.time || oldDetail.interviewer);
-    return {
-      stageId: stage.id,
-      statusId: (matched ?? defaultStatus).id,
-      meta: hasMeta ? {
-        startDate: oldDetail.startDate, endDate: oldDetail.endDate,
-        time: oldDetail.time, note: oldDetail.interviewer,
-      } : undefined,
-      updatedAt: oldDetail.updatedAt || raw.updatedAt,
-    };
+    const p = raw.progress[i];
+    const status = stage.statuses.find(st => st.name === p.status) ?? stage.statuses[0];
+    return { stageId: stage.id, statusId: status.id, meta: p.meta, updatedAt: raw.updatedAt };
   });
-}
-
-function metaFrom(detail: RawStepDetail): StageRecordMeta | undefined {
-  if (!detail.startDate && !detail.endDate && !detail.time && !detail.interviewer) return undefined;
-  return { startDate: detail.startDate, endDate: detail.endDate, time: detail.time, note: detail.interviewer };
-}
-
-function findStatus(stage: Stage, name: string): string {
-  return (stage.statuses.find(s => s.name === name) ?? stage.statuses[0]).id;
-}
-
-/**
- * 기본 프리셋(인성검사/자사양식/면접/최종)용 변환. 구 7단계 raw 값(안내/등록/결과
- * 또는 안내/제출 또는 안내/결과)을 각 단계의 새 상태 이름으로 재해석한다 — 예를 들어
- * 인성검사는 "안내 완료 + 등록 미완료"면 '공고등록', "등록 완료 + 결과 대기"면
- * '진행완료'로 매핑한다. "최종" 단계는 구 데이터에 대응 항목이 없어 항상 시작
- * 상태(안내)로 둔다(합격/불합격 여부와 무관하게 — 최종 판정은 finalResult가 따로 맡는다).
- */
-function convertToPresetStageRecords(raw: RawApplicant, stages: Stage[]): StageRecord[] {
-  const [personality, form, interview, final] = stages;
-  const rs = raw.recruitmentStatus;
-  const now = raw.updatedAt;
-  const records: StageRecord[] = [];
-
-  {
-    const { personalityTestNotice: notice, personalityTestRegistration: registration, personalityTestResult: result } = rs;
-    const statusName = result.status === 'pass' ? '합격'
-      : result.status === 'fail' ? '불합격'
-      : registration.status === 'done' ? '진행완료'
-      : notice.status === 'done' ? '공고등록'
-      : '안내';
-    records.push({ stageId: personality.id, statusId: findStatus(personality, statusName), meta: metaFrom(notice), updatedAt: now });
-  }
-  {
-    const { companyFormNotice: notice, companyFormSubmission: submission } = rs;
-    const statusName = submission.status === 'done' ? '작성완료' : '안내';
-    records.push({ stageId: form.id, statusId: findStatus(form, statusName), meta: metaFrom(notice), updatedAt: now });
-  }
-  {
-    const { interviewNotice: notice, interviewResult: result } = rs;
-    const statusName = result.status === 'pass' ? '합격'
-      : result.status === 'fail' ? '불합격'
-      : notice.status === 'done' ? '진행완료'
-      : '안내';
-    records.push({ stageId: interview.id, statusId: findStatus(interview, statusName), meta: metaFrom(notice), updatedAt: now });
-  }
-  records.push({ stageId: final.id, statusId: findStatus(final, '안내'), updatedAt: now });
-
-  return records;
-}
-
-function convertToStageRecords(raw: RawApplicant, posting: JobPosting): StageRecord[] {
-  return posting.id === EXECUTIVE_TEMPLATE_JOB_ID
-    ? convertToExecutiveStageRecords(raw, posting.stages)
-    : convertToPresetStageRecords(raw, posting.stages);
 }
 
 /** 전형 단계와 무관하게 지정하는 최종 판정(일부 지원자만). d06-07은 인성검사조차
@@ -1023,31 +571,17 @@ const FINAL_RESULTS: Record<string, FinalResult> = {
   'd01-02': { result: '합격', decidedAt: '2026-04-13T10:00:00Z' },
   'd02-02': { result: '합격', decidedAt: '2026-04-11T09:00:00Z' },
   'd03-02': { result: '합격', decidedAt: '2026-04-13T09:00:00Z' },
-  'd01-03': { result: '불합격', decidedAt: '2026-04-12T09:00:00Z' },
-  'd02-08': { result: '불합격', decidedAt: '2026-04-02T09:00:00Z' },
+  'd01-03': { result: '불합격', note: '면접 결과 미흡', decidedAt: '2026-04-12T09:00:00Z' },
+  'd02-08': { result: '불합격', note: '인성검사 결과 미달', decidedAt: '2026-04-02T09:00:00Z' },
+  'd01-07': { result: '불합격', note: '인성검사 결과 미달', decidedAt: '2026-03-27T10:00:00Z' },
   'd06-07': { result: '합격', note: '임원 추천 특별 채용', decidedAt: '2026-04-11T09:00:00Z' },
 };
 
-/** 최종 판정이 합격/불합격으로 난 지원자는 "최종" 단계도 전형완료로 맞춰
- * 보여준다 — 다만 특별 채용 케이스(d06-07)는 일부러 그대로 두어 "중간 단계인데
- * 최종 결과만 확정된" 상태를 보여준다. */
-const SYNC_FINAL_STAGE_IDS = new Set(['d01-02', 'd02-02', 'd03-02', 'd01-03', 'd02-08']);
-
-function applyFinalResultOverlay(raw: RawApplicant, posting: JobPosting | undefined, stageRecords: StageRecord[]): StageRecord[] {
-  if (!posting || posting.id === EXECUTIVE_TEMPLATE_JOB_ID || !SYNC_FINAL_STAGE_IDS.has(raw.id)) return stageRecords;
-  const final = posting.stages.find(s => s.name === '최종');
-  if (!final) return stageRecords;
-  return stageRecords.map(r => r.stageId === final.id
-    ? { ...r, statusId: findStatus(final, '전형완료'), updatedAt: raw.updatedAt }
-    : r);
-}
-
 function enrich(raw: RawApplicant): Applicant {
   const majorField = classifyMajorField(raw.major);
-  const allInitial = Object.values(raw.recruitmentStatus).every(step => step.status === 'pending');
-  const submissionStatus: SubmissionStatus = allInitial ? '미완료' : '완료';
+  const submissionStatus: SubmissionStatus = raw.submitted ? '완료' : '미완료';
   const posting = postingsById.get(raw.jobPostingId);
-  const stageRecords = applyFinalResultOverlay(raw, posting, posting ? convertToStageRecords(raw, posting) : []);
+  const stageRecords = posting ? toStageRecords(raw, posting.stages) : [];
 
   return {
     id: raw.id,
