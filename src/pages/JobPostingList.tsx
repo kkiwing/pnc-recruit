@@ -20,13 +20,47 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Users, UserX, ChevronRight, Plus, Pencil, Trash2, MoreVertical, Search, SlidersHorizontal } from 'lucide-react';
+import { Users, UserX, CalendarClock, CheckCircle2, ChevronRight, Plus, Pencil, Trash2, MoreVertical, Search, SlidersHorizontal } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { JobPosting, JobPostingStatus, EmploymentType, getJobPostingStatus } from '@/types/jobPosting';
 import { getInterviewInfo } from '@/types/applicant';
 import { toDateStr } from '@/lib/utils';
 import JobPostingFormModal from '@/components/jobPosting/JobPostingFormModal';
 
 type SortOption = 'deadlineAsc' | 'createdDesc' | 'createdAsc' | 'updatedDesc' | 'applicantsDesc' | 'applicantsAsc' | 'statusFirst';
+
+/** 공고 카드의 지표 한 칸. 값이 0이어도 아이콘·자리는 그대로 유지하고 흐리게만
+ * 표시해, 카드마다 지표 유무가 달라도 열이 어긋나지 않게 한다. */
+function StatItem({ icon: Icon, count, label, tone, onClick }: {
+  icon: React.ComponentType<{ className?: string }>;
+  count: number;
+  label: string;
+  tone: 'primary' | 'destructive' | 'success';
+  onClick?: () => void;
+}) {
+  const isZero = count === 0;
+  const toneClass = isZero ? 'text-muted-foreground' : tone === 'destructive' ? 'text-destructive' : tone === 'success' ? 'text-success' : 'text-primary';
+  const inner = (
+    <div className={`flex flex-col items-center gap-0.5 w-12 shrink-0 ${isZero ? 'opacity-40' : ''}`}>
+      <Icon className={`w-4 h-4 ${toneClass}`} />
+      <span className={`text-xs font-medium ${isZero ? 'text-muted-foreground' : 'text-foreground'}`}>{count}</span>
+    </div>
+  );
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        {onClick ? (
+          <button type="button" onClick={e => { e.stopPropagation(); onClick(); }} className="hover:opacity-70 transition-opacity">
+            {inner}
+          </button>
+        ) : (
+          <span>{inner}</span>
+        )}
+      </TooltipTrigger>
+      <TooltipContent>{label} {count}명</TooltipContent>
+    </Tooltip>
+  );
+}
 
 const SORT_LABELS: Record<SortOption, string> = {
   deadlineAsc: '마감일 임박순',
@@ -202,78 +236,75 @@ export default function JobPostingListPage() {
               className="cursor-pointer"
               onClick={() => navigate(`/postings/${job.id}`)}
             >
-              <CardContent className="p-5">
-                <div className="flex items-center justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
+              <CardContent className="p-4">
+                <div className="grid grid-cols-[1fr_auto_auto] items-center gap-4">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-1.5 mb-0.5 flex-wrap">
                       <Badge variant={jobStatus === '진행중' ? 'success' : 'secondary'} className="text-xs">
                         {jobStatus}
                       </Badge>
                       <Badge variant="outline" className="text-xs">{job.careerType}</Badge>
                       <Badge variant="outline" className="text-xs">{job.employmentType}</Badge>
-                      <span className="text-xs text-muted-foreground">
+                      <span className="text-xs text-muted-foreground truncate">
                         {job.department}{job.position ? ` · ${job.position}` : ''}
                       </span>
                     </div>
-                    <h3 className="font-semibold text-sm mb-1">{job.title}</h3>
+                    <h3 className="font-semibold text-sm truncate">{job.title}</h3>
                     <p className="text-xs text-muted-foreground">게시기간 {job.startDate} ~ {job.endDate}</p>
                   </div>
-                  <div className="flex items-center gap-6 mr-4">
+
+                  <div className="grid grid-cols-4 gap-1">
+                    <StatItem
+                      icon={Users}
+                      count={activeCount}
+                      label="지원자"
+                      tone="primary"
+                      onClick={() => navigate(`/applicants?posting=${job.id}`)}
+                    />
+                    <StatItem
+                      icon={UserX}
+                      count={separateCount}
+                      label="별도관리"
+                      tone="destructive"
+                      onClick={() => navigate(`/separate-management?posting=${job.id}`)}
+                    />
+                    <StatItem icon={CalendarClock} count={interviewPending} label="면접 예정" tone="primary" />
+                    <StatItem icon={CheckCircle2} count={passed} label="합격" tone="success" />
+                  </div>
+
+                  <div className="flex items-center gap-2 shrink-0">
                     <div
-                      className="flex items-center gap-2"
+                      className="flex flex-col items-center gap-0.5"
                       onClick={e => e.stopPropagation()}
                     >
                       <Switch
+                        className="scale-75"
                         checked={job.isPublic}
                         onCheckedChange={checked => updateJobPosting(job.id, { isPublic: checked })}
                       />
-                      <span className="text-xs text-muted-foreground w-10">{job.isPublic ? '공개' : '비공개'}</span>
+                      <span className="text-[10px] text-muted-foreground">{job.isPublic ? '공개' : '비공개'}</span>
                     </div>
-                    <button
-                      type="button"
-                      className="flex items-center gap-1.5 text-sm hover:underline"
-                      onClick={e => { e.stopPropagation(); navigate(`/applicants?posting=${job.id}`); }}
-                    >
-                      <Users className="w-4 h-4 text-primary" />
-                      <span className="font-medium">{activeCount}</span>
-                      <span className="text-xs text-muted-foreground">지원자</span>
-                    </button>
-                    <button
-                      type="button"
-                      className="flex items-center gap-1.5 text-sm hover:underline"
-                      onClick={e => { e.stopPropagation(); navigate(`/separate-management?posting=${job.id}`); }}
-                    >
-                      <UserX className="w-4 h-4 text-destructive" />
-                      <span className="font-medium">{separateCount}</span>
-                      <span className="text-xs text-muted-foreground">별도관리</span>
-                    </button>
-                    {interviewPending > 0 && (
-                      <Badge variant="secondary" className="text-xs">면접 예정 {interviewPending}</Badge>
-                    )}
-                    {passed > 0 && (
-                      <Badge variant="success" className="text-xs">합격 {passed}</Badge>
-                    )}
+                    <div onClick={e => e.stopPropagation()}>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="sm" className="h-7 w-7 p-0">
+                            <MoreVertical className="w-4 h-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => setEditTarget(job)}>
+                            <Pencil className="w-3.5 h-3.5 mr-2" /> 수정
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => setDeleteTarget(job)} className="text-destructive">
+                            <Trash2 className="w-3.5 h-3.5 mr-2" /> 삭제
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-muted-foreground" />
                   </div>
-                  <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="sm" className="h-7 w-7 p-0">
-                          <MoreVertical className="w-4 h-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => setEditTarget(job)}>
-                          <Pencil className="w-3.5 h-3.5 mr-2" /> 수정
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => setDeleteTarget(job)} className="text-destructive">
-                          <Trash2 className="w-3.5 h-3.5 mr-2" /> 삭제
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
-                  <ChevronRight className="w-5 h-5 text-muted-foreground" />
                 </div>
-                <div className="mt-3 pt-2 border-t text-[11px] text-muted-foreground">
+                <div className="mt-2 pt-2 border-t text-[11px] text-muted-foreground">
                   created {job.createdAt.slice(0, 10)} by {job.createdBy} · updated {job.updatedAt.slice(0, 10)} by {job.updatedBy}
                 </div>
               </CardContent>
