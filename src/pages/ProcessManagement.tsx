@@ -170,7 +170,7 @@ export default function ProcessManagementPage() {
     <div className="p-6">
       <div className="mb-5">
         <h2 className="text-lg font-semibold">프로세스 관리</h2>
-        <p className="text-sm text-muted-foreground">공고별 전형 단계와 자동 발송 설정을 관리합니다.</p>
+        <p className="text-sm text-muted-foreground">공고별 전형 단계와 발송 메시지 설정을 관리합니다.</p>
       </div>
 
       <div className="mb-5 flex items-center gap-3 max-w-md">
@@ -283,7 +283,7 @@ export default function ProcessManagementPage() {
               <Accordion type="single" collapsible>
                 <AccordionItem value="autoSend" className="border-t border-b-0">
                   <AccordionTrigger className="px-4 py-2 text-xs text-muted-foreground hover:no-underline">
-                    자동 발송 설정{stage.autoSend?.enabled ? ' (사용 중)' : ''}
+                    발송 메시지 설정{stage.autoSend?.enabled ? ' (자동 발송 사용 중)' : ''}
                   </AccordionTrigger>
                   <AccordionContent>
                     <AutoSendPanel config={stage.autoSend} onSave={config => saveAutoSend(stage.id, config)} />
