@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Applicant, FINAL_RESULT_LOCK_MESSAGE, StageRecord, getCurrentStage, getSeparationStage, getStageRecordStatus } from '@/types/applicant';
+import { Applicant, FINAL_RESULT_LOCK_MESSAGE, StageRecord, StageSendRecord, getCurrentStage, getSeparationStage, getStageRecordStatus } from '@/types/applicant';
 import { useApplicants } from '@/context/ApplicantContext';
 import { useJobPostings } from '@/context/JobPostingContext';
 import { Stage, getStageColorHex } from '@/types/jobPosting';
@@ -25,6 +25,7 @@ import MemoModal from './MemoModal';
 import FinalResultModal from './FinalResultModal';
 import SeparateManagementModal from './SeparateManagementModal';
 import SharedStatusSelect from '@/components/common/StatusSelect';
+import { describeSendRecord } from '@/lib/messageTemplate';
 import StatusBadge from '@/components/common/StatusBadge';
 import LockedTooltip from '@/components/common/LockedTooltip';
 
@@ -44,7 +45,7 @@ function StatusSelect({ stage, stageRecords, onChange, onEditMeta, disabled }: {
   const status = getStageRecordStatus(stageRecords, stage);
   const record = stageRecords.find(r => r.stageId === stage.id);
   const meta = record?.meta;
-  const hasMetaInfo = !!meta && !!(meta.startDate || meta.time || meta.note);
+  const hasMetaInfo = !!meta && !!(meta.startDate || meta.time || meta.note || meta.send);
 
   return (
     <div className="inline-flex items-center gap-1.5">
@@ -78,6 +79,7 @@ function StatusSelect({ stage, stageRecords, onChange, onEditMeta, disabled }: {
                 {meta?.startDate && meta?.endDate && <p>기간: {meta.startDate} ~ {meta.endDate}</p>}
                 {meta?.time && <p>시간: {meta.time}</p>}
                 {meta?.note && <p>메모: {meta.note}</p>}
+                {meta?.send && <p>{describeSendRecord(meta.send)}</p>}
                 <p className="text-muted-foreground">클릭해서 수정</p>
               </>
             ) : (
@@ -95,7 +97,7 @@ export default function ApplicantOverviewTable({ applicants, mode = 'active' }: 
   const { jobPostings } = useJobPostings();
   const navigate = useNavigate();
   const [activeStageByApplicant, setActiveStageByApplicant] = useState<Record<string, string>>({});
-  const [completionModal, setCompletionModal] = useState<{ applicantId: string; stage: Stage; statusId: string; initialData?: StageRecord['meta'] } | null>(null);
+  const [completionModal, setCompletionModal] = useState<{ applicantId: string; stage: Stage; statusId: string; initialData?: StageRecord['meta']; autoSendOnSubmit: boolean } | null>(null);
   const [restoreTarget, setRestoreTarget] = useState<Applicant | null>(null);
   const [memoTarget, setMemoTarget] = useState<Applicant | null>(null);
   const [finalResultTarget, setFinalResultTarget] = useState<Applicant | null>(null);
@@ -158,7 +160,7 @@ export default function ApplicantOverviewTable({ applicants, mode = 'active' }: 
   const handleStatusChange = (applicant: Applicant, stage: Stage, statusId: string) => {
     const targetStatus = stage.statuses.find(s => s.id === statusId);
     if (targetStatus?.hasDateInput) {
-      setCompletionModal({ applicantId: applicant.id, stage, statusId });
+      setCompletionModal({ applicantId: applicant.id, stage, statusId, autoSendOnSubmit: true });
       return;
     }
     setStageRecord(applicant, stage, statusId);
@@ -168,10 +170,10 @@ export default function ApplicantOverviewTable({ applicants, mode = 'active' }: 
     const status = getStageRecordStatus(applicant.stageRecords, stage);
     const record = applicant.stageRecords.find(r => r.stageId === stage.id);
     if (!status) return;
-    setCompletionModal({ applicantId: applicant.id, stage, statusId: status.id, initialData: record?.meta });
+    setCompletionModal({ applicantId: applicant.id, stage, statusId: status.id, initialData: record?.meta, autoSendOnSubmit: false });
   };
 
-  const handleCompletionSubmit = (data: { startDate: string; endDate: string; time?: string; note?: string }) => {
+  const handleCompletionSubmit = (data: { startDate: string; endDate: string; time?: string; note?: string; send?: StageSendRecord }) => {
     if (!completionModal) return;
     const applicant = applicants.find(a => a.id === completionModal.applicantId);
     if (!applicant) return;
@@ -180,8 +182,11 @@ export default function ApplicantOverviewTable({ applicants, mode = 'active' }: 
       endDate: data.endDate,
       time: data.time,
       note: data.note,
+      send: data.send,
     });
   };
+
+  const completionApplicant = completionModal ? applicants.find(a => a.id === completionModal.applicantId) : undefined;
 
   return (
     <>
@@ -365,6 +370,17 @@ export default function ApplicantOverviewTable({ applicants, mode = 'active' }: 
           stepLabel={completionModal.stage.name}
           initialData={completionModal.initialData}
           onSubmit={handleCompletionSubmit}
+          sendContext={completionApplicant && {
+            autoSend: completionModal.stage.autoSend,
+            applicantName: completionApplicant.name,
+            stageName: completionModal.stage.name,
+            positionName: (() => {
+              const p = postingsById.get(completionApplicant.jobPostingId);
+              return p?.position || p?.title;
+            })(),
+            existingSend: completionApplicant.stageRecords.find(r => r.stageId === completionModal.stage.id)?.meta?.send,
+            autoSendOnSubmit: completionModal.autoSendOnSubmit,
+          }}
         />
       )}
 

@@ -1,11 +1,21 @@
 import { Stage } from '@/types/jobPosting';
 import { toDateStr } from '@/lib/utils';
 
+/** 단계 안내 메시지의 발송 기록. 프로토타입에서는 실제 발송 없이 기록만 남기며,
+ * 재발송하면 기록이 갱신된다(이력 누적 없음 — 실제 연동 시 이력 테이블로 확장 필요). */
+export interface StageSendRecord {
+  sentAt: string;
+  channels: ('email' | 'sms')[];
+  /** 자동 발송(상태 변경 시 생성)이면 true, 모달의 발송 버튼으로 보낸 수동 발송이면 false */
+  auto?: boolean;
+}
+
 export interface StageRecordMeta {
   startDate?: string;
   endDate?: string;
   time?: string;
   note?: string;
+  send?: StageSendRecord;
 }
 
 export interface StageRecord {

@@ -106,7 +106,7 @@ export default function AutoSendPanel({ config, onSave }: Props) {
       </div>
 
       <Button type="button" size="sm" onClick={() => onSave(draft)}>설정 저장</Button>
-      <p className="text-[11px] text-muted-foreground">실제 발송은 이뤄지지 않으며, 설정 화면만 제공됩니다.</p>
+      <p className="text-[11px] text-muted-foreground">프로토타입에서는 실제 발송 없이 발송 기록만 남습니다. 개별 발송은 지원자의 날짜 입력 모달에서 할 수 있습니다.</p>
     </div>
   );
 }

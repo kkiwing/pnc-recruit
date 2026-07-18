@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Applicant, FINAL_RESULT_LOCK_MESSAGE, StageRecord, getCurrentStage, getStageRecordStatus } from '@/types/applicant';
+import { Applicant, FINAL_RESULT_LOCK_MESSAGE, StageRecord, StageSendRecord, getCurrentStage, getStageRecordStatus } from '@/types/applicant';
 import { useApplicants } from '@/context/ApplicantContext';
 import { JobPosting, Stage, getStageColorHex } from '@/types/jobPosting';
 import { Button } from '@/components/ui/button';
@@ -54,7 +54,7 @@ export default function ApplicantPipelineView({ applicants, jobPosting }: Props)
     handleStatusChange(applicant, targetStage, nextStatusId);
   };
 
-  const handleCompletionSubmit = (data: { startDate: string; endDate: string; time?: string; note?: string }) => {
+  const handleCompletionSubmit = (data: { startDate: string; endDate: string; time?: string; note?: string; send?: StageSendRecord }) => {
     if (!completionModal) return;
     const applicant = applicants.find(a => a.id === completionModal.applicantId);
     if (!applicant) return;
@@ -63,8 +63,11 @@ export default function ApplicantPipelineView({ applicants, jobPosting }: Props)
       endDate: data.endDate,
       time: data.time,
       note: data.note,
+      send: data.send,
     });
   };
+
+  const completionApplicant = completionModal ? applicants.find(a => a.id === completionModal.applicantId) : undefined;
 
   const handleDrop = (e: React.DragEvent, stage: Stage) => {
     e.preventDefault();
@@ -162,6 +165,14 @@ export default function ApplicantPipelineView({ applicants, jobPosting }: Props)
           stepLabel={completionModal.stage.name}
           initialData={completionModal.initialData}
           onSubmit={handleCompletionSubmit}
+          sendContext={completionApplicant && {
+            autoSend: completionModal.stage.autoSend,
+            applicantName: completionApplicant.name,
+            stageName: completionModal.stage.name,
+            positionName: jobPosting.position || jobPosting.title,
+            existingSend: completionApplicant.stageRecords.find(r => r.stageId === completionModal.stage.id)?.meta?.send,
+            autoSendOnSubmit: true,
+          }}
         />
       )}
     </>

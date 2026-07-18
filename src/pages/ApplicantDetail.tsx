@@ -7,9 +7,10 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { FileAttachment, FINAL_RESULT_LOCK_MESSAGE, StageRecord, getStageRecordStatus, getCurrentStage } from '@/types/applicant';
+import { FileAttachment, FINAL_RESULT_LOCK_MESSAGE, StageRecord, StageSendRecord, getStageRecordStatus, getCurrentStage } from '@/types/applicant';
 import { Stage, getStageColorHex } from '@/types/jobPosting';
-import { ArrowLeft, FileText, Upload, Trash2, Clock, Check } from 'lucide-react';
+import { describeSendRecord } from '@/lib/messageTemplate';
+import { ArrowLeft, FileText, Upload, Trash2, Clock, Check, MailCheck } from 'lucide-react';
 import CompletionDateModal from '@/components/applicant/CompletionDateModal';
 import StatusBadge from '@/components/common/StatusBadge';
 import { Badge } from '@/components/ui/badge';
@@ -18,7 +19,7 @@ function StageBadge({ stage, stageRecords, onEditMeta, disabled }: { stage: Stag
   const status = getStageRecordStatus(stageRecords, stage);
   const record = stageRecords.find(r => r.stageId === stage.id);
   const meta = record?.meta;
-  const hasMetaInfo = !!meta && !!(meta.startDate || meta.time || meta.note);
+  const hasMetaInfo = !!meta && !!(meta.startDate || meta.time || meta.note || meta.send);
   const badge = (
     <StatusBadge color={getStageColorHex(status?.color ?? 'gray')} className="px-2 py-1">
       {stage.name}: {status?.name ?? '-'}
@@ -37,6 +38,7 @@ function StageBadge({ stage, stageRecords, onEditMeta, disabled }: { stage: Stag
                 {meta?.startDate && meta?.endDate && <p>기간: {meta.startDate} ~ {meta.endDate}</p>}
                 {meta?.time && <p>시간: {meta.time}</p>}
                 {meta?.note && <p>메모: {meta.note}</p>}
+                {meta?.send && <p>{describeSendRecord(meta.send)}</p>}
               </>
             ) : (
               <p>날짜·시간·메모 미입력</p>
@@ -70,6 +72,7 @@ function ProcessStepper({ stages, stageRecords }: { stages: Stage[]; stageRecord
         const isPast = i < currentIndex;
         const isCurrent = i === currentIndex;
         const status = getStageRecordStatus(stageRecords, stage);
+        const send = stageRecords.find(r => r.stageId === stage.id)?.meta?.send;
         return (
           <div key={stage.id} className="flex items-center">
             {i > 0 && <div className={`w-5 h-px shrink-0 ${isPast || isCurrent ? 'bg-primary/50' : 'bg-border'}`} />}
@@ -87,6 +90,14 @@ function ProcessStepper({ stages, stageRecords }: { stages: Stage[]; stageRecord
               )}
               <span>{stage.name}</span>
               {isCurrent && status && <span className="text-muted-foreground">· {status.name}</span>}
+              {send && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <MailCheck className="w-3 h-3 text-success shrink-0" />
+                  </TooltipTrigger>
+                  <TooltipContent side="top" className="text-xs">{describeSendRecord(send)}</TooltipContent>
+                </Tooltip>
+              )}
             </div>
           </div>
         );
@@ -139,12 +150,12 @@ export default function ApplicantDetailPage() {
     updateApplicant(applicant.id, { memo });
   };
 
-  const handleMetaSubmit = (data: { startDate: string; endDate: string; time?: string; note?: string }) => {
+  const handleMetaSubmit = (data: { startDate: string; endDate: string; time?: string; note?: string; send?: StageSendRecord }) => {
     if (!editingStage) return;
     const status = getStageRecordStatus(applicant.stageRecords, editingStage);
     if (!status) return;
     const now = new Date().toISOString();
-    const meta = { startDate: data.startDate, endDate: data.endDate, time: data.time, note: data.note };
+    const meta = { startDate: data.startDate, endDate: data.endDate, time: data.time, note: data.note, send: data.send };
     const exists = applicant.stageRecords.some(r => r.stageId === editingStage.id);
     const nextRecords = exists
       ? applicant.stageRecords.map(r => r.stageId === editingStage.id ? { stageId: editingStage.id, statusId: status.id, meta, updatedAt: now } : r)
@@ -387,6 +398,14 @@ export default function ApplicantDetailPage() {
           stepLabel={editingStage.name}
           initialData={applicant.stageRecords.find(r => r.stageId === editingStage.id)?.meta}
           onSubmit={handleMetaSubmit}
+          sendContext={{
+            autoSend: editingStage.autoSend,
+            applicantName: applicant.name,
+            stageName: editingStage.name,
+            positionName: jobPosting?.position || jobPosting?.title,
+            existingSend: applicant.stageRecords.find(r => r.stageId === editingStage.id)?.meta?.send,
+            autoSendOnSubmit: false,
+          }}
         />
       )}
     </div>
