@@ -127,13 +127,22 @@ export function createDefaultCoverLetterQuestions(): CoverLetterQuestion[] {
   }));
 }
 
-/** "단계 추가"에서 새 단계에 기본으로 적용하는 상태 세트. */
+/** "단계 추가"에서 새 단계에 기본으로 적용하는 상태 세트. 모든 상태가 날짜+메모
+ * 입력을 받는다 — 어느 상태로 바뀌든 날짜/메모 기록을 남길 수 있게 하는 것이
+ * 기본값이고, 불필요하면 상태 관리에서 끄는 쪽이 담당자의 명시적 선택이다. */
 export function progressStatuses(): StageStatus[] {
   return [
-    { id: crypto.randomUUID(), name: '대기', color: 'gray', isDefault: true },
-    { id: crypto.randomUUID(), name: '진행중', color: 'orange' },
-    { id: crypto.randomUUID(), name: '완료', color: 'green', isCompletion: true },
+    { id: crypto.randomUUID(), name: '대기', color: 'gray', isDefault: true, hasDateInput: true },
+    { id: crypto.randomUUID(), name: '진행중', color: 'orange', hasDateInput: true },
+    { id: crypto.randomUUID(), name: '완료', color: 'green', isCompletion: true, hasDateInput: true },
   ];
+}
+
+/** "단계 추가"에서 새 단계에 기본으로 적용하는 발송 메시지 설정. 자동 발송은 어디서든
+ * 기본 OFF(켜는 것은 담당자의 명시적 선택), 채널은 이메일+문자 모두 체크, 제목은
+ * {{전형단계명}} 변수로 저장해 발송 시점에 단계명이 자동 반영되게 한다. */
+export function defaultAutoSendConfig(): AutoSendConfig {
+  return { enabled: false, channels: ['email', 'sms'], title: '{{전형단계명}} 안내', body: '' };
 }
 
 export const DEFAULT_STAGE_NAMES = ['인성검사', '자사양식', '면접', '최종'] as const;
@@ -155,8 +164,10 @@ export function cloneStages(stages: Stage[]): Stage[] {
  * 단계 내 합격/불합격 상태값은 존재하지 않는다 — 단계 통과는 "다음 단계로의 이동"으로,
  * 탈락은 Applicant.finalResult(불합격)로 표현하므로 경유지 성격의 합불 상태는 군더더기이자
  * 단계종료 배타 규칙(2.12)을 깨는 원인이었다(2026-07-16 decision-log, "구조는 단순하게"
- * 원칙의 마무리). "안내" 상태만 hasDateInput으로 날짜+메모 입력을 받는다. 최종 합격/불합격은
- * Applicant.finalResult로 전형 구조와 무관하게 별도 지정한다(특별 채용 등 예외 대응).
+ * 원칙의 마무리). 모든 상태가 hasDateInput으로 날짜+메모 입력을 받는다(2026-07-20 —
+ * 어느 상태로 바뀌든 기록을 남길 수 있는 것이 기본값). 발송 채널은 전 단계
+ * 이메일+문자, 자동 발송은 전 단계 OFF(옵트인 원칙 — 켜는 것은 담당자의 명시적 선택).
+ * 최종 합격/불합격은 Applicant.finalResult로 전형 구조와 무관하게 별도 지정한다.
  */
 export function createDefaultStages(): Stage[] {
   const stage = (name: string, statuses: StageStatus[], autoSend: AutoSendConfig): Omit<Stage, 'id' | 'order'> => ({
@@ -168,38 +179,38 @@ export function createDefaultStages(): Stage[] {
   const defs = [
     stage('인성검사', [
       { id: crypto.randomUUID(), name: '안내', color: 'gray', isDefault: true, hasDateInput: true },
-      { id: crypto.randomUUID(), name: '공고등록', color: 'orange' },
-      { id: crypto.randomUUID(), name: '진행완료', color: 'purple', isCompletion: true },
+      { id: crypto.randomUUID(), name: '공고등록', color: 'orange', hasDateInput: true },
+      { id: crypto.randomUUID(), name: '진행완료', color: 'purple', isCompletion: true, hasDateInput: true },
     ], {
-      enabled: true,
-      channels: ['email'],
+      enabled: false,
+      channels: ['email', 'sms'],
       title: '[{{회사명}}] 인성검사 안내',
       body: '안녕하세요, {{지원자명}}님.\n{{회사명}} {{포지션명}} 채용 인성검사 안내드립니다.\n아래 링크를 통해 진행해 주시기 바랍니다.\n\n{{링크}}',
     }),
     stage('자사양식', [
       { id: crypto.randomUUID(), name: '안내', color: 'gray', isDefault: true, hasDateInput: true },
-      { id: crypto.randomUUID(), name: '작성완료', color: 'green', isCompletion: true },
+      { id: crypto.randomUUID(), name: '작성완료', color: 'green', isCompletion: true, hasDateInput: true },
     ], {
-      enabled: true,
-      channels: ['email'],
+      enabled: false,
+      channels: ['email', 'sms'],
       title: '[{{회사명}}] 자사양식 작성 안내',
       body: '안녕하세요, {{지원자명}}님.\n{{회사명}} {{포지션명}} 채용 자사 지원서 작성을 안내드립니다.\n아래 링크에서 작성해 주시기 바랍니다.\n\n{{링크}}',
     }),
     stage('면접', [
       { id: crypto.randomUUID(), name: '안내', color: 'gray', isDefault: true, hasDateInput: true },
-      { id: crypto.randomUUID(), name: '진행완료', color: 'purple', isCompletion: true },
+      { id: crypto.randomUUID(), name: '진행완료', color: 'purple', isCompletion: true, hasDateInput: true },
     ], {
-      enabled: true,
+      enabled: false,
       channels: ['email', 'sms'],
       title: '[{{회사명}}] 면접 안내',
       body: '안녕하세요, {{지원자명}}님.\n{{회사명}} {{포지션명}} 면접 일정을 안내드립니다.\n일시: {{면접일시}}\n장소: {{면접장소}}',
     }),
     stage('최종', [
       { id: crypto.randomUUID(), name: '안내', color: 'gray', isDefault: true, hasDateInput: true },
-      { id: crypto.randomUUID(), name: '전형완료', color: 'green', isCompletion: true },
+      { id: crypto.randomUUID(), name: '전형완료', color: 'green', isCompletion: true, hasDateInput: true },
     ], {
-      enabled: true,
-      channels: ['email'],
+      enabled: false,
+      channels: ['email', 'sms'],
       title: '[{{회사명}}] 최종 전형 안내',
       body: '안녕하세요, {{지원자명}}님.\n{{회사명}} {{포지션명}} 최종 전형 안내드립니다.\n\n{{링크}}',
     }),

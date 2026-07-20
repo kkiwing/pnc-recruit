@@ -9,9 +9,9 @@ function questionsFor(postingId: string) {
 
 function progressStatusesFor(prefix: string) {
   return [
-    { id: `${prefix}-s1`, name: '대기', color: 'gray', isDefault: true },
-    { id: `${prefix}-s2`, name: '진행중', color: 'orange' },
-    { id: `${prefix}-s3`, name: '완료', color: 'green', isCompletion: true },
+    { id: `${prefix}-s1`, name: '대기', color: 'gray', isDefault: true, hasDateInput: true },
+    { id: `${prefix}-s2`, name: '진행중', color: 'orange', hasDateInput: true },
+    { id: `${prefix}-s3`, name: '완료', color: 'green', isCompletion: true, hasDateInput: true },
   ];
 }
 
@@ -23,6 +23,7 @@ function buildStages(postingId: string, defs: { name: string }[]): Stage[] {
       name: d.name,
       order: i + 1,
       statuses: progressStatusesFor(prefix),
+      autoSend: { enabled: false, channels: ['email', 'sms'] as ('email' | 'sms')[], title: '{{전형단계명}} 안내', body: '' },
     };
   });
 }
@@ -45,12 +46,12 @@ function defaultStagesFor(postingId: string): Stage[] {
       id: personality, name: '인성검사', order: 1,
       statuses: [
         { id: `${personality}-notice`, name: '안내', color: 'gray', isDefault: true, hasDateInput: true },
-        { id: `${personality}-registered`, name: '공고등록', color: 'orange' },
-        { id: `${personality}-inprogress`, name: '진행완료', color: 'purple', isCompletion: true },
+        { id: `${personality}-registered`, name: '공고등록', color: 'orange', hasDateInput: true },
+        { id: `${personality}-inprogress`, name: '진행완료', color: 'purple', isCompletion: true, hasDateInput: true },
       ],
       autoSend: {
-        enabled: true,
-        channels: ['email'],
+        enabled: false,
+        channels: ['email', 'sms'],
         title: '[{{회사명}}] 인성검사 안내',
         body: '안녕하세요, {{지원자명}}님.\n{{회사명}} {{포지션명}} 채용 인성검사 안내드립니다.\n아래 링크를 통해 진행해 주시기 바랍니다.\n\n{{링크}}',
       },
@@ -59,11 +60,11 @@ function defaultStagesFor(postingId: string): Stage[] {
       id: form, name: '자사양식', order: 2,
       statuses: [
         { id: `${form}-notice`, name: '안내', color: 'gray', isDefault: true, hasDateInput: true },
-        { id: `${form}-done`, name: '작성완료', color: 'green', isCompletion: true },
+        { id: `${form}-done`, name: '작성완료', color: 'green', isCompletion: true, hasDateInput: true },
       ],
       autoSend: {
-        enabled: true,
-        channels: ['email'],
+        enabled: false,
+        channels: ['email', 'sms'],
         title: '[{{회사명}}] 자사양식 작성 안내',
         body: '안녕하세요, {{지원자명}}님.\n{{회사명}} {{포지션명}} 채용 자사 지원서 작성을 안내드립니다.\n아래 링크에서 작성해 주시기 바랍니다.\n\n{{링크}}',
       },
@@ -72,10 +73,10 @@ function defaultStagesFor(postingId: string): Stage[] {
       id: interview, name: '면접', order: 3,
       statuses: [
         { id: `${interview}-notice`, name: '안내', color: 'gray', isDefault: true, hasDateInput: true },
-        { id: `${interview}-inprogress`, name: '진행완료', color: 'purple', isCompletion: true },
+        { id: `${interview}-inprogress`, name: '진행완료', color: 'purple', isCompletion: true, hasDateInput: true },
       ],
       autoSend: {
-        enabled: true,
+        enabled: false,
         channels: ['email', 'sms'],
         title: '[{{회사명}}] 면접 안내',
         body: '안녕하세요, {{지원자명}}님.\n{{회사명}} {{포지션명}} 면접 일정을 안내드립니다.\n일시: {{면접일시}}\n장소: {{면접장소}}',
@@ -85,11 +86,11 @@ function defaultStagesFor(postingId: string): Stage[] {
       id: final, name: '최종', order: 4,
       statuses: [
         { id: `${final}-notice`, name: '안내', color: 'gray', isDefault: true, hasDateInput: true },
-        { id: `${final}-done`, name: '전형완료', color: 'green', isCompletion: true },
+        { id: `${final}-done`, name: '전형완료', color: 'green', isCompletion: true, hasDateInput: true },
       ],
       autoSend: {
-        enabled: true,
-        channels: ['email'],
+        enabled: false,
+        channels: ['email', 'sms'],
         title: '[{{회사명}}] 최종 전형 안내',
         body: '안녕하세요, {{지원자명}}님.\n{{회사명}} {{포지션명}} 최종 전형 안내드립니다.\n\n{{링크}}',
       },

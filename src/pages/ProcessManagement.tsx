@@ -20,7 +20,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Stage, StageStatus, AutoSendConfig, getStageColorHex, progressStatuses } from '@/types/jobPosting';
+import { Stage, StageStatus, AutoSendConfig, defaultAutoSendConfig, getStageColorHex, progressStatuses } from '@/types/jobPosting';
 import { getCurrentStage } from '@/types/applicant';
 import StatusBadge from '@/components/common/StatusBadge';
 import { Plus, Trash2, GripVertical, Settings2, AlertTriangle, Info } from 'lucide-react';
@@ -160,6 +160,7 @@ export default function ProcessManagementPage() {
       name: newStageName.trim(),
       order: sortedStages.length + 1,
       statuses: progressStatuses(),
+      autoSend: defaultAutoSendConfig(),
     };
     persistStages([...sortedStages, newStage]);
     setNewStageName('');
