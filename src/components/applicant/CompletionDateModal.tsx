@@ -11,7 +11,7 @@ import { toDateStr } from '@/lib/utils';
 import { AutoSendConfig } from '@/types/jobPosting';
 import { StageSendRecord } from '@/types/applicant';
 import { renderTemplate, hasTemplateContent, describeSendRecord, SEND_CHANNEL_LABELS } from '@/lib/messageTemplate';
-import { MailCheck, RotateCcw, Send, Zap } from 'lucide-react';
+import { Lock, MailCheck, RotateCcw, Send, Zap } from 'lucide-react';
 
 /** 발송 섹션을 그리기 위한 재료. 넘기지 않으면 발송 섹션 없이 기존 날짜+메모 모달로만 동작한다. */
 export interface SendContext {
@@ -33,11 +33,14 @@ interface Props {
   initialData?: { startDate?: string; endDate?: string; time?: string; note?: string };
   onSubmit: (data: { startDate: string; endDate: string; time?: string; note?: string; send?: StageSendRecord }) => void;
   sendContext?: SendContext;
+  /** 열람 전용 모드 — 최종 결과로 잠긴 지원자의 기록 확인용. 모든 입력·발송이 비활성화되고
+   * 저장 없이 닫기만 가능하다(잠금은 "변경 차단"이지 "열람 차단"이 아니라는 정책, 2.13). */
+  readOnly?: boolean;
 }
 
 /** 상태에 hasDateInput이 켜져 있을 때 뜨는 날짜(기간)+시간(선택)+메모 입력 모달.
  * sendContext가 주어지면 하단에 해당 단계의 안내 메시지 발송 섹션(미리보기+발송 버튼)을 함께 보여준다. */
-export default function CompletionDateModal({ open, onClose, stepLabel, initialData, onSubmit, sendContext }: Props) {
+export default function CompletionDateModal({ open, onClose, stepLabel, initialData, onSubmit, sendContext, readOnly }: Props) {
   const [startDate, setStartDate] = useState(initialData?.startDate || toDateStr(new Date()));
   const [endDate, setEndDate] = useState(initialData?.endDate || '');
   const [time, setTime] = useState(initialData?.time || '');
@@ -102,20 +105,25 @@ export default function CompletionDateModal({ open, onClose, stepLabel, initialD
     <Dialog open={open} onOpenChange={() => onClose()}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>{stepLabel} 정보 입력</DialogTitle>
+          <DialogTitle>{stepLabel} {readOnly ? '기록 확인' : '정보 입력'}</DialogTitle>
         </DialogHeader>
         <div className="space-y-4 py-4">
+          {readOnly && (
+            <p className="flex items-center gap-1.5 text-xs text-muted-foreground bg-muted rounded-md px-3 py-2">
+              <Lock className="w-3 h-3 shrink-0" /> 열람 전용입니다 — 이 화면에서는 기록을 변경할 수 없습니다.
+            </p>
+          )}
           <div>
             <Label>기간</Label>
-            <DateRangePicker startDate={startDate} endDate={endDate} onChange={(s, e) => { setStartDate(s); setEndDate(e); }} />
+            <DateRangePicker startDate={startDate} endDate={endDate} onChange={(s, e) => { setStartDate(s); setEndDate(e); }} disabled={readOnly} />
           </div>
           <div>
             <Label>시간 <span className="text-xs text-muted-foreground font-normal">(선택)</span></Label>
-            <TimeSelect value={time} onChange={setTime} />
+            <TimeSelect value={time} onChange={setTime} disabled={readOnly} />
           </div>
           <div>
             <Label>메모 <span className="text-xs text-muted-foreground font-normal">(선택)</span></Label>
-            <Textarea value={note} onChange={e => setNote(e.target.value)} placeholder="담당자, 특이사항 등을 남기세요" rows={2} />
+            <Textarea value={note} onChange={e => setNote(e.target.value)} placeholder="담당자, 특이사항 등을 남기세요" rows={2} disabled={readOnly} />
           </div>
 
           {sendContext && (
@@ -137,7 +145,7 @@ export default function CompletionDateModal({ open, onClose, stepLabel, initialD
                 </p>
               ) : (
                 <>
-                  {sendContext.autoSendOnSubmit && autoSend?.enabled && canSend && (
+                  {!readOnly && sendContext.autoSendOnSubmit && autoSend?.enabled && canSend && (
                     <p className="flex items-center gap-1 text-[11px] text-muted-foreground">
                       <Zap className="w-3 h-3 shrink-0" /> 자동 발송이 켜진 단계입니다. 확인 시 발송 기록이 자동 생성됩니다.
                     </p>
@@ -153,6 +161,7 @@ export default function CompletionDateModal({ open, onClose, stepLabel, initialD
                       onChange={e => setDraft({ subject: e.target.value, body: displayBody })}
                       placeholder="발송 제목"
                       className="h-8 text-xs font-medium"
+                      disabled={readOnly}
                     />
                     <Textarea
                       value={displayBody}
@@ -160,43 +169,54 @@ export default function CompletionDateModal({ open, onClose, stepLabel, initialD
                       placeholder="발송 내용"
                       rows={5}
                       className="text-xs"
+                      disabled={readOnly}
                     />
+                    {!readOnly && (
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="text-[10px] text-muted-foreground">
+                          이 지원자에게만 보낼 내용을 여기서 바로 고칠 수 있습니다. 템플릿 원본은 바뀌지 않습니다.
+                        </p>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 px-2 text-[11px] text-muted-foreground shrink-0"
+                          disabled={draft === null}
+                          onClick={() => setDraft(null)}
+                        >
+                          <RotateCcw className="w-3 h-3 mr-1" /> 템플릿으로 되돌리기
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                  {!readOnly && (
                     <div className="flex items-center justify-between gap-2">
                       <p className="text-[10px] text-muted-foreground">
-                        이 지원자에게만 보낼 내용을 여기서 바로 고칠 수 있습니다. 템플릿 원본은 바뀌지 않습니다.
+                        {!endDate
+                          ? '기간을 입력하면 발송할 수 있습니다.'
+                          : !canSend
+                            ? '발송 채널이 설정되어 있지 않습니다.'
+                            : '실제 발송 없이 발송 기록만 남습니다(프로토타입).'}
                       </p>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="h-6 px-2 text-[11px] text-muted-foreground shrink-0"
-                        disabled={draft === null}
-                        onClick={() => setDraft(null)}
-                      >
-                        <RotateCcw className="w-3 h-3 mr-1" /> 템플릿으로 되돌리기
+                      <Button type="button" variant="outline" size="sm" disabled={!endDate || !canSend} onClick={handleSend}>
+                        <Send className="w-3.5 h-3.5 mr-1" /> {sendContext.existingSend ? '재발송' : '발송'}
                       </Button>
                     </div>
-                  </div>
-                  <div className="flex items-center justify-between gap-2">
-                    <p className="text-[10px] text-muted-foreground">
-                      {!endDate
-                        ? '기간을 입력하면 발송할 수 있습니다.'
-                        : !canSend
-                          ? '발송 채널이 설정되어 있지 않습니다.'
-                          : '실제 발송 없이 발송 기록만 남습니다(프로토타입).'}
-                    </p>
-                    <Button type="button" variant="outline" size="sm" disabled={!endDate || !canSend} onClick={handleSend}>
-                      <Send className="w-3.5 h-3.5 mr-1" /> {sendContext.existingSend ? '재발송' : '발송'}
-                    </Button>
-                  </div>
+                  )}
                 </>
               )}
             </div>
           )}
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={onClose}>취소</Button>
-          <Button onClick={handleSubmit}>확인</Button>
+          {readOnly ? (
+            <Button variant="outline" onClick={onClose}>닫기</Button>
+          ) : (
+            <>
+              <Button variant="outline" onClick={onClose}>취소</Button>
+              <Button onClick={handleSubmit}>확인</Button>
+            </>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>

@@ -18,7 +18,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Trash2, MoreHorizontal, MessageSquare, Clock, Eye, Undo2 } from 'lucide-react';
+import { Trash2, MoreHorizontal, MessageSquare, Clock, Eye, MailCheck, Undo2 } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import CompletionDateModal from './CompletionDateModal';
 import MemoModal from './MemoModal';
@@ -35,36 +35,44 @@ interface Props {
   mode?: 'active' | 'separate';
 }
 
-function StatusSelect({ stage, stageRecords, onChange, onEditMeta, disabled }: {
+/** 상태 셀렉트 + 기록(시계)/발송(메일) 아이콘.
+ * 시계 아이콘은 "현재 상태가 hasDateInput"이거나 "meta 기록이 존재"하면 항상 노출된다 —
+ * 상태가 다음으로 넘어가도 과거에 입력한 날짜/메모 기록에 계속 접근할 수 있게(히스토리
+ * 접근성). 기록이 없으면 흐리게(입력 유도), 있으면 진하게 — 메모 아이콘과 같은 문법.
+ * 잠금(locked)은 변경 차단이지 열람 차단이 아니므로, 기록이 있으면 클릭해 읽기 전용으로
+ * 볼 수 있다(기록도 없으면 비활성). */
+function StatusSelect({ stage, stageRecords, onChange, onEditMeta, locked }: {
   stage: Stage;
   stageRecords: StageRecord[];
   onChange: (statusId: string) => void;
   onEditMeta: () => void;
-  disabled?: boolean;
+  locked?: boolean;
 }) {
   const status = getStageRecordStatus(stageRecords, stage);
   const record = stageRecords.find(r => r.stageId === stage.id);
   const meta = record?.meta;
   const hasMetaInfo = !!meta && !!(meta.startDate || meta.time || meta.note || meta.send);
+  const showClock = !!status?.hasDateInput || hasMetaInfo;
+  const clockDisabled = !!locked && !hasMetaInfo;
 
   return (
     <div className="inline-flex items-center gap-1.5">
-      <LockedTooltip locked={!!disabled} message={FINAL_RESULT_LOCK_MESSAGE}>
+      <LockedTooltip locked={!!locked} message={FINAL_RESULT_LOCK_MESSAGE}>
         <SharedStatusSelect
           value={status?.id ?? ''}
           options={stage.statuses.map(s => ({ id: s.id, name: s.name, color: getStageColorHex(s.color) }))}
           onChange={onChange}
-          disabled={disabled}
+          disabled={locked}
         />
       </LockedTooltip>
-      {status?.hasDateInput && (
+      {showClock && (
         <Tooltip>
           <TooltipTrigger asChild>
             <span className="inline-block">
               <button
                 type="button"
-                disabled={disabled}
-                className="text-muted-foreground hover:text-foreground disabled:opacity-40 disabled:cursor-not-allowed"
+                disabled={clockDisabled}
+                className={`hover:text-foreground disabled:opacity-40 disabled:cursor-not-allowed ${hasMetaInfo ? 'text-muted-foreground' : 'text-muted-foreground/30'}`}
                 onClick={onEditMeta}
               >
                 <Clock className="w-3.5 h-3.5" />
@@ -72,20 +80,29 @@ function StatusSelect({ stage, stageRecords, onChange, onEditMeta, disabled }: {
             </span>
           </TooltipTrigger>
           <TooltipContent side="top" className="text-xs space-y-1 max-w-xs">
-            {disabled ? (
-              <p>{FINAL_RESULT_LOCK_MESSAGE}</p>
-            ) : hasMetaInfo ? (
+            {hasMetaInfo ? (
               <>
                 {meta?.startDate && meta?.endDate && <p>기간: {meta.startDate} ~ {meta.endDate}</p>}
                 {meta?.time && <p>시간: {meta.time}</p>}
                 {meta?.note && <p>메모: {meta.note}</p>}
-                {meta?.send && <p>{describeSendRecord(meta.send)}</p>}
-                {meta?.send?.subject && <p className="text-muted-foreground">발송 제목: {meta.send.subject}</p>}
-                <p className="text-muted-foreground">클릭해서 수정</p>
+                <p className="text-muted-foreground">{locked ? '클릭해서 확인 (잠금 — 열람만 가능)' : '클릭해서 수정'}</p>
               </>
+            ) : locked ? (
+              <p>{FINAL_RESULT_LOCK_MESSAGE}</p>
             ) : (
               <p>클릭해서 날짜·시간·메모 입력</p>
             )}
+          </TooltipContent>
+        </Tooltip>
+      )}
+      {meta?.send && (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <MailCheck className="w-3.5 h-3.5 text-success shrink-0" />
+          </TooltipTrigger>
+          <TooltipContent side="top" className="text-xs space-y-0.5 max-w-xs">
+            <p>{describeSendRecord(meta.send)}</p>
+            {meta.send.subject && <p className="text-muted-foreground">발송 제목: {meta.send.subject}</p>}
           </TooltipContent>
         </Tooltip>
       )}
@@ -98,7 +115,7 @@ export default function ApplicantOverviewTable({ applicants, mode = 'active' }: 
   const { jobPostings } = useJobPostings();
   const navigate = useNavigate();
   const [activeStageByApplicant, setActiveStageByApplicant] = useState<Record<string, string>>({});
-  const [completionModal, setCompletionModal] = useState<{ applicantId: string; stage: Stage; statusId: string; initialData?: StageRecord['meta']; autoSendOnSubmit: boolean } | null>(null);
+  const [completionModal, setCompletionModal] = useState<{ applicantId: string; stage: Stage; statusId: string; initialData?: StageRecord['meta']; autoSendOnSubmit: boolean; readOnly?: boolean } | null>(null);
   const [restoreTarget, setRestoreTarget] = useState<Applicant | null>(null);
   const [memoTarget, setMemoTarget] = useState<Applicant | null>(null);
   const [finalResultTarget, setFinalResultTarget] = useState<Applicant | null>(null);
@@ -167,11 +184,20 @@ export default function ApplicantOverviewTable({ applicants, mode = 'active' }: 
     setStageRecord(applicant, stage, statusId);
   };
 
+  /** 시계 아이콘 → 기록 입력/수정 모달. 최종 결과로 잠긴 지원자와 별도관리 목록에서는
+   * 열람 전용으로 연다(잠금·별도관리는 변경만 막지 기록 열람까지 막지 않는다). */
   const handleEditMeta = (applicant: Applicant, stage: Stage) => {
     const status = getStageRecordStatus(applicant.stageRecords, stage);
     const record = applicant.stageRecords.find(r => r.stageId === stage.id);
     if (!status) return;
-    setCompletionModal({ applicantId: applicant.id, stage, statusId: status.id, initialData: record?.meta, autoSendOnSubmit: false });
+    setCompletionModal({
+      applicantId: applicant.id,
+      stage,
+      statusId: status.id,
+      initialData: record?.meta,
+      autoSendOnSubmit: false,
+      readOnly: !!applicant.finalResult || mode === 'separate',
+    });
   };
 
   const handleCompletionSubmit = (data: { startDate: string; endDate: string; time?: string; note?: string; send?: StageSendRecord }) => {
@@ -275,7 +301,7 @@ export default function ApplicantOverviewTable({ applicants, mode = 'active' }: 
                             stageRecords={applicant.stageRecords}
                             onChange={statusId => handleStatusChange(applicant, activeStage, statusId)}
                             onEditMeta={() => handleEditMeta(applicant, activeStage)}
-                            disabled={!!applicant.finalResult}
+                            locked={!!applicant.finalResult}
                           />
                         ) : '-'}
                       </td>
@@ -296,9 +322,48 @@ export default function ApplicantOverviewTable({ applicants, mode = 'active' }: 
                       </td>
                       <td>
                         {separationStage && separationStatus ? (
-                          <StatusBadge color={getStageColorHex(separationStatus.color)} className="whitespace-nowrap">
-                            {separationStage.name} · {separationStatus.name}
-                          </StatusBadge>
+                          <div className="inline-flex items-center gap-1.5">
+                            <StatusBadge color={getStageColorHex(separationStatus.color)} className="whitespace-nowrap">
+                              {separationStage.name} · {separationStatus.name}
+                            </StatusBadge>
+                            {(() => {
+                              const sepMeta = applicant.stageRecords.find(r => r.stageId === separationStage.id)?.meta;
+                              const sepHasMeta = !!sepMeta && !!(sepMeta.startDate || sepMeta.time || sepMeta.note || sepMeta.send);
+                              if (!sepHasMeta) return null;
+                              return (
+                                <>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <button
+                                        type="button"
+                                        className="text-muted-foreground hover:text-foreground"
+                                        onClick={() => handleEditMeta(applicant, separationStage)}
+                                      >
+                                        <Clock className="w-3.5 h-3.5" />
+                                      </button>
+                                    </TooltipTrigger>
+                                    <TooltipContent side="top" className="text-xs space-y-1 max-w-xs">
+                                      {sepMeta?.startDate && sepMeta?.endDate && <p>기간: {sepMeta.startDate} ~ {sepMeta.endDate}</p>}
+                                      {sepMeta?.time && <p>시간: {sepMeta.time}</p>}
+                                      {sepMeta?.note && <p>메모: {sepMeta.note}</p>}
+                                      <p className="text-muted-foreground">클릭해서 확인 (열람만 가능)</p>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                  {sepMeta?.send && (
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <MailCheck className="w-3.5 h-3.5 text-success shrink-0" />
+                                      </TooltipTrigger>
+                                      <TooltipContent side="top" className="text-xs space-y-0.5 max-w-xs">
+                                        <p>{describeSendRecord(sepMeta.send)}</p>
+                                        {sepMeta.send.subject && <p className="text-muted-foreground">발송 제목: {sepMeta.send.subject}</p>}
+                                      </TooltipContent>
+                                    </Tooltip>
+                                  )}
+                                </>
+                              );
+                            })()}
+                          </div>
                         ) : '-'}
                       </td>
                     </>
@@ -382,6 +447,7 @@ export default function ApplicantOverviewTable({ applicants, mode = 'active' }: 
             existingSend: completionApplicant.stageRecords.find(r => r.stageId === completionModal.stage.id)?.meta?.send,
             autoSendOnSubmit: completionModal.autoSendOnSubmit,
           }}
+          readOnly={completionModal.readOnly}
         />
       )}
 

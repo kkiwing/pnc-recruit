@@ -15,49 +15,66 @@ import CompletionDateModal from '@/components/applicant/CompletionDateModal';
 import StatusBadge from '@/components/common/StatusBadge';
 import { Badge } from '@/components/ui/badge';
 
-function StageBadge({ stage, stageRecords, onEditMeta, disabled }: { stage: Stage; stageRecords: StageRecord[]; onEditMeta: () => void; disabled?: boolean }) {
+/** 전형 현황의 단계 배지 + 기록(시계)/발송(메일) 아이콘.
+ * 시계 아이콘은 "현재 상태가 hasDateInput"이거나 "meta 기록 존재"면 항상 노출 —
+ * 기록이 없으면 흐리게(입력 유도), 있으면 진하게(메모 아이콘과 같은 문법).
+ * 잠금(locked)은 변경 차단이지 열람 차단이 아니므로, 기록이 있으면 클릭해
+ * 읽기 전용 모달로 볼 수 있다. 발송 아이콘은 발송 기록이 있으면 상태와 무관하게 표시. */
+function StageBadge({ stage, stageRecords, onEditMeta, locked }: { stage: Stage; stageRecords: StageRecord[]; onEditMeta: () => void; locked?: boolean }) {
   const status = getStageRecordStatus(stageRecords, stage);
   const record = stageRecords.find(r => r.stageId === stage.id);
   const meta = record?.meta;
   const hasMetaInfo = !!meta && !!(meta.startDate || meta.time || meta.note || meta.send);
+  const showClock = !!status?.hasDateInput || hasMetaInfo;
+  const clockDisabled = !!locked && !hasMetaInfo;
   const badge = (
     <StatusBadge color={getStageColorHex(status?.color ?? 'gray')} className="px-2 py-1">
       {stage.name}: {status?.name ?? '-'}
     </StatusBadge>
   );
-  if (status?.hasDateInput) {
-    return (
-      <div className="inline-flex items-center gap-1.5">
-        <Tooltip>
-          <TooltipTrigger asChild>{badge}</TooltipTrigger>
-          <TooltipContent side="top" className="text-xs space-y-1 max-w-xs">
-            {disabled ? (
-              <p>{FINAL_RESULT_LOCK_MESSAGE}</p>
-            ) : hasMetaInfo ? (
-              <>
-                {meta?.startDate && meta?.endDate && <p>기간: {meta.startDate} ~ {meta.endDate}</p>}
-                {meta?.time && <p>시간: {meta.time}</p>}
-                {meta?.note && <p>메모: {meta.note}</p>}
-                {meta?.send && <p>{describeSendRecord(meta.send)}</p>}
-                {meta?.send?.subject && <p className="text-muted-foreground">발송 제목: {meta.send.subject}</p>}
-              </>
-            ) : (
-              <p>날짜·시간·메모 미입력</p>
-            )}
-          </TooltipContent>
-        </Tooltip>
+  if (!showClock && !meta?.send) return badge;
+  return (
+    <div className="inline-flex items-center gap-1.5">
+      <Tooltip>
+        <TooltipTrigger asChild>{badge}</TooltipTrigger>
+        <TooltipContent side="top" className="text-xs space-y-1 max-w-xs">
+          {hasMetaInfo ? (
+            <>
+              {meta?.startDate && meta?.endDate && <p>기간: {meta.startDate} ~ {meta.endDate}</p>}
+              {meta?.time && <p>시간: {meta.time}</p>}
+              {meta?.note && <p>메모: {meta.note}</p>}
+              {locked && <p className="text-muted-foreground">잠금 — 열람만 가능</p>}
+            </>
+          ) : locked ? (
+            <p>{FINAL_RESULT_LOCK_MESSAGE}</p>
+          ) : (
+            <p>날짜·시간·메모 미입력</p>
+          )}
+        </TooltipContent>
+      </Tooltip>
+      {showClock && (
         <button
           type="button"
-          disabled={disabled}
-          className="text-muted-foreground hover:text-foreground disabled:opacity-40 disabled:cursor-not-allowed"
+          disabled={clockDisabled}
+          className={`hover:text-foreground disabled:opacity-40 disabled:cursor-not-allowed ${hasMetaInfo ? 'text-muted-foreground' : 'text-muted-foreground/30'}`}
           onClick={onEditMeta}
         >
           <Clock className="w-3.5 h-3.5" />
         </button>
-      </div>
-    );
-  }
-  return badge;
+      )}
+      {meta?.send && (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <MailCheck className="w-3.5 h-3.5 text-success shrink-0" />
+          </TooltipTrigger>
+          <TooltipContent side="top" className="text-xs space-y-0.5 max-w-xs">
+            <p>{describeSendRecord(meta.send)}</p>
+            {meta.send.subject && <p className="text-muted-foreground">발송 제목: {meta.send.subject}</p>}
+          </TooltipContent>
+        </Tooltip>
+      )}
+    </div>
+  );
 }
 
 /** 상단에 표시하는 전형 진행 스테퍼. 지나온 단계는 체크, 현재 단계는 강조 표시하고
@@ -216,7 +233,7 @@ export default function ApplicantDetailPage() {
                     stage={stage}
                     stageRecords={applicant.stageRecords}
                     onEditMeta={() => setEditingStage(stage)}
-                    disabled={!!applicant.finalResult}
+                    locked={!!applicant.finalResult}
                   />
                 ))
               : <span className="text-xs text-muted-foreground">전형 단계 정보를 찾을 수 없습니다.</span>
@@ -410,6 +427,7 @@ export default function ApplicantDetailPage() {
             existingSend: applicant.stageRecords.find(r => r.stageId === editingStage.id)?.meta?.send,
             autoSendOnSubmit: false,
           }}
+          readOnly={!!applicant.finalResult}
         />
       )}
     </div>
