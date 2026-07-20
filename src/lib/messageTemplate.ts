@@ -2,7 +2,7 @@ import { AutoSendConfig } from '@/types/jobPosting';
 import { StageSendRecord } from '@/types/applicant';
 
 /** 프로토타입 상수 — 실제 서비스 전환 시 회사/브랜드 설정에서 가져와야 한다. */
-export const COMPANY_NAME = 'P&C';
+export const COMPANY_NAME = 'ACG';
 
 export const SEND_CHANNEL_LABELS: Record<'email' | 'sms', string> = {
   email: '이메일',
