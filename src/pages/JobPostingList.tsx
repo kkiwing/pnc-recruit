@@ -83,12 +83,12 @@ export default function JobPostingListPage() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<JobPostingStatus | 'all'>('all');
   const [employmentTypeFilter, setEmploymentTypeFilter] = useState<EmploymentType | 'all'>('all');
-  const [departmentFilter, setDepartmentFilter] = useState<string>('all');
+  const [fieldFilter, setFieldFilter] = useState<string>('all');
   const [sortBy, setSortBy] = useState<SortOption>('deadlineAsc');
   const todayStr = toDateStr(new Date());
 
-  const departments = useMemo(
-    () => Array.from(new Set(jobPostings.map(j => j.department))).filter(Boolean),
+  const fields = useMemo(
+    () => Array.from(new Set(jobPostings.map(j => j.field))).filter(Boolean),
     [jobPostings]
   );
 
@@ -96,10 +96,10 @@ export default function JobPostingListPage() {
     const query = search.trim().toLowerCase();
     const withCounts = jobPostings
       .filter(job => {
-        if (query && !job.title.toLowerCase().includes(query) && !(job.position || '').toLowerCase().includes(query)) return false;
+        if (query && !job.title.toLowerCase().includes(query) && !job.field.toLowerCase().includes(query)) return false;
         if (statusFilter !== 'all' && getJobPostingStatus(job) !== statusFilter) return false;
         if (employmentTypeFilter !== 'all' && job.employmentType !== employmentTypeFilter) return false;
-        if (departmentFilter !== 'all' && job.department !== departmentFilter) return false;
+        if (fieldFilter !== 'all' && job.field !== fieldFilter) return false;
         return true;
       })
       .map(job => ({
@@ -135,9 +135,9 @@ export default function JobPostingListPage() {
         sorted.sort((a, b) => b.job.createdAt.localeCompare(a.job.createdAt));
     }
     return sorted.map(entry => entry.job);
-  }, [jobPostings, applicants, search, statusFilter, employmentTypeFilter, departmentFilter, sortBy]);
+  }, [jobPostings, applicants, search, statusFilter, employmentTypeFilter, fieldFilter, sortBy]);
 
-  const isFilterActive = statusFilter !== 'all' || employmentTypeFilter !== 'all' || departmentFilter !== 'all';
+  const isFilterActive = statusFilter !== 'all' || employmentTypeFilter !== 'all' || fieldFilter !== 'all';
 
   return (
     <div className="p-6">
@@ -156,7 +156,7 @@ export default function JobPostingListPage() {
           <Search className="absolute left-2.5 top-2.5 w-4 h-4 text-muted-foreground" />
           <Input
             className="pl-9"
-            placeholder="공고 제목, 포지션 검색"
+            placeholder="공고 제목, 모집 분야 검색"
             value={search}
             onChange={e => setSearch(e.target.value)}
           />
@@ -195,12 +195,12 @@ export default function JobPostingListPage() {
               </Select>
             </div>
             <div>
-              <label className="text-xs text-muted-foreground">팀</label>
-              <Select value={departmentFilter} onValueChange={setDepartmentFilter}>
+              <label className="text-xs text-muted-foreground">모집 분야</label>
+              <Select value={fieldFilter} onValueChange={setFieldFilter}>
                 <SelectTrigger className="mt-1 h-9 text-sm"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">전체</SelectItem>
-                  {departments.map(dep => <SelectItem key={dep} value={dep}>{dep}</SelectItem>)}
+                  {fields.map(f => <SelectItem key={f} value={f}>{f}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
@@ -247,7 +247,7 @@ export default function JobPostingListPage() {
                       <Badge variant="outline" className="text-xs">{job.careerType}</Badge>
                       <Badge variant="outline" className="text-xs">{job.employmentType}</Badge>
                       <span className="text-xs text-muted-foreground truncate">
-                        {job.department}{job.position ? ` · ${job.position}` : ''}
+                        {job.field}
                       </span>
                     </div>
                     <h3 className="font-semibold text-sm truncate">{job.title}</h3>

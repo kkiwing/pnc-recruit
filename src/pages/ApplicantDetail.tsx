@@ -193,7 +193,7 @@ export default function ApplicantDetailPage() {
         <div>
           <h2 className="text-lg font-semibold">{applicant.name}</h2>
           <p className="text-xs text-muted-foreground">
-            No.{applicant.no} · {applicant.team} · {jobPosting?.title ?? '(삭제된 공고)'}
+            No.{applicant.no} · {jobPosting?.field ?? '-'} · {jobPosting?.title ?? '(삭제된 공고)'}
           </p>
         </div>
         <Badge variant={applicant.submissionStatus === '완료' ? 'success' : 'warning'} className="ml-auto">
@@ -423,7 +423,7 @@ export default function ApplicantDetailPage() {
             autoSend: editingStage.autoSend,
             applicantName: applicant.name,
             stageName: editingStage.name,
-            positionName: jobPosting?.position || jobPosting?.title,
+            positionName: jobPosting?.field || jobPosting?.title,
             existingSend: applicant.stageRecords.find(r => r.stageId === editingStage.id)?.meta?.send,
             autoSendOnSubmit: false,
           }}

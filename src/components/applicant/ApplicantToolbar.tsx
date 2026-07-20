@@ -14,14 +14,14 @@ export type ApplicantViewMode = 'list' | 'pipeline';
 
 export interface ApplicantFilters {
   jobId: string;
-  team: string;
+  field: string;
   stageId: string;
   statusId: string;
 }
 
 export const DEFAULT_APPLICANT_FILTERS: ApplicantFilters = {
   jobId: 'all',
-  team: 'all',
+  field: 'all',
   stageId: 'all',
   statusId: 'all',
 };
@@ -38,7 +38,7 @@ interface Props {
   jobPostings: JobPosting[];
   filters: ApplicantFilters;
   onFiltersChange: (patch: Partial<ApplicantFilters>) => void;
-  teamOptions: string[];
+  fieldOptions: string[];
   selectedJobStages: Stage[];
   statusOptionsForSelectedStage: StageStatus[];
   sortBy: ApplicantSortOption;
@@ -53,7 +53,7 @@ export default function ApplicantToolbar({
   jobPostings,
   filters,
   onFiltersChange,
-  teamOptions,
+  fieldOptions,
   selectedJobStages,
   statusOptionsForSelectedStage,
   sortBy,
@@ -62,7 +62,7 @@ export default function ApplicantToolbar({
   onViewModeChange,
 }: Props) {
   const isJobSelected = filters.jobId !== 'all';
-  const isPopoverFilterActive = filters.team !== 'all' || filters.stageId !== 'all' || filters.statusId !== 'all';
+  const isPopoverFilterActive = filters.field !== 'all' || filters.stageId !== 'all' || filters.statusId !== 'all';
   const hasAnyFilter = filters.jobId !== 'all' || isPopoverFilterActive;
 
   const selectedJob = jobPostings.find(j => j.id === filters.jobId);
@@ -87,7 +87,7 @@ export default function ApplicantToolbar({
         <JobPostingSelect
           jobPostings={jobPostings}
           value={filters.jobId}
-          onChange={v => onFiltersChange({ jobId: v, team: 'all', stageId: 'all', statusId: 'all' })}
+          onChange={v => onFiltersChange({ jobId: v, field: 'all', stageId: 'all', statusId: 'all' })}
         />
 
         <Popover>
@@ -100,12 +100,12 @@ export default function ApplicantToolbar({
           </PopoverTrigger>
           <PopoverContent align="start" className="w-64 space-y-3">
             <div>
-              <label className="text-xs text-muted-foreground">팀</label>
-              <Select value={filters.team} onValueChange={v => onFiltersChange({ team: v })}>
+              <label className="text-xs text-muted-foreground">모집 분야</label>
+              <Select value={filters.field} onValueChange={v => onFiltersChange({ field: v })}>
                 <SelectTrigger className="mt-1 h-9 text-sm"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">전체</SelectItem>
-                  {teamOptions.map(team => <SelectItem key={team} value={team}>{team}</SelectItem>)}
+                  {fieldOptions.map(f => <SelectItem key={f} value={f}>{f}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
@@ -178,12 +178,12 @@ export default function ApplicantToolbar({
         <div className="flex items-center gap-1.5 flex-wrap mt-2.5">
           {selectedJob && (
             <>
-              <FilterChip label={`공고: ${selectedJob.title}`} onRemove={() => onFiltersChange({ jobId: 'all', team: 'all', stageId: 'all', statusId: 'all' })} />
+              <FilterChip label={`공고: ${selectedJob.title}`} onRemove={() => onFiltersChange({ jobId: 'all', field: 'all', stageId: 'all', statusId: 'all' })} />
               <JobPostingDetailLink jobPostingId={selectedJob.id} />
             </>
           )}
-          {filters.team !== 'all' && (
-            <FilterChip label={`팀: ${filters.team}`} onRemove={() => onFiltersChange({ team: 'all' })} />
+          {filters.field !== 'all' && (
+            <FilterChip label={`모집 분야: ${filters.field}`} onRemove={() => onFiltersChange({ field: 'all' })} />
           )}
           {selectedStage && (
             <FilterChip label={`단계: ${selectedStage.name}`} onRemove={() => onFiltersChange({ stageId: 'all', statusId: 'all' })} />

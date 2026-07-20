@@ -14,23 +14,23 @@ export default function DashboardPage() {
   const { applicants } = useApplicants();
   const { jobPostings } = useJobPostings();
   const navigate = useNavigate();
-  const [departmentFilter, setDepartmentFilter] = useState<string>('all');
+  const [fieldFilter, setFieldFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<JobPostingStatus | 'all'>('all');
 
   const postingsById = new Map(jobPostings.map(j => [j.id, j]));
   const todayStr = toDateStr(new Date());
 
-  const departments = useMemo(
-    () => Array.from(new Set(jobPostings.map(j => j.department))).filter(Boolean),
+  const fields = useMemo(
+    () => Array.from(new Set(jobPostings.map(j => j.field))).filter(Boolean),
     [jobPostings]
   );
 
   const visiblePostings = useMemo(() => {
     return jobPostings
-      .filter(j => departmentFilter === 'all' || j.department === departmentFilter)
+      .filter(j => fieldFilter === 'all' || j.field === fieldFilter)
       .filter(j => statusFilter === 'all' || getJobPostingStatus(j) === statusFilter)
       .sort((a, b) => (a.endDate || '9999-12-31').localeCompare(b.endDate || '9999-12-31'));
-  }, [jobPostings, departmentFilter, statusFilter]);
+  }, [jobPostings, fieldFilter, statusFilter]);
 
   const openPostingIds = new Set(jobPostings.filter(j => getJobPostingStatus(j) === '진행중').map(j => j.id));
 
@@ -79,11 +79,11 @@ export default function DashboardPage() {
         <CardHeader className="flex flex-row items-center justify-between space-y-0">
           <CardTitle className="text-base">공고별 현황</CardTitle>
           <div className="flex items-center gap-2">
-            <Select value={departmentFilter} onValueChange={setDepartmentFilter}>
-              <SelectTrigger className="w-32 h-8 text-xs"><SelectValue placeholder="팀" /></SelectTrigger>
+            <Select value={fieldFilter} onValueChange={setFieldFilter}>
+              <SelectTrigger className="w-32 h-8 text-xs"><SelectValue placeholder="모집 분야" /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">전체 팀</SelectItem>
-                {departments.map(dep => <SelectItem key={dep} value={dep}>{dep}</SelectItem>)}
+                <SelectItem value="all">전체 분야</SelectItem>
+                {fields.map(f => <SelectItem key={f} value={f}>{f}</SelectItem>)}
               </SelectContent>
             </Select>
             <Select value={statusFilter} onValueChange={v => setStatusFilter(v as JobPostingStatus | 'all')}>
@@ -101,7 +101,7 @@ export default function DashboardPage() {
             <thead>
               <tr>
                 <th>공고명</th>
-                <th>부서</th>
+                <th>모집 분야</th>
                 <th>상태</th>
                 <th>기간</th>
                 <th className="text-center">지원자</th>
@@ -128,7 +128,7 @@ export default function DashboardPage() {
                 return (
                   <tr key={job.id} className="cursor-pointer" onClick={() => navigate(`/postings/${job.id}`)}>
                     <td className="font-medium">{job.title}</td>
-                    <td className="text-xs">{job.department}</td>
+                    <td className="text-xs">{job.field}</td>
                     <td>
                       <Badge variant={jobStatus === '진행중' ? 'success' : 'secondary'}>
                         {jobStatus}

@@ -51,10 +51,14 @@ export interface Stage {
 export interface JobPosting {
   id: string;
   title: string;
-  department: string;
+  /** 모집 분야 — 자유 텍스트. 예전에는 department(부서)/position(포지션) 두 필드로
+   * 나뉘어 있었지만, 폼에는 department 입력만 있고 지원자 필터/카드는 team을
+   * 참조하는 불일치가 있었다. 조직 구조가 유동적이라 구조화된 값 목록보다 자유
+   * 텍스트가 맞고, 하나로 합쳐 두면 향후 외부 시스템(인트라넷 등) 연동 시 이
+   * 필드에 값을 매핑하면 된다(2026-07-21 decision-log). */
+  field: string;
   careerType: CareerType;
   employmentType: EmploymentType;
-  position?: string;
   startDate: string;
   endDate: string;
   isPublic: boolean;

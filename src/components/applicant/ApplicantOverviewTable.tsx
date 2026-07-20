@@ -271,7 +271,7 @@ export default function ApplicantOverviewTable({ applicants, mode = 'active' }: 
                   <td>
                     <div className="flex flex-col">
                       <span>{posting?.title ?? '-'}</span>
-                      <span className="text-xs text-muted-foreground">{applicant.team}</span>
+                      <span className="text-xs text-muted-foreground">{posting?.field}</span>
                     </div>
                   </td>
                   {mode === 'active' ? (
@@ -442,7 +442,7 @@ export default function ApplicantOverviewTable({ applicants, mode = 'active' }: 
             stageName: completionModal.stage.name,
             positionName: (() => {
               const p = postingsById.get(completionApplicant.jobPostingId);
-              return p?.position || p?.title;
+              return p?.field || p?.title;
             })(),
             existingSend: completionApplicant.stageRecords.find(r => r.stageId === completionModal.stage.id)?.meta?.send,
             autoSendOnSubmit: completionModal.autoSendOnSubmit,

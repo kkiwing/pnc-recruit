@@ -7,6 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import DateRangePicker from '@/components/common/DateRangePicker';
+import FieldAutocomplete from '@/components/common/FieldAutocomplete';
 import { useJobPostings } from '@/context/JobPostingContext';
 import { useProcessPreset } from '@/context/ProcessPresetContext';
 import {
@@ -23,14 +24,14 @@ interface Props {
 }
 
 export default function JobPostingFormModal({ open, onClose, editData }: Props) {
-  const { addJobPosting, updateJobPosting } = useJobPostings();
+  const { jobPostings, addJobPosting, updateJobPosting } = useJobPostings();
   const { presetStages } = useProcessPreset();
+  const fieldSuggestions = Array.from(new Set(jobPostings.map(j => j.field))).filter(Boolean);
   const [form, setForm] = useState({
     title: editData?.title || '',
-    department: editData?.department || '',
+    field: editData?.field || '',
     careerType: (editData?.careerType || '신입') as CareerType,
     employmentType: (editData?.employmentType || '정규직') as EmploymentType,
-    position: editData?.position || '',
     startDate: editData?.startDate || toDateStr(new Date()),
     endDate: editData?.endDate || '',
     isPublic: editData?.isPublic ?? true,
@@ -74,7 +75,7 @@ export default function JobPostingFormModal({ open, onClose, editData }: Props) 
 
   const handleSubmit = () => {
     if (!form.title.trim()) return;
-    const data = { ...form, position: form.position.trim() || undefined, coverLetterQuestions: questions };
+    const data = { ...form, coverLetterQuestions: questions };
     if (editData?.id) {
       updateJobPosting(editData.id, data);
     } else {
@@ -95,8 +96,13 @@ export default function JobPostingFormModal({ open, onClose, editData }: Props) 
             <Input value={form.title} onChange={e => handleChange('title', e.target.value)} placeholder="예: 2026 상반기 백엔드 개발자 채용" />
           </div>
           <div>
-            <Label>부서</Label>
-            <Input value={form.department} onChange={e => handleChange('department', e.target.value)} placeholder="개발팀" />
+            <Label>모집 분야</Label>
+            <FieldAutocomplete
+              value={form.field}
+              onChange={v => handleChange('field', v)}
+              suggestions={fieldSuggestions}
+              placeholder="예: 개발, UX 디자이너, 데이터 분석"
+            />
           </div>
           <div>
             <Label>구분</Label>
@@ -118,10 +124,6 @@ export default function JobPostingFormModal({ open, onClose, editData }: Props) 
                 <SelectItem value="인턴">인턴</SelectItem>
               </SelectContent>
             </Select>
-          </div>
-          <div className="col-span-2">
-            <Label>포지션 <span className="text-xs text-muted-foreground font-normal">(선택)</span></Label>
-            <Input value={form.position} onChange={e => handleChange('position', e.target.value)} placeholder="예: 백엔드 개발자" />
           </div>
           <div className="col-span-2">
             <Label>게시기간</Label>

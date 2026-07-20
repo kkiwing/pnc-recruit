@@ -30,7 +30,7 @@ export default function InterviewSchedulePage() {
         return {
           id: a.id,
           name: a.name,
-          team: a.team,
+          team: job.field,
           phone: a.phone,
           email: a.email,
           region: `${a.region} ${a.regionDetail}`,
@@ -168,7 +168,7 @@ export default function InterviewSchedulePage() {
               <thead>
                 <tr>
                   <th>이름</th>
-                  <th>팀</th>
+                  <th>모집 분야</th>
                   <th>공고</th>
                   <th>면접일</th>
                   <th>시간</th>
@@ -210,7 +210,7 @@ export default function InterviewSchedulePage() {
               <thead>
                 <tr>
                   <th>이름</th>
-                  <th>팀</th>
+                  <th>모집 분야</th>
                   <th>공고</th>
                   <th>면접일</th>
                   <th>시간</th>
@@ -250,7 +250,7 @@ export default function InterviewSchedulePage() {
               <thead>
                 <tr>
                   <th>이름</th>
-                  <th>팀</th>
+                  <th>모집 분야</th>
                   <th>공고</th>
                   <th>면접일</th>
                   <th>담당자</th>

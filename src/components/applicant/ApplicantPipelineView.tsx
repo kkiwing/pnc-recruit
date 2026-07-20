@@ -169,7 +169,7 @@ export default function ApplicantPipelineView({ applicants, jobPosting }: Props)
             autoSend: completionModal.stage.autoSend,
             applicantName: completionApplicant.name,
             stageName: completionModal.stage.name,
-            positionName: jobPosting.position || jobPosting.title,
+            positionName: jobPosting.field || jobPosting.title,
             existingSend: completionApplicant.stageRecords.find(r => r.stageId === completionModal.stage.id)?.meta?.send,
             autoSendOnSubmit: true,
           }}

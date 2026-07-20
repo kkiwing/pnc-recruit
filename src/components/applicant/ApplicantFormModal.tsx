@@ -25,7 +25,6 @@ export default function ApplicantFormModal({ open, onClose, editData, defaultJob
   const { jobPostings } = useJobPostings();
   const [form, setForm] = useState({
     jobPostingId: editData?.jobPostingId || defaultJobPostingId || '',
-    team: editData?.team || '',
     name: editData?.name || '',
     platform: editData?.platform || '',
     gender: editData?.gender || '',
@@ -46,8 +45,7 @@ export default function ApplicantFormModal({ open, onClose, editData, defaultJob
   };
 
   const handleJobPostingChange = (jobPostingId: string) => {
-    const posting = jobPostings.find(j => j.id === jobPostingId);
-    setForm(prev => ({ ...prev, jobPostingId, team: posting?.department ?? prev.team }));
+    setForm(prev => ({ ...prev, jobPostingId }));
   };
 
   const handleSubmit = () => {
@@ -108,10 +106,6 @@ export default function ApplicantFormModal({ open, onClose, editData, defaultJob
                 {jobPostings.map(j => <SelectItem key={j.id} value={j.id}>{j.title}</SelectItem>)}
               </SelectContent>
             </Select>
-          </div>
-          <div>
-            <Label>팀</Label>
-            <Input value={form.team} onChange={e => handleChange('team', e.target.value)} placeholder="채용 공고 선택 시 자동 입력" />
           </div>
           <div>
             <Label>이름 *</Label>

@@ -46,10 +46,16 @@ export default function ApplicantListPage() {
     [activeApplicants, filters.jobId]
   );
 
-  const teamOptions = useMemo(
-    () => Array.from(new Set(jobFiltered.map(a => a.team))).filter(Boolean).sort(),
-    [jobFiltered]
-  );
+  const postingsById = useMemo(() => new Map(jobPostings.map(j => [j.id, j])), [jobPostings]);
+
+  /** "모집 분야" 필터는 지원자 개별 필드가 아니라 소속 공고의 field를 기준으로
+   * 옵션을 만든다(2026-07-21 — team/department/position 통합). */
+  const fieldOptions = useMemo(() => {
+    const values = jobFiltered
+      .map(a => postingsById.get(a.jobPostingId)?.field)
+      .filter((f): f is string => !!f);
+    return Array.from(new Set(values)).sort();
+  }, [jobFiltered, postingsById]);
 
   const selectedJob = jobPostings.find(j => j.id === filters.jobId);
   const selectedJobStages = useMemo(
@@ -65,7 +71,7 @@ export default function ApplicantListPage() {
       if (query && !a.name.includes(query) && !a.email.includes(query) && !a.phone.includes(query) && !a.memo.includes(query)) {
         return false;
       }
-      if (filters.team !== 'all' && a.team !== filters.team) return false;
+      if (filters.field !== 'all' && postingsById.get(a.jobPostingId)?.field !== filters.field) return false;
       if (selectedJob && (filters.stageId !== 'all' || filters.statusId !== 'all')) {
         const currentStage = getCurrentStage(a.stageRecords, selectedJobStages);
         if (filters.stageId !== 'all' && currentStage?.id !== filters.stageId) return false;
@@ -76,7 +82,7 @@ export default function ApplicantListPage() {
       }
       return true;
     });
-  }, [jobFiltered, search, filters, selectedJob, selectedJobStages]);
+  }, [jobFiltered, search, filters, selectedJob, selectedJobStages, postingsById]);
 
   const sorted = useMemo(() => {
     const list = [...filtered];
@@ -94,7 +100,7 @@ export default function ApplicantListPage() {
     return list;
   }, [filtered, sortBy]);
 
-  const hasActiveFilter = search.trim() !== '' || filters.jobId !== 'all' || filters.team !== 'all' || filters.stageId !== 'all' || filters.statusId !== 'all';
+  const hasActiveFilter = search.trim() !== '' || filters.jobId !== 'all' || filters.field !== 'all' || filters.stageId !== 'all' || filters.statusId !== 'all';
 
   return (
     <div className="p-6">
@@ -118,7 +124,7 @@ export default function ApplicantListPage() {
         jobPostings={jobPostings}
         filters={filters}
         onFiltersChange={patch => setFilters(prev => ({ ...prev, ...patch }))}
-        teamOptions={teamOptions}
+        fieldOptions={fieldOptions}
         selectedJobStages={selectedJobStages}
         statusOptionsForSelectedStage={statusOptionsForSelectedStage}
         sortBy={sortBy}
@@ -137,7 +143,7 @@ export default function ApplicantListPage() {
         <div className="card-elevated py-16 flex flex-col items-center gap-3">
           <KanbanSquare className="w-8 h-8 text-muted-foreground" />
           <p className="text-sm text-muted-foreground">공고를 선택하면 파이프라인으로 볼 수 있어요.</p>
-          <Select onValueChange={v => setFilters(prev => ({ ...prev, jobId: v, team: 'all', stageId: 'all', statusId: 'all' }))}>
+          <Select onValueChange={v => setFilters(prev => ({ ...prev, jobId: v, field: 'all', stageId: 'all', statusId: 'all' }))}>
             <SelectTrigger className="max-w-[280px]"><SelectValue placeholder="공고 선택" /></SelectTrigger>
             <SelectContent>
               {jobPostings.map(job => (

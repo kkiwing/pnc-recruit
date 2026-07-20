@@ -55,7 +55,7 @@ export default function JobPostingDetailPage() {
         <div className="flex-1">
           <h2 className="text-lg font-semibold">{jobPosting.title}</h2>
           <p className="text-xs text-muted-foreground">
-            {getJobPostingStatus(jobPosting)} · {jobPosting.department} · {jobPosting.startDate} ~ {jobPosting.endDate}
+            {getJobPostingStatus(jobPosting)} · {jobPosting.field} · {jobPosting.startDate} ~ {jobPosting.endDate}
           </p>
         </div>
         <Button variant="outline" size="sm" onClick={() => setShowForm(true)}>
@@ -120,8 +120,7 @@ export default function JobPostingDetailPage() {
           <div className="grid grid-cols-2 gap-3 text-sm">
             <div><span className="text-muted-foreground">구분:</span> {jobPosting.careerType}</div>
             <div><span className="text-muted-foreground">고용 형태:</span> {jobPosting.employmentType}</div>
-            <div><span className="text-muted-foreground">팀:</span> {jobPosting.department}</div>
-            <div><span className="text-muted-foreground">포지션:</span> {jobPosting.position || '-'}</div>
+            <div><span className="text-muted-foreground">모집 분야:</span> {jobPosting.field}</div>
             <div><span className="text-muted-foreground">게시기간:</span> {jobPosting.startDate} ~ {jobPosting.endDate}</div>
             <div><span className="text-muted-foreground">공개 여부:</span> {jobPosting.isPublic ? '공개' : '비공개'}</div>
           </div>
