@@ -4,6 +4,7 @@ import { useApplicants } from '@/context/ApplicantContext';
 import { useJobPostings } from '@/context/JobPostingContext';
 import ApplicantOverviewTable from '@/components/applicant/ApplicantOverviewTable';
 import ApplicantPipelineView from '@/components/applicant/ApplicantPipelineView';
+import ApplicantGroupedView from '@/components/applicant/ApplicantGroupedView';
 import ApplicantToolbar, { ApplicantFilters, ApplicantSortOption, ApplicantViewMode, DEFAULT_APPLICANT_FILTERS } from '@/components/applicant/ApplicantToolbar';
 import ApplicantFormModal from '@/components/applicant/ApplicantFormModal';
 import { Button } from '@/components/ui/button';
@@ -22,7 +23,10 @@ export default function ApplicantListPage() {
     jobId: searchParams.get('posting') ?? 'all',
   }));
   const [sortBy, setSortBy] = useState<ApplicantSortOption>('newest');
-  const [viewMode, setViewMode] = useState<ApplicantViewMode>('list');
+  /** 초기 진입 시 기본 뷰: 특정 공고가 선택된 채 들어오면(공고 상세 → 지원자 목록)
+   * 목록, 그 외(전체 공고)에는 "오늘 처리할 것 찾기"에 맞춰 그룹을 기본으로 보여준다.
+   * 이후 사용자가 직접 전환하면 그 선택을 그대로 유지한다(자동 전환 없음). */
+  const [viewMode, setViewMode] = useState<ApplicantViewMode>(() => searchParams.get('posting') ? 'list' : 'group');
 
   const setFilters = (updater: (prev: ApplicantFilters) => ApplicantFilters) => {
     setFiltersState(prev => {
@@ -137,6 +141,8 @@ export default function ApplicantListPage() {
         <div className="card-elevated">
           <ApplicantOverviewTable applicants={sorted} />
         </div>
+      ) : viewMode === 'group' ? (
+        <ApplicantGroupedView applicants={sorted} jobPostings={jobPostings} />
       ) : selectedJob ? (
         <ApplicantPipelineView applicants={sorted} jobPosting={selectedJob} />
       ) : (

@@ -4,13 +4,13 @@ import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
-import { Search, SlidersHorizontal, X, List, KanbanSquare } from 'lucide-react';
+import { Search, SlidersHorizontal, X, List, KanbanSquare, LayoutGrid } from 'lucide-react';
 import { JobPosting, Stage, StageStatus } from '@/types/jobPosting';
 import JobPostingSelect from '@/components/applicant/JobPostingSelect';
 import JobPostingDetailLink from '@/components/applicant/JobPostingDetailLink';
 
 export type ApplicantSortOption = 'newest' | 'oldest' | 'name';
-export type ApplicantViewMode = 'list' | 'pipeline';
+export type ApplicantViewMode = 'list' | 'group' | 'pipeline';
 
 export interface ApplicantFilters {
   jobId: string;
@@ -165,11 +165,14 @@ export default function ApplicantToolbar({
           onValueChange={value => value && onViewModeChange(value as ApplicantViewMode)}
           className="card-soft rounded-md p-0.5"
         >
-          <ToggleGroupItem value="pipeline" size="sm" className="gap-1.5 px-2.5 text-xs data-[state=on]:bg-accent">
-            <KanbanSquare className="w-3.5 h-3.5" /> 파이프라인
-          </ToggleGroupItem>
           <ToggleGroupItem value="list" size="sm" className="gap-1.5 px-2.5 text-xs data-[state=on]:bg-accent">
             <List className="w-3.5 h-3.5" /> 목록
+          </ToggleGroupItem>
+          <ToggleGroupItem value="group" size="sm" className="gap-1.5 px-2.5 text-xs data-[state=on]:bg-accent">
+            <LayoutGrid className="w-3.5 h-3.5" /> 그룹
+          </ToggleGroupItem>
+          <ToggleGroupItem value="pipeline" size="sm" className="gap-1.5 px-2.5 text-xs data-[state=on]:bg-accent">
+            <KanbanSquare className="w-3.5 h-3.5" /> 파이프라인
           </ToggleGroupItem>
         </ToggleGroup>
       </div>
