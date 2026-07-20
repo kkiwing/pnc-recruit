@@ -6,7 +6,22 @@ import ApplicantOverviewTable from '@/components/applicant/ApplicantOverviewTabl
 import JobPostingSelect from '@/components/applicant/JobPostingSelect';
 import JobPostingDetailLink from '@/components/applicant/JobPostingDetailLink';
 import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Search } from 'lucide-react';
+
+/** 별도관리 전용 정렬 기준 — 지원자 목록의 지원일 기준 정렬과는 별개다.
+ * 별도관리는 "최근에 이탈한 사람"을 우선 봐야 하므로 기본값이 separatedAt
+ * 내림차순이다(2026-07-20). 지원일순은 지원자 목록의 "최신 지원순"과 같은
+ * 방향(내림차순)으로 맞춰 혼동을 줄였다. */
+type SeparateSortOption = 'recentSeparated' | 'oldestSeparated' | 'applicationNewest';
+
+const SEPARATE_SORT_LABELS: Record<SeparateSortOption, string> = {
+  recentSeparated: '최근 이동순',
+  oldestSeparated: '오래된 이동순',
+  applicationNewest: '지원일순',
+};
+
+const toTime = (iso?: string) => (iso ? new Date(iso).getTime() : 0);
 
 export default function SeparateManagementPage() {
   const { applicants } = useApplicants();
@@ -14,6 +29,7 @@ export default function SeparateManagementPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [search, setSearch] = useState('');
   const [jobId, setJobIdState] = useState(() => searchParams.get('posting') ?? 'all');
+  const [sortBy, setSortBy] = useState<SeparateSortOption>('recentSeparated');
 
   const setJobId = (id: string) => {
     setJobIdState(id);
@@ -45,6 +61,22 @@ export default function SeparateManagementPage() {
     });
   }, [separateApplicants, search, jobId]);
 
+  const sorted = useMemo(() => {
+    const list = [...filtered];
+    switch (sortBy) {
+      case 'oldestSeparated':
+        list.sort((a, b) => toTime(a.separatedAt) - toTime(b.separatedAt));
+        break;
+      case 'applicationNewest':
+        list.sort((a, b) => b.applicationDate.localeCompare(a.applicationDate));
+        break;
+      case 'recentSeparated':
+      default:
+        list.sort((a, b) => toTime(b.separatedAt) - toTime(a.separatedAt));
+    }
+    return list;
+  }, [filtered, sortBy]);
+
   const hasActiveFilter = search.trim() !== '' || jobId !== 'all';
 
   return (
@@ -70,10 +102,21 @@ export default function SeparateManagementPage() {
         </div>
         <JobPostingSelect jobPostings={jobPostings} value={jobId} onChange={setJobId} />
         {jobId !== 'all' && <JobPostingDetailLink jobPostingId={jobId} />}
+
+        <Select value={sortBy} onValueChange={v => setSortBy(v as SeparateSortOption)}>
+          <SelectTrigger className="w-auto ml-auto text-sm">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {Object.entries(SEPARATE_SORT_LABELS).map(([value, label]) => (
+              <SelectItem key={value} value={value}>{label}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       <div className="card-elevated">
-        <ApplicantOverviewTable applicants={filtered} mode="separate" />
+        <ApplicantOverviewTable applicants={sorted} mode="separate" />
       </div>
     </div>
   );
