@@ -80,6 +80,7 @@ function StatusSelect({ stage, stageRecords, onChange, onEditMeta, disabled }: {
                 {meta?.time && <p>시간: {meta.time}</p>}
                 {meta?.note && <p>메모: {meta.note}</p>}
                 {meta?.send && <p>{describeSendRecord(meta.send)}</p>}
+                {meta?.send?.subject && <p className="text-muted-foreground">발송 제목: {meta.send.subject}</p>}
                 <p className="text-muted-foreground">클릭해서 수정</p>
               </>
             ) : (

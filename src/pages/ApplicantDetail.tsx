@@ -39,6 +39,7 @@ function StageBadge({ stage, stageRecords, onEditMeta, disabled }: { stage: Stag
                 {meta?.time && <p>시간: {meta.time}</p>}
                 {meta?.note && <p>메모: {meta.note}</p>}
                 {meta?.send && <p>{describeSendRecord(meta.send)}</p>}
+                {meta?.send?.subject && <p className="text-muted-foreground">발송 제목: {meta.send.subject}</p>}
               </>
             ) : (
               <p>날짜·시간·메모 미입력</p>
@@ -95,7 +96,10 @@ function ProcessStepper({ stages, stageRecords }: { stages: Stage[]; stageRecord
                   <TooltipTrigger asChild>
                     <MailCheck className="w-3 h-3 text-success shrink-0" />
                   </TooltipTrigger>
-                  <TooltipContent side="top" className="text-xs">{describeSendRecord(send)}</TooltipContent>
+                  <TooltipContent side="top" className="text-xs space-y-0.5">
+                    <p>{describeSendRecord(send)}</p>
+                    {send.subject && <p className="text-muted-foreground">발송 제목: {send.subject}</p>}
+                  </TooltipContent>
                 </Tooltip>
               )}
             </div>

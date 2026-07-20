@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
@@ -10,7 +11,7 @@ import { toDateStr } from '@/lib/utils';
 import { AutoSendConfig } from '@/types/jobPosting';
 import { StageSendRecord } from '@/types/applicant';
 import { renderTemplate, hasTemplateContent, describeSendRecord, SEND_CHANNEL_LABELS } from '@/lib/messageTemplate';
-import { MailCheck, Send, Zap } from 'lucide-react';
+import { MailCheck, RotateCcw, Send, Zap } from 'lucide-react';
 
 /** 발송 섹션을 그리기 위한 재료. 넘기지 않으면 발송 섹션 없이 기존 날짜+메모 모달로만 동작한다. */
 export interface SendContext {
@@ -41,17 +42,43 @@ export default function CompletionDateModal({ open, onClose, stepLabel, initialD
   const [endDate, setEndDate] = useState(initialData?.endDate || '');
   const [time, setTime] = useState(initialData?.time || '');
   const [note, setNote] = useState(initialData?.note || '');
+  /** 발송 직전 개별 수정본. null이면 "템플릿 추적 모드" — 현재 입력된 날짜·시간으로
+   * 치환한 템플릿을 그대로 보여주며 날짜를 바꾸면 미리보기도 따라간다. 담당자가
+   * 내용을 한 글자라도 고치면 그 시점의 값으로 고정된다(이후 날짜를 바꿔도 수정본
+   * 유지). 지난 발송본(subject/body)이 있으면 처음부터 그 발송본에서 시작한다. */
+  const [draft, setDraft] = useState<{ subject: string; body: string } | null>(() => {
+    const prev = sendContext?.existingSend;
+    return prev?.subject !== undefined || prev?.body !== undefined
+      ? { subject: prev?.subject ?? '', body: prev?.body ?? '' }
+      : null;
+  });
 
   const autoSend = sendContext?.autoSend;
   const hasTemplate = hasTemplateContent(autoSend);
   const canSend = hasTemplate && (autoSend?.channels.length ?? 0) > 0;
 
+  const vars = {
+    지원자명: sendContext?.applicantName,
+    전형단계명: sendContext?.stageName,
+    포지션명: sendContext?.positionName,
+    면접일시: endDate ? `${endDate}${time ? ` ${time}` : ''}` : undefined,
+  };
+
+  const templateSubject = renderTemplate(autoSend?.title ?? '', vars);
+  const templateBody = renderTemplate(autoSend?.body ?? '', vars);
+  const displaySubject = draft?.subject ?? templateSubject;
+  const displayBody = draft?.body ?? templateBody;
+
   const buildDateMeta = () => ({ startDate, endDate, time: time || undefined, note: note || undefined });
 
+  /** 수동 발송: 화면에 보이는(수정 반영된) 제목/본문을 그대로 발송본으로 기록.
+   * 자동 발송: 템플릿 치환본이 그대로 기록된다(개별 수정 개념 없음). */
   const newSendRecord = (auto: boolean): StageSendRecord => ({
     sentAt: new Date().toISOString(),
     channels: [...(autoSend?.channels ?? [])],
     auto,
+    subject: auto ? templateSubject : displaySubject,
+    body: auto ? templateBody : displayBody,
   });
 
   const handleSubmit = () => {
@@ -69,13 +96,6 @@ export default function CompletionDateModal({ open, onClose, stepLabel, initialD
     if (!endDate || !canSend) return;
     onSubmit({ ...buildDateMeta(), send: newSendRecord(false) });
     onClose();
-  };
-
-  const vars = {
-    지원자명: sendContext?.applicantName,
-    전형단계명: sendContext?.stageName,
-    포지션명: sendContext?.positionName,
-    면접일시: endDate ? `${endDate}${time ? ` ${time}` : ''}` : undefined,
   };
 
   return (
@@ -127,9 +147,35 @@ export default function CompletionDateModal({ open, onClose, stepLabel, initialD
                       <MailCheck className="w-3 h-3 shrink-0" /> {describeSendRecord(sendContext.existingSend)}
                     </p>
                   )}
-                  <div className="bg-muted rounded-md px-3 py-2 text-xs space-y-1 max-h-40 overflow-y-auto">
-                    {autoSend?.title && <p className="font-medium">{renderTemplate(autoSend.title, vars)}</p>}
-                    {autoSend?.body && <p className="whitespace-pre-wrap text-muted-foreground">{renderTemplate(autoSend.body, vars)}</p>}
+                  <div className="space-y-1.5">
+                    <Input
+                      value={displaySubject}
+                      onChange={e => setDraft({ subject: e.target.value, body: displayBody })}
+                      placeholder="발송 제목"
+                      className="h-8 text-xs font-medium"
+                    />
+                    <Textarea
+                      value={displayBody}
+                      onChange={e => setDraft({ subject: displaySubject, body: e.target.value })}
+                      placeholder="발송 내용"
+                      rows={5}
+                      className="text-xs"
+                    />
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-[10px] text-muted-foreground">
+                        이 지원자에게만 보낼 내용을 여기서 바로 고칠 수 있습니다. 템플릿 원본은 바뀌지 않습니다.
+                      </p>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 px-2 text-[11px] text-muted-foreground shrink-0"
+                        disabled={draft === null}
+                        onClick={() => setDraft(null)}
+                      >
+                        <RotateCcw className="w-3 h-3 mr-1" /> 템플릿으로 되돌리기
+                      </Button>
+                    </div>
                   </div>
                   <div className="flex items-center justify-between gap-2">
                     <p className="text-[10px] text-muted-foreground">

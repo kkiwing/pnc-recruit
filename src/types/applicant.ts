@@ -8,6 +8,11 @@ export interface StageSendRecord {
   channels: ('email' | 'sms')[];
   /** 자동 발송(상태 변경 시 생성)이면 true, 모달의 발송 버튼으로 보낸 수동 발송이면 false */
   auto?: boolean;
+  /** 실제로 발송된 제목/본문(변수 치환 완료본). 발송 직전 담당자가 개별 수정한 내용이
+   * 그대로 보존되며, 재발송 시 이 값에서 시작한다. 템플릿(Stage.autoSend)은 수정의
+   * 영향을 받지 않는 "기본형"으로 남는다. */
+  subject?: string;
+  body?: string;
 }
 
 export interface StageRecordMeta {
