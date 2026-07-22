@@ -18,8 +18,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     <div className="flex h-screen overflow-hidden">
       <aside className="w-56 flex-shrink-0 bg-sidebar text-sidebar-foreground flex flex-col">
         <div className="px-5 py-5 border-b border-sidebar-border">
-          <h1 className="font-display text-base font-bold text-sidebar-foreground">P&C 채용관리</h1>
-          <p className="text-xs text-sidebar-foreground/60 mt-0.5">Recruitment Manager</p>
+          <img src="/logo.png" alt="ACG" className="h-8 w-auto" />
+          <p className="text-xs text-sidebar-foreground/60 mt-1.5">Recruitment Manager</p>
         </div>
         <nav className="flex-1 py-3 px-3 space-y-0.5">
           {NAV_ITEMS.map(item => {
