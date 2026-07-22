@@ -1,17 +1,22 @@
 import React, { useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useApplicants } from '@/context/ApplicantContext';
 import { useJobPostings } from '@/context/JobPostingContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import { Calendar as CalendarIcon, Clock, AlertTriangle } from 'lucide-react';
 import { cn, toDateStr } from '@/lib/utils';
-import { getInterviewInfo } from '@/types/applicant';
+import { Applicant, getInterviewInfo } from '@/types/applicant';
+import FinalResultModal from '@/components/applicant/FinalResultModal';
 
 export default function InterviewSchedulePage() {
-  const { applicants } = useApplicants();
+  const { applicants, updateApplicant } = useApplicants();
   const { jobPostings } = useJobPostings();
+  const navigate = useNavigate();
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
+  const [finalResultTarget, setFinalResultTarget] = useState<{ id: string; name: string } | null>(null);
 
   const active = applicants.filter(a => !a.isSeparateManagement);
   const todayStr = toDateStr(new Date());
@@ -48,7 +53,11 @@ export default function InterviewSchedulePage() {
 
   const upcoming = interviews.filter(i => i.bucket === 'upcoming');
   const overdue = interviews.filter(i => i.bucket === 'overdue');
-  const completed = interviews.filter(i => i.bucket === 'completed');
+
+  const handleSaveFinalResult = (result: Applicant['finalResult']) => {
+    if (!finalResultTarget) return;
+    updateApplicant(finalResultTarget.id, { finalResult: result });
+  };
 
   // Dates that have interviews (for highlighting on calendar)
   const interviewDates = useMemo(() => {
@@ -75,7 +84,7 @@ export default function InterviewSchedulePage() {
     <div className="p-6">
       <div className="mb-6">
         <h2 className="text-lg font-semibold">면접 일정 관리</h2>
-        <p className="text-sm text-muted-foreground">전체 면접 {interviews.length}건 (예정 {upcoming.length}건 / 지난 면접 {overdue.length}건 / 완료 {completed.length}건)</p>
+        <p className="text-sm text-muted-foreground">면접 {upcoming.length + overdue.length}건 (예정 {upcoming.length}건 / 지난 면접 {overdue.length}건)</p>
       </div>
 
       {/* Calendar + Timetable */}
@@ -217,12 +226,21 @@ export default function InterviewSchedulePage() {
                   <th>담당자</th>
                   <th>연락처</th>
                   <th>지역</th>
+                  <th>관리</th>
                 </tr>
               </thead>
               <tbody>
                 {overdue.map(item => (
                   <tr key={item.id}>
-                    <td className="font-medium">{item.name}</td>
+                    <td className="font-medium">
+                      <button
+                        type="button"
+                        className="text-primary hover:underline text-left"
+                        onClick={() => navigate(`/applicants/${item.id}`)}
+                      >
+                        {item.name}
+                      </button>
+                    </td>
                     <td>{item.team}</td>
                     <td className="text-xs max-w-[200px] truncate">{item.jobTitle}</td>
                     <td className="text-warning font-medium whitespace-nowrap">{item.date}</td>
@@ -230,45 +248,15 @@ export default function InterviewSchedulePage() {
                     <td>{item.note}</td>
                     <td className="text-xs">{item.phone}</td>
                     <td className="text-xs">{item.region}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">면접 완료</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {completed.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-4">완료된 면접이 없습니다.</p>
-          ) : (
-            <table className="admin-table w-full">
-              <thead>
-                <tr>
-                  <th>이름</th>
-                  <th>모집 분야</th>
-                  <th>공고</th>
-                  <th>면접일</th>
-                  <th>담당자</th>
-                  <th>결과</th>
-                </tr>
-              </thead>
-              <tbody>
-                {completed.map(item => (
-                  <tr key={item.id}>
-                    <td className="font-medium">{item.name}</td>
-                    <td>{item.team}</td>
-                    <td className="text-xs max-w-[200px] truncate">{item.jobTitle}</td>
-                    <td className="whitespace-nowrap">{item.date}</td>
-                    <td>{item.note}</td>
                     <td>
-                      <Badge variant={item.result === 'pass' ? 'success' : 'destructive'} className="text-xs">
-                        {item.result === 'pass' ? '합격' : '불합격'}
-                      </Badge>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="text-xs h-7"
+                        onClick={() => setFinalResultTarget({ id: item.id, name: item.name })}
+                      >
+                        최종 결과 입력
+                      </Button>
                     </td>
                   </tr>
                 ))}
@@ -277,6 +265,16 @@ export default function InterviewSchedulePage() {
           )}
         </CardContent>
       </Card>
+
+      {finalResultTarget && (
+        <FinalResultModal
+          open={!!finalResultTarget}
+          onClose={() => setFinalResultTarget(null)}
+          applicantName={finalResultTarget.name}
+          finalResult={null}
+          onSave={handleSaveFinalResult}
+        />
+      )}
     </div>
   );
 }
