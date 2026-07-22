@@ -142,5 +142,4 @@ Tailwind 매핑: `shadow-card`, `shadow-card-hover`, `shadow-soft`.
 - `src/index.css` — 컬러/섀도우/컴포넌트 클래스 정의
 - `tailwind.config.ts` — 토큰 → Tailwind 유틸리티 매핑
 - `src/lib/colorContrast.ts` — 브랜드 컬러 대비 자동 계산
-- `src/components/admin/ats/StatusBadge.tsx` — 사용자 컬러 + 시맨틱 토큰 혼합 예시
-- `.lovable/memory/design/tokens.md` — 요약 규칙 메모
+- `src/components/common/StatusBadge.tsx` — 사용자 컬러 + 시맨틱 토큰 혼합 예시
