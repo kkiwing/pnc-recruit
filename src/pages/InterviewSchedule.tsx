@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import { Calendar as CalendarIcon, Clock, AlertTriangle } from 'lucide-react';
 import { cn, toDateStr } from '@/lib/utils';
-import { Applicant, getInterviewInfo } from '@/types/applicant';
+import { Applicant, getScheduleInfo } from '@/types/applicant';
 import FinalResultModal from '@/components/applicant/FinalResultModal';
 
 export default function InterviewSchedulePage() {
@@ -27,7 +27,7 @@ export default function InterviewSchedulePage() {
       .map(a => {
         const job = postingsById.get(a.jobPostingId);
         if (!job) return null;
-        const info = getInterviewInfo(a.stageRecords, job.stages, a.finalResult, todayStr);
+        const info = getScheduleInfo(a.stageRecords, job.stages, a.finalResult, todayStr);
         if (!info) return null;
         const result: 'pending' | 'pass' | 'fail' = !a.finalResult
           ? 'pending'
@@ -39,6 +39,7 @@ export default function InterviewSchedulePage() {
           phone: a.phone,
           email: a.email,
           region: `${a.region} ${a.regionDetail}`,
+          stageName: info.stageName,
           date: info.date || '',
           time: info.time || '',
           note: info.note || '',
@@ -83,8 +84,8 @@ export default function InterviewSchedulePage() {
   return (
     <div className="p-6">
       <div className="mb-6">
-        <h2 className="text-lg font-semibold">면접 일정 관리</h2>
-        <p className="text-sm text-muted-foreground">면접 {upcoming.length + overdue.length}건 (예정 {upcoming.length}건 / 지난 면접 {overdue.length}건)</p>
+        <h2 className="text-lg font-semibold">채용 일정 관리</h2>
+        <p className="text-sm text-muted-foreground">일정 {upcoming.length + overdue.length}건 (예정 {upcoming.length}건 / 지난 일정 {overdue.length}건)</p>
       </div>
 
       {/* Calendar + Timetable */}
@@ -92,7 +93,7 @@ export default function InterviewSchedulePage() {
         <Card className="lg:col-span-1">
           <CardHeader className="pb-2">
             <CardTitle className="text-base flex items-center gap-2">
-              <CalendarIcon className="w-4 h-4" /> 면접 캘린더
+              <CalendarIcon className="w-4 h-4" /> 일정 캘린더
             </CardTitle>
           </CardHeader>
           <CardContent className="flex justify-center">
@@ -124,7 +125,7 @@ export default function InterviewSchedulePage() {
           <CardContent>
             {todayInterviews.length === 0 ? (
               <p className="text-sm text-muted-foreground text-center py-8">
-                {selectedDateStr ? '해당 날짜에 예정된 면접이 없습니다.' : '날짜를 선택해주세요.'}
+                {selectedDateStr ? '해당 날짜에 예정된 일정이 없습니다.' : '날짜를 선택해주세요.'}
               </p>
             ) : (
               <div className="space-y-0">
@@ -145,7 +146,8 @@ export default function InterviewSchedulePage() {
                             <span className="font-medium">{interview.name}</span>
                             <span className="text-xs text-muted-foreground">({interview.team})</span>
                             <span className="text-xs bg-accent px-1.5 py-0.5 rounded">{interview.jobTitle}</span>
-                            <span className="text-xs text-muted-foreground">담당: {interview.note}</span>
+                            <span className="text-xs bg-accent px-1.5 py-0.5 rounded">{interview.stageName}</span>
+                            {interview.note && <span className="text-xs text-muted-foreground">메모: {interview.note}</span>}
                             {interview.result !== 'pending' && (
                               <Badge variant={interview.result === 'pass' ? 'success' : 'destructive'} className="text-xs">
                                 {interview.result === 'pass' ? '합격' : '불합격'}
@@ -166,22 +168,23 @@ export default function InterviewSchedulePage() {
       <Card className="mb-6">
         <CardHeader>
           <CardTitle className="text-base flex items-center gap-2">
-            <CalendarIcon className="w-4 h-4" /> 예정된 면접
+            <CalendarIcon className="w-4 h-4" /> 예정된 일정
           </CardTitle>
         </CardHeader>
         <CardContent>
           {upcoming.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-4">예정된 면접이 없습니다.</p>
+            <p className="text-sm text-muted-foreground text-center py-4">예정된 일정이 없습니다.</p>
           ) : (
             <table className="admin-table w-full">
               <thead>
                 <tr>
                   <th>이름</th>
+                  <th>전형</th>
                   <th>모집 분야</th>
                   <th>공고</th>
-                  <th>면접일</th>
+                  <th>일정일</th>
                   <th>시간</th>
-                  <th>담당자</th>
+                  <th>메모</th>
                   <th>연락처</th>
                   <th>지역</th>
                 </tr>
@@ -190,11 +193,12 @@ export default function InterviewSchedulePage() {
                 {upcoming.map(item => (
                   <tr key={item.id}>
                     <td className="font-medium">{item.name}</td>
+                    <td className="text-xs">{item.stageName}</td>
                     <td>{item.team}</td>
                     <td className="text-xs max-w-[200px] truncate">{item.jobTitle}</td>
                     <td className="whitespace-nowrap">{item.date}</td>
                     <td>{item.time}</td>
-                    <td>{item.note}</td>
+                    <td className="text-xs">{item.note || '-'}</td>
                     <td className="text-xs">{item.phone}</td>
                     <td className="text-xs">{item.region}</td>
                   </tr>
@@ -208,22 +212,23 @@ export default function InterviewSchedulePage() {
       <Card className="mb-6">
         <CardHeader>
           <CardTitle className="text-base flex items-center gap-2">
-            <AlertTriangle className="w-4 h-4 text-warning" /> 지난 면접 (결과 미입력)
+            <AlertTriangle className="w-4 h-4 text-warning" /> 지난 일정 (결과 미입력)
           </CardTitle>
         </CardHeader>
         <CardContent>
           {overdue.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-4">결과 입력이 밀린 면접이 없습니다.</p>
+            <p className="text-sm text-muted-foreground text-center py-4">결과 입력이 밀린 일정이 없습니다.</p>
           ) : (
             <table className="admin-table w-full">
               <thead>
                 <tr>
                   <th>이름</th>
+                  <th>전형</th>
                   <th>모집 분야</th>
                   <th>공고</th>
-                  <th>면접일</th>
+                  <th>일정일</th>
                   <th>시간</th>
-                  <th>담당자</th>
+                  <th>메모</th>
                   <th>연락처</th>
                   <th>지역</th>
                   <th>관리</th>
@@ -241,11 +246,12 @@ export default function InterviewSchedulePage() {
                         {item.name}
                       </button>
                     </td>
+                    <td className="text-xs">{item.stageName}</td>
                     <td>{item.team}</td>
                     <td className="text-xs max-w-[200px] truncate">{item.jobTitle}</td>
                     <td className="text-warning font-medium whitespace-nowrap">{item.date}</td>
                     <td>{item.time}</td>
-                    <td>{item.note}</td>
+                    <td className="text-xs">{item.note || '-'}</td>
                     <td className="text-xs">{item.phone}</td>
                     <td className="text-xs">{item.region}</td>
                     <td>

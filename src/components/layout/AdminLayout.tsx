@@ -8,7 +8,7 @@ const NAV_ITEMS = [
   { to: '/process-management', icon: Workflow, label: '프로세스 관리' },
   { to: '/applicants', icon: Users, label: '지원자 목록' },
   { to: '/separate-management', icon: UserX, label: '별도 관리' },
-  { to: '/interviews', icon: Calendar, label: '면접 일정' },
+  { to: '/interviews', icon: Calendar, label: '채용 일정' },
 ];
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {

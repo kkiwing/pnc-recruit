@@ -15,7 +15,7 @@ function progressStatusesFor(prefix: string) {
   ];
 }
 
-function buildStages(postingId: string, defs: { name: string }[]): Stage[] {
+function buildStages(postingId: string, defs: { name: string; showOnCalendar?: boolean }[]): Stage[] {
   return defs.map((d, i) => {
     const prefix = `${postingId}-stage${i + 1}`;
     return {
@@ -24,6 +24,7 @@ function buildStages(postingId: string, defs: { name: string }[]): Stage[] {
       order: i + 1,
       statuses: progressStatusesFor(prefix),
       autoSend: { enabled: false, channels: ['email', 'sms'] as ('email' | 'sms')[], title: '{{전형단계명}} 안내', body: '' },
+      showOnCalendar: d.showOnCalendar ?? false,
     };
   });
 }
@@ -34,9 +35,11 @@ function buildStages(postingId: string, defs: { name: string }[]): Stage[] {
  * 고정 id를 쓴다). src/types/jobPosting.ts의 createDefaultStages()와 상태
  * 구성이 같다 — 실제 신규 공고 생성 시 프리셋을 복사한 결과와 동일한 모양. 단계 내
  * 합격/불합격 상태값은 없다 — 단계 통과는 다음 단계로의 이동으로, 탈락은
- * Applicant.finalResult(불합격)로 표현한다(2026-07-16 decision-log).
+ * Applicant.finalResult(불합격)로 표현한다(2026-07-16 decision-log). "면접" 단계는
+ * showOnCalendar 기본 true(채용 일정 화면 노출) — extraCalendarStage로 다른 단계도
+ * 함께 켤 수 있다(2026-07-22 decision-log, 여러 전형이 섞인 예시를 위한 장치).
  */
-function defaultStagesFor(postingId: string): Stage[] {
+function defaultStagesFor(postingId: string, extraCalendarStage?: '인성검사' | '자사양식' | '최종'): Stage[] {
   const personality = `${postingId}-personality`;
   const form = `${postingId}-form`;
   const interview = `${postingId}-interview`;
@@ -55,6 +58,7 @@ function defaultStagesFor(postingId: string): Stage[] {
         title: '[{{회사명}}] 인성검사 안내',
         body: '안녕하세요, {{지원자명}}님.\n{{회사명}} {{포지션명}} 채용 인성검사 안내드립니다.\n아래 링크를 통해 진행해 주시기 바랍니다.\n\n{{링크}}',
       },
+      showOnCalendar: extraCalendarStage === '인성검사',
     },
     {
       id: form, name: '자사양식', order: 2,
@@ -68,6 +72,7 @@ function defaultStagesFor(postingId: string): Stage[] {
         title: '[{{회사명}}] 자사양식 작성 안내',
         body: '안녕하세요, {{지원자명}}님.\n{{회사명}} {{포지션명}} 채용 자사 지원서 작성을 안내드립니다.\n아래 링크에서 작성해 주시기 바랍니다.\n\n{{링크}}',
       },
+      showOnCalendar: extraCalendarStage === '자사양식',
     },
     {
       id: interview, name: '면접', order: 3,
@@ -81,6 +86,7 @@ function defaultStagesFor(postingId: string): Stage[] {
         title: '[{{회사명}}] 면접 안내',
         body: '안녕하세요, {{지원자명}}님.\n{{회사명}} {{포지션명}} 면접 일정을 안내드립니다.\n일시: {{면접일시}}\n장소: {{면접장소}}',
       },
+      showOnCalendar: true,
     },
     {
       id: final, name: '최종', order: 4,
@@ -94,6 +100,7 @@ function defaultStagesFor(postingId: string): Stage[] {
         title: '[{{회사명}}] 최종 전형 안내',
         body: '안녕하세요, {{지원자명}}님.\n{{회사명}} {{포지션명}} 최종 전형 안내드립니다.\n\n{{링크}}',
       },
+      showOnCalendar: extraCalendarStage === '최종',
     },
   ];
 }
@@ -105,7 +112,7 @@ function executiveStagesFor(postingId: string): Stage[] {
   return buildStages(postingId, [
     { name: '서류' },
     { name: '인성검사' },
-    { name: '적성검사 및 면접' },
+    { name: '적성검사 및 면접', showOnCalendar: true },
     { name: '최종 임원 면접' },
   ]);
 }
@@ -143,7 +150,7 @@ export const dummyJobPostings: JobPosting[] = [
     content:
       '디지털 채널 기반의 마케팅 캠페인 기획 및 운영, 콘텐츠 제작을 담당할 신입 마케터를 채용합니다. SNS/퍼포먼스 마케팅에 대한 이해가 있고, 데이터 기반으로 캠페인 성과를 분석하고 개선할 수 있는 분을 찾습니다.',
     coverLetterQuestions: questionsFor('job-02'),
-    stages: defaultStagesFor('job-02'),
+    stages: defaultStagesFor('job-02', '인성검사'),
     createdBy: 'admin',
     updatedBy: 'admin',
     createdAt: '2026-03-01T09:00:00Z',

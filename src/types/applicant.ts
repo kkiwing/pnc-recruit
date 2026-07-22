@@ -239,40 +239,50 @@ export function getBirthYear(birthDate: string): string {
   return birthDate.slice(0, 4);
 }
 
-export type InterviewBucket = 'upcoming' | 'overdue' | 'completed';
+export type ScheduleBucket = 'upcoming' | 'overdue' | 'completed';
 
-export interface InterviewInfo {
-  bucket: InterviewBucket;
+export interface ScheduleInfo {
+  bucket: ScheduleBucket;
+  /** 이 일정이 어느 단계에서 온 것인지(예: "면접", "인성검사"). 채용 일정 화면의
+   * "전형" 컬럼에 그대로 쓰인다. */
+  stageName: string;
   date?: string;
   time?: string;
   note?: string;
 }
 
 /**
- * 지원자의 면접 일정 상태를 계산한다. 특정 단계를 "면접 단계"로 못박아두지 않고,
- * 날짜 입력이 딸린 상태(hasDateInput) 중 실제로 시간(meta.time)까지 입력된 기록을
- * 찾아 그것을 면접 일정으로 취급한다(단계 구조가 바뀌어도 깨지지 않도록).
- * 그런 기록이 없으면 undefined(면접 자체가 잡히지 않은 지원자).
- * - completed: 최종 결과(finalResult)가 이미 확정됨 — 면접일과 무관하게 우선
- * - overdue: 면접일이 오늘보다 이전인데 최종 결과가 아직 없음 ("지난 면접")
- * - upcoming: 면접일이 오늘 이후(또는 날짜 미상)이고 최종 결과 미정
+ * 지원자의 채용 일정 상태를 계산한다. 예전에는 "면접 단계"만 대상이었지만, 일정
+ * 관리가 필요한 전형은 공고마다 다를 수 있어(인성검사·적성검사 등도 시간 입력이
+ * 필요할 수 있음) 특정 단계 이름을 코드에 못박지 않는다. 대신 Stage.showOnCalendar가
+ * true인 단계 중 실제로 시간(meta.time)까지 입력된 기록을 찾아 그것을 일정으로
+ * 취급한다(2026-07-22 — "면접 일정"을 "채용 일정"으로 일반화, decision-log 참고).
+ * 그런 기록이 없으면 undefined(일정 자체가 잡히지 않은 지원자).
+ * - completed: 최종 결과(finalResult)가 이미 확정됨 — 일정일과 무관하게 우선
+ * - overdue: 일정일이 오늘보다 이전인데 최종 결과가 아직 없음 ("지난 일정")
+ * - upcoming: 일정일이 오늘 이후(또는 날짜 미상)이고 최종 결과 미정
  */
-export function getInterviewInfo(
+export function getScheduleInfo(
   stageRecords: StageRecord[],
   stages: Stage[],
   finalResult: FinalResult | null,
   todayStr: string = toDateStr(new Date())
-): InterviewInfo | undefined {
+): ScheduleInfo | undefined {
   const sorted = [...stages].sort((a, b) => a.order - b.order);
   let record: StageRecord | undefined;
+  let matchedStage: Stage | undefined;
   for (const stage of sorted) {
+    if (!stage.showOnCalendar) continue;
     const candidate = stageRecords.find(r => r.stageId === stage.id);
-    if (candidate?.meta?.time) record = candidate;
+    if (candidate?.meta?.time) {
+      record = candidate;
+      matchedStage = stage;
+    }
   }
-  if (!record) return undefined;
+  if (!record || !matchedStage) return undefined;
 
   const { endDate: date, time, note } = record.meta ?? {};
-  if (finalResult) return { bucket: 'completed', date, time, note };
-  if (date && date < todayStr) return { bucket: 'overdue', date, time, note };
-  return { bucket: 'upcoming', date, time, note };
+  if (finalResult) return { bucket: 'completed', stageName: matchedStage.name, date, time, note };
+  if (date && date < todayStr) return { bucket: 'overdue', stageName: matchedStage.name, date, time, note };
+  return { bucket: 'upcoming', stageName: matchedStage.name, date, time, note };
 }

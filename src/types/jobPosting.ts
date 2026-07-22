@@ -46,6 +46,11 @@ export interface Stage {
   order: number;
   statuses: StageStatus[];
   autoSend?: AutoSendConfig;
+  /** 이 단계의 날짜/시간 기록을 채용 일정(캘린더·타임테이블) 화면에 노출할지 여부.
+   * 기본 false — 일정 관리가 필요한 전형(면접뿐 아니라 인성검사·적성검사 등도 될 수
+   * 있음)은 공고마다 다르므로, 특정 단계 이름을 코드에 못박는 대신 담당자가 프로세스
+   * 관리에서 명시적으로 켠 단계만 노출한다(2026-07-22 decision-log). */
+  showOnCalendar?: boolean;
 }
 
 export interface JobPosting {
@@ -172,12 +177,15 @@ export function cloneStages(stages: Stage[]): Stage[] {
  * 어느 상태로 바뀌든 기록을 남길 수 있는 것이 기본값). 발송 채널은 전 단계
  * 이메일+문자, 자동 발송은 전 단계 OFF(옵트인 원칙 — 켜는 것은 담당자의 명시적 선택).
  * 최종 합격/불합격은 Applicant.finalResult로 전형 구조와 무관하게 별도 지정한다.
+ * "면접" 단계만 showOnCalendar 기본 true — 채용 일정 화면에 기본으로 노출되는 단계이며,
+ * 다른 단계(인성검사 등)도 담당자가 자유롭게 켤 수 있다(2026-07-22 decision-log).
  */
 export function createDefaultStages(): Stage[] {
-  const stage = (name: string, statuses: StageStatus[], autoSend: AutoSendConfig): Omit<Stage, 'id' | 'order'> => ({
+  const stage = (name: string, statuses: StageStatus[], autoSend: AutoSendConfig, showOnCalendar = false): Omit<Stage, 'id' | 'order'> => ({
     name,
     statuses,
     autoSend,
+    showOnCalendar,
   });
 
   const defs = [
@@ -208,7 +216,7 @@ export function createDefaultStages(): Stage[] {
       channels: ['email', 'sms'],
       title: '[{{회사명}}] 면접 안내',
       body: '안녕하세요, {{지원자명}}님.\n{{회사명}} {{포지션명}} 면접 일정을 안내드립니다.\n일시: {{면접일시}}\n장소: {{면접장소}}',
-    }),
+    }, true),
     stage('최종', [
       { id: crypto.randomUUID(), name: '안내', color: 'gray', isDefault: true, hasDateInput: true },
       { id: crypto.randomUUID(), name: '전형완료', color: 'green', isCompletion: true, hasDateInput: true },

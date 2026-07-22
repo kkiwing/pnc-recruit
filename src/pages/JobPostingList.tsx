@@ -23,7 +23,7 @@ import {
 import { Users, UserX, CalendarClock, CheckCircle2, ChevronRight, Plus, Pencil, Trash2, MoreVertical, Search, SlidersHorizontal } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { JobPosting, JobPostingStatus, EmploymentType, getJobPostingStatus } from '@/types/jobPosting';
-import { getInterviewInfo } from '@/types/applicant';
+import { getScheduleInfo } from '@/types/applicant';
 import { toDateStr } from '@/lib/utils';
 import JobPostingFormModal from '@/components/jobPosting/JobPostingFormModal';
 
@@ -222,8 +222,8 @@ export default function JobPostingListPage() {
           const jobApplicants = applicants.filter(a => a.jobPostingId === job.id);
           const activeCount = jobApplicants.filter(a => !a.isSeparateManagement).length;
           const separateCount = jobApplicants.filter(a => a.isSeparateManagement).length;
-          const interviewPending = jobApplicants.filter(a =>
-            !a.isSeparateManagement && getInterviewInfo(a.stageRecords, job.stages, a.finalResult, todayStr)?.bucket === 'upcoming'
+          const schedulePending = jobApplicants.filter(a =>
+            !a.isSeparateManagement && getScheduleInfo(a.stageRecords, job.stages, a.finalResult, todayStr)?.bucket === 'upcoming'
           ).length;
           const passed = jobApplicants.filter(a =>
             !a.isSeparateManagement && a.finalResult?.result === '합격'
@@ -269,7 +269,7 @@ export default function JobPostingListPage() {
                       tone="destructive"
                       onClick={() => navigate(`/separate-management?posting=${job.id}`)}
                     />
-                    <StatItem icon={CalendarClock} count={interviewPending} label="면접 예정" tone="primary" />
+                    <StatItem icon={CalendarClock} count={schedulePending} label="일정 예정" tone="primary" />
                     <StatItem icon={CheckCircle2} count={passed} label="합격" tone="success" />
                   </div>
 

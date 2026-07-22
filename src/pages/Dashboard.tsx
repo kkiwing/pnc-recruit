@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Briefcase, Users, UserCheck, Calendar, ChevronRight } from 'lucide-react';
 import { JobPostingStatus, getJobPostingStatus } from '@/types/jobPosting';
-import { getInterviewInfo } from '@/types/applicant';
+import { getScheduleInfo } from '@/types/applicant';
 import { toDateStr } from '@/lib/utils';
 
 export default function DashboardPage() {
@@ -38,18 +38,18 @@ export default function DashboardPage() {
   const totalPassed = applicants.filter(a =>
     !a.isSeparateManagement && openPostingIds.has(a.jobPostingId) && a.finalResult?.result === '합격'
   ).length;
-  const totalInterviewPending = applicants.filter(a => {
+  const totalSchedulePending = applicants.filter(a => {
     if (a.isSeparateManagement || !openPostingIds.has(a.jobPostingId)) return false;
     const posting = postingsById.get(a.jobPostingId);
     if (!posting) return false;
-    return getInterviewInfo(a.stageRecords, posting.stages, a.finalResult, todayStr)?.bucket === 'upcoming';
+    return getScheduleInfo(a.stageRecords, posting.stages, a.finalResult, todayStr)?.bucket === 'upcoming';
   }).length;
   const openPostings = openPostingIds.size;
 
   const stats = [
     { label: '진행중 공고', value: openPostings, icon: Briefcase, color: 'text-primary' },
     { label: '전체 지원자', value: totalApplicants, icon: Users, color: 'text-muted-foreground', sub: '진행중 공고 기준' },
-    { label: '면접 예정', value: totalInterviewPending, icon: Calendar, color: 'text-warning', sub: '진행중 공고 기준' },
+    { label: '일정 예정', value: totalSchedulePending, icon: Calendar, color: 'text-warning', sub: '진행중 공고 기준' },
     { label: '최종 합격', value: totalPassed, icon: UserCheck, color: 'text-success', sub: '진행중 공고 기준' },
   ];
 
@@ -105,7 +105,7 @@ export default function DashboardPage() {
                 <th>상태</th>
                 <th>기간</th>
                 <th className="text-center">지원자</th>
-                <th className="text-center">면접 예정</th>
+                <th className="text-center">일정 예정</th>
                 <th className="text-center">합격</th>
                 <th className="text-center">별도관리</th>
                 <th></th>
@@ -116,8 +116,8 @@ export default function DashboardPage() {
                 const jobApplicants = applicants.filter(a => a.jobPostingId === job.id);
                 const activeCount = jobApplicants.filter(a => !a.isSeparateManagement).length;
                 const separateCount = jobApplicants.filter(a => a.isSeparateManagement).length;
-                const interviewPending = jobApplicants.filter(a =>
-                  !a.isSeparateManagement && getInterviewInfo(a.stageRecords, job.stages, a.finalResult, todayStr)?.bucket === 'upcoming'
+                const schedulePending = jobApplicants.filter(a =>
+                  !a.isSeparateManagement && getScheduleInfo(a.stageRecords, job.stages, a.finalResult, todayStr)?.bucket === 'upcoming'
                 ).length;
                 const passed = jobApplicants.filter(a =>
                   !a.isSeparateManagement && a.finalResult?.result === '합격'
@@ -144,7 +144,7 @@ export default function DashboardPage() {
                         {activeCount}
                       </button>
                     </td>
-                    <td className="text-center font-medium">{interviewPending}</td>
+                    <td className="text-center font-medium">{schedulePending}</td>
                     <td className="text-center font-medium text-success">{passed}</td>
                     <td className="text-center">
                       <button

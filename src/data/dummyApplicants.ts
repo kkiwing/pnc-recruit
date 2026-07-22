@@ -152,7 +152,9 @@ const rawApplicants: RawApplicant[] = [
   },
   {
     id: 'd02-05', no: 17, jobPostingId: 'job-02', subTeam: '퍼포먼스마케팅', name: '홍채원', platform: '잡코리아', birthYear: '2001', email: 'chaewon.hong@naver.com', phone: '010-7788-9900', region: '강원', regionDetail: '춘천시', school: '강원대학교', major: '언론정보', career: '신입', memo: '', applicationDate: '2026-03-18',
-    progress: [prog('공고등록'), prog('안내'), prog('안내'), prog('안내')],
+    // job-02는 인성검사 단계도 showOnCalendar=true라(2026-07-22), 이 지원자처럼 아직
+    // 면접 전인데 인성검사 응시 시간만 잡힌 경우가 채용 일정에 "면접 아닌 전형"으로 뜬다.
+    progress: [prog('공고등록', { startDate: '2026-07-30', endDate: '2026-07-30', time: '10:00', note: '오프라인 인성검사 — 이차장 감독' }), prog('안내'), prog('안내'), prog('안내')],
     submitted: true, isSeparateManagement: false, createdAt: '2026-03-18T09:00:00Z', updatedAt: '2026-03-24T10:00:00Z',
   },
   {

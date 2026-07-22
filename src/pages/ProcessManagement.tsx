@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import {
@@ -110,6 +111,10 @@ export default function ProcessManagementPage() {
 
   const saveAutoSend = (stageId: string, autoSend: AutoSendConfig) => {
     persistStages(sortedStages.map(s => s.id === stageId ? { ...s, autoSend } : s));
+  };
+
+  const toggleShowOnCalendar = (stageId: string, showOnCalendar: boolean) => {
+    persistStages(sortedStages.map(s => s.id === stageId ? { ...s, showOnCalendar } : s));
   };
 
   const deleteTargetIndex = deleteTarget ? sortedStages.findIndex(s => s.id === deleteTarget.id) : -1;
@@ -261,7 +266,14 @@ export default function ProcessManagementPage() {
                     </StatusBadge>
                   ))}
                 </div>
-                <div className="ml-auto flex items-center gap-1 shrink-0">
+                <div className="ml-auto flex items-center gap-3 shrink-0">
+                  <label className="flex items-center gap-1.5 text-xs text-muted-foreground whitespace-nowrap cursor-pointer">
+                    <Checkbox
+                      checked={!!stage.showOnCalendar}
+                      onCheckedChange={v => toggleShowOnCalendar(stage.id, !!v)}
+                    />
+                    채용 일정에 노출
+                  </label>
                   <Button variant="outline" size="sm" onClick={() => setStatusModalStage(stage)}>
                     <Settings2 className="w-3.5 h-3.5 mr-1" /> 상태 관리
                   </Button>
